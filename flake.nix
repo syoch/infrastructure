@@ -297,77 +297,45 @@
           # ========================================
           # ローカル用デプロイコマンド
           # ========================================
-          # デプロイスクリプト
           deploy = pkgs.writeShellScriptBin "deploy" ''
             set -e
 
-            SRC_DIR="."
             DEST_HOST="''${DEPLOY_HOST:-syoch-vpn}"
             DEST_PATH="''${DEPLOY_PATH:-~/infrastructure}"
+            BRANCH="''${BRANCH:-main}"
 
-            echo "Deploying to $DEST_HOST:$DEST_PATH"
-            ${pkgs.rsync}/bin/rsync -av \
-              --exclude 'deploy.sh' \
-              --exclude 'wireguard' \
-              --exclude 'certbot' \
-              --exclude '.git' \
-              --exclude '.direnv' \
-              --exclude 'result' \
-              --exclude 'nginx/logs' \
-              --exclude 'nginx/tmp' \
-              "$SRC_DIR"/ "$DEST_HOST":"$DEST_PATH"/
+            echo "=== Git-based Deployment ==="
+            echo ""
 
-            echo "Deployment complete!"
-          '';
-
-          # リモートでNixコマンドを実行
-          remote-nix = pkgs.writeShellScriptBin "remote-nix" ''
-            set -e
-
-            DEST_HOST="''${DEPLOY_HOST:-syoch-vpn}"
-            DEST_PATH="''${DEPLOY_PATH:-~/infrastructure}"
-
-            if [ -z "$1" ]; then
-              echo "Usage: $0 <command> [args...]"
-              echo ""
-              echo "Examples:"
-              echo "  $0 nginx-start"
-              echo "  $0 nginx-stop"
-              echo "  $0 nginx-restart"
-              echo "  $0 nginx-reload"
-              echo "  $0 nginx-status"
-              echo "  $0 nginx-logs access"
+            # Gitの変更確認
+            if ! ${pkgs.git}/bin/git diff-index --quiet HEAD --; then
+              echo "⚠️  Uncommitted changes detected!"
+              echo "Please commit your changes first:"
+              echo "  git add -A"
+              echo "  git commit -m 'Your message'"
               exit 1
             fi
 
-            COMMAND="$1"
-            shift
-            ARGS="$@"
+            echo "Step 1: Pushing to Git..."
+            ${pkgs.git}/bin/git push origin "$BRANCH"
 
-            echo "Executing on $DEST_HOST: $COMMAND $ARGS"
-
-            # 同じflakeからコマンドを実行
+            echo ""
+            echo "Step 2: Pulling on remote..."
             ${pkgs.openssh}/bin/ssh "$DEST_HOST" \
-              "cd $DEST_PATH && PROJECT_DIR=$DEST_PATH nix run .#$COMMAND -- $ARGS"
-          '';
+              "cd $DEST_PATH && ${pkgs.git}/bin/git pull origin $BRANCH"
 
-          # Nginxデプロイ＋再起動（Nixベース）
-          deploy-nginx = pkgs.writeShellScriptBin "deploy-nginx" ''
-            set -e
+            echo ""
+            echo "Step 3: Testing configuration..."
+            ${pkgs.openssh}/bin/ssh "$DEST_HOST" \
+              "cd $DEST_PATH && PROJECT_DIR=$DEST_PATH nix run .#nginx-test"
 
-            echo "Deploying nginx configuration..."
-            ${self.packages.${system}.deploy}/bin/deploy
+            echo ""
+            echo "Step 4: Applying changes..."
+            ${pkgs.openssh}/bin/ssh "$DEST_HOST" \
+              "cd $DEST_PATH && PROJECT_DIR=$DEST_PATH nix run .#deploy-local"
 
-            echo "Testing nginx configuration on remote..."
-            ${self.packages.${system}.remote-nix}/bin/remote-nix nginx-test
-
-            echo "Restarting nginx on remote..."
-            ${self.packages.${system}.remote-nix}/bin/remote-nix nginx-restart
-
-            echo "Checking nginx status..."
-            ${self.packages.${system}.remote-nix}/bin/remote-nix nginx-status
-
-            echo "✓ Nginx deployment complete!"
+            echo ""
+            echo "✓ Git deployment complete!"
           '';
 
           # サービス管理スクリプト（Docker用 - 後方互換性のため残す）
@@ -412,20 +380,6 @@
             esac
           '';
 
-          # 完全なデプロイ＋再起動（Docker用 - 後方互換性のため残す）
-          deploy-and-restart = pkgs.writeShellScriptBin "deploy-and-restart" ''
-            set -e
-
-            SERVICE_NAME="''${1:-nginx}"
-
-            echo "Deploying infrastructure..."
-            ${self.packages.${system}.deploy}/bin/deploy
-
-            echo "Restarting service: $SERVICE_NAME"
-            ${self.packages.${system}.manage}/bin/manage-service restart "$SERVICE_NAME"
-
-            echo "Deployment and restart complete!"
-          '';
         };
 
         # デフォルトパッケージ
@@ -435,6 +389,7 @@
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             # デプロイツール
+            git
             rsync
             openssh
             docker-compose
@@ -465,10 +420,7 @@
 
             # デプロイ用スクリプト
             self.packages.${system}.deploy
-            self.packages.${system}.remote-nix
-            self.packages.${system}.deploy-nginx
             self.packages.${system}.manage
-            self.packages.${system}.deploy-and-restart
           ];
 
           shellHook = ''
@@ -501,13 +453,10 @@
             echo "  certbot-status      - Show certificate status"
             echo ""
             echo "🚀 Deploy commands:"
-            echo "  deploy-nginx        - Deploy and restart nginx on remote"
-            echo "  remote-nix <cmd>    - Execute nginx command on remote"
-            echo "  deploy              - Deploy files only"
+            echo "  deploy              - Deploy files (via Git, recommended)"
             echo ""
             echo "🐳 Docker commands (legacy):"
             echo "  manage-service      - Manage Docker services"
-            echo "  deploy-and-restart  - Deploy and restart Docker service"
             echo ""
             echo "Environment variables:"
             echo "  DEPLOY_HOST         - Deployment target (default: syoch-vpn)"
