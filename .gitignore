@@ -20,8 +20,10 @@ certbot/logs/
 *.env
 .env
 
-# Tailscale
-tailscale/
+# Tailscale (except example)
+tailscale/.env
+tailscale/*
+!tailscale/.env.example
 
 # Editor
 .vscode/
