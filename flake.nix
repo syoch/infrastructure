@@ -38,6 +38,7 @@
             certbot
             openssl
             unzip
+            tmux
           ];
 
           shellHook = ''
