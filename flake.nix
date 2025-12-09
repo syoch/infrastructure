@@ -37,6 +37,7 @@
             nginx
             certbot
             openssl
+            unzip
           ];
 
           shellHook = ''
