@@ -1,4 +1,4 @@
-import { showToast, getCategoryColorStyle, escapeHTML, safeURL } from './ui.js';
+import { getCategoryColorStyle, escapeHTML, safeURL } from './ui.js';
 
 let portalSortDirection = null; // null, 'asc', 'desc'
 
@@ -176,9 +176,6 @@ function populateCategoryFilter(allApps) {
 }
 
 export function initPortal(allApps, categories = {}) {
-  const exportUrlInput = document.getElementById('export-url-input');
-  const copyBtn = document.getElementById('copy-export-url-btn');
-  const copyToast = document.getElementById('copy-toast');
   const searchInput = document.getElementById('app-search-input');
   const categoryFilter = document.getElementById('portal-category-filter');
   const sortCategoryHeader = document.getElementById('portal-sort-category');
@@ -186,28 +183,6 @@ export function initPortal(allApps, categories = {}) {
   // Reset sorting state on page load/re-init
   portalSortDirection = null;
   updateSortIndicator();
-
-  // Set dynamic import URL
-  const origin = window.location.origin;
-  const exportUrl = `${origin}/obtainium-export.json`;
-  if (exportUrlInput) {
-    exportUrlInput.value = exportUrl;
-  }
-
-  if (copyBtn && !copyBtn.dataset.hasListener) {
-    copyBtn.addEventListener('click', () => {
-      if (exportUrlInput) {
-        exportUrlInput.select();
-        exportUrlInput.setSelectionRange(0, 99999);
-      }
-      navigator.clipboard.writeText(exportUrl).then(() => {
-        showToast(copyToast);
-      }).catch(err => {
-        console.error('Failed to copy: ', err);
-      });
-    });
-    copyBtn.dataset.hasListener = 'true';
-  }
 
   // Populate category filter dropdown
   populateCategoryFilter(allApps);

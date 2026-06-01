@@ -262,26 +262,18 @@ header {
   color: var(--color-text-secondary);
 }
 
-.url-copy-box {
+.main-import-actions {
   display: flex;
-  gap: 12px;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid var(--border-color);
-  padding: 6px;
-  border-radius: var(--radius-md);
-  align-items: center;
+  justify-content: center;
 }
 
-.url-copy-box input {
-  flex-grow: 1;
-  background: transparent;
-  border: none;
-  color: var(--color-text-primary);
-  padding: 10px 14px;
-  font-family: monospace;
-  font-size: 0.9rem;
-  outline: none;
-  width: 10%; /* Forces flex sizing */
+.main-import-actions .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  padding: 12px 24px;
+  font-size: 1rem;
 }
 
 /* Toast Message */

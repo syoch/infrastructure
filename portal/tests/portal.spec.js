@@ -133,13 +133,11 @@ test.describe('Portal Public UI E2E Tests', () => {
     await expect(sortIcon).toHaveText('↕');
   });
 
-  test('6. Copy obtainium export URL', async () => {
-    const copyBtn = page.locator('#copy-export-url-btn');
-    const toast = page.locator('#copy-toast');
+  test('6. Obtainium download link is present and points to obtainium-export.json', async () => {
+    const link = page.locator('#obtainium-download-btn');
 
-    await expect(toast).toHaveClass(/hidden/);
-    await copyBtn.click();
-    await expect(toast).not.toHaveClass(/hidden/);
-    await expect(toast).toHaveText('コピーしました！');
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute('href', '/obtainium-export.json');
+    await expect(link).toHaveAttribute('download', 'obtainium-export.json');
   });
 });
