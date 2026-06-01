@@ -1,12 +1,14 @@
-{ lib
-, buildPythonApplication
-, python
-, fastapi
-, uvicorn
-, sqlalchemy
-, pydantic
-, python-multipart
-, setuptools
+{
+  lib,
+  buildPythonApplication,
+  python,
+  fastapi,
+  uvicorn,
+  sqlalchemy,
+  pydantic,
+  python-multipart,
+  psycopg2,
+  setuptools,
 }:
 
 buildPythonApplication {
@@ -22,6 +24,7 @@ buildPythonApplication {
     sqlalchemy
     pydantic
     python-multipart
+    psycopg2
     setuptools
   ];
 
@@ -36,6 +39,6 @@ buildPythonApplication {
   meta = with lib; {
     description = "Android Device Provisioning Portal";
     license = licenses.mit; # 適宜変更
-    maintainers = [];
+    maintainers = [ ];
   };
 }

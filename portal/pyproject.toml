@@ -11,7 +11,8 @@ dependencies = [
     "uvicorn",
     "sqlalchemy",
     "pydantic",
-    "python-multipart"
+    "python-multipart",
+    "psycopg2"
 ]
 
 [project.scripts]
