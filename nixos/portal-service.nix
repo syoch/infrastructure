@@ -3,40 +3,27 @@
 with lib;
 
 let
-  cfg = config.services.portal;
+  cfg = config.services.syoch-portal;
   portalPkg = pkgs.python3Packages.callPackage ../portal { };
 in
 {
-  options.services.portal = {
+  options.services.syoch-portal = {
     enable = mkEnableOption "Android Device Provisioning Portal";
     
-    port = mkOption {
-      type = types.port;
-      default = 8000;
-      description = "Internal port for portal server.";
+    configFile = mkOption {
+      type = types.path;
+      description = "Path to the config.json configuration file.";
     };
 
-    host = mkOption {
-      type = types.str;
-      default = "127.0.0.1";
-      description = "Host to bind the portal server.";
-    };
-
-    uploadsDir = mkOption {
-      type = types.str;
-      default = "/mnt/NAS/Android Root/.tmp/prod/uploads";
-      description = "Path to store uploaded APKs.";
-    };
-
-    stateDir = mkOption {
-      type = types.str;
-      default = "/var/lib/portal";
-      description = "Directory to store state and sqlite database.";
+    readWritePaths = mkOption {
+      type = types.listOf types.str;
+      default = [];
+      description = "List of paths that the service is allowed to write to (e.g. SQLite database directory, uploads directory).";
     };
   };
 
   config = mkIf cfg.enable {
-    systemd.services.portal = {
+    systemd.services.syoch-portal = {
       description = "Android Device Provisioning Portal Backend Service";
       after = [ "network.target" ];
       wantedBy = [ "multi-user.target" ];
@@ -44,38 +31,11 @@ in
       serviceConfig = {
         Type = "simple";
         DynamicUser = true;
-        StateDirectory = "portal";
+        StateDirectory = "syoch-portal";
         
-        # Explicitly grant read-write access to the state and uploads directory
-        # Wrap uploadsDir in quotes to handle paths with spaces safely in systemd
-        ReadWritePaths = [ cfg.stateDir "\"${cfg.uploadsDir}\"" ];
+        ReadWritePaths = cfg.readWritePaths;
 
-        ExecStart = ''
-          ${portalPkg}/bin/portal-server \
-            --config ${pkgs.writeText "config.json" (builtins.toJSON {
-              database = {
-                url = "sqlite:///${cfg.stateDir}/database.db";
-                sqlite_wal = true;
-              };
-              server = {
-                port = cfg.port;
-                host = cfg.host;
-              };
-              extensions = [
-                {
-                  module = "servers.storage_manager";
-                  class = "StorageManagerExtension";
-                  config = {
-                    uploads_dir = cfg.uploadsDir;
-                  };
-                }
-                {
-                  module = "servers.obtainium_repo";
-                  class = "ObtainiumRepoExtension";
-                }
-              ];
-            })}
-        '';
+        ExecStart = "${portalPkg}/bin/portal-server --config ${cfg.configFile}";
         Restart = "always";
       };
     };

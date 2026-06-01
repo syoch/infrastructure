@@ -74,6 +74,61 @@
               '';
             };
           portal = pkgs.python3Packages.callPackage ./portal { };
+          test-backend = pkgs.writeShellApplication {
+            name = "run-backend-tests";
+            runtimeInputs = with pkgs; [
+              (python3.withPackages (ps: with ps; [
+                sqlalchemy
+                psycopg2
+                fastapi
+                uvicorn
+                python-multipart
+              ]))
+            ];
+            text = ''
+              PROJECT_ROOT=$(git rev-parse --show-toplevel)
+              cd "$PROJECT_ROOT"
+              echo "=== Running Python Backend Tests ==="
+              python3 portal/tests/backend/test_backup_restore.py
+              python3 portal/tests/backend/verify_roundtrip.py
+            '';
+          };
+          test-e2e = pkgs.writeShellApplication {
+            name = "run-e2e-tests";
+            runtimeInputs = with pkgs; [
+              python3
+              nodejs
+              chromium
+              (python3.withPackages (ps: with ps; [
+                sqlalchemy
+                psycopg2
+                fastapi
+                uvicorn
+                python-multipart
+              ]))
+            ];
+            text = ''
+              set -e
+              PROJECT_ROOT=$(git rev-parse --show-toplevel)
+              cd "$PROJECT_ROOT"
+              echo "=== Running Playwright E2E Tests ==="
+              cd portal/tests
+              if [ ! -d node_modules ]; then
+                npm install
+              fi
+              export CHROMIUM_PATH="${pkgs.chromium}/bin/chromium"
+              npx playwright test "$@"
+            '';
+          };
+          test-all = pkgs.writeShellApplication {
+            name = "run-all-tests";
+            runtimeInputs = [ packages.test-backend packages.test-e2e ];
+            text = ''
+              set -e
+              run-backend-tests
+              run-e2e-tests
+            '';
+          };
         };
 
         apps = {
@@ -93,17 +148,56 @@
             type = "app";
             program = "${packages.portal}/bin/portal-manage";
           };
+          test = {
+            type = "app";
+            program = "${packages.test-all}/bin/run-all-tests";
+          };
+          test-backend = {
+            type = "app";
+            program = "${packages.test-backend}/bin/run-backend-tests";
+          };
+          test-e2e = {
+            type = "app";
+            program = "${packages.test-e2e}/bin/run-e2e-tests";
+          };
         };
 
         checks = pkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
           portal-test = pkgs.nixosTest {
             name = "portal-integration-test";
             
-            nodes.machine = { config, pkgs, ... }: {
+            nodes.machine = { config, pkgs, lib, ... }: {
               imports = [ ./nixos/web-infrastructure.nix ];
               
-              # Override uploadsDir to a safe, space-free path inside the test machine
-              services.portal.uploadsDir = "/var/uploads";
+              # Override the portal config for the test machine to use test paths
+              services.syoch-portal.configFile = lib.mkForce (pkgs.writeText "config.json" (builtins.toJSON {
+                database = {
+                  url = "sqlite:////var/lib/syoch-portal/database.db";
+                  sqlite_wal = true;
+                };
+                server = {
+                  port = 8000;
+                  host = "127.0.0.1";
+                };
+                extensions = [
+                  {
+                    module = "servers.storage_manager";
+                    class = "StorageManagerExtension";
+                    config = {
+                      uploads_dir = "/var/uploads";
+                    };
+                  }
+                  {
+                    module = "servers.obtainium_repo";
+                    class = "ObtainiumRepoExtension";
+                  }
+                ];
+              }));
+
+              services.syoch-portal.readWritePaths = lib.mkForce [
+                "/var/lib/syoch-portal"
+                "/var/uploads"
+              ];
 
               # Override domains and ACME settings for the local virtual test execution
               services.nginx.virtualHosts."test.local" = {
@@ -118,7 +212,7 @@
             };
 
             testScript = ''
-              machine.wait_for_unit("portal.service")
+              machine.wait_for_unit("syoch-portal.service")
               machine.wait_for_unit("nginx.service")
               machine.wait_for_open_port(8000)
               machine.wait_for_open_port(80)
@@ -131,6 +225,8 @@
 
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
+            nodejs
+            chromium
             git
             rsync
             openssh
@@ -196,6 +292,7 @@
               return 1
             }
             export PATH=$PATH:`find_flake_root`/app2/bin
+            export CHROMIUM_PATH="${pkgs.chromium}/bin/chromium"
           '';
         };
       }

@@ -16,5 +16,12 @@ module.exports = defineConfig({
     screenshot: 'only-on-failure',
     headless: true,
     executablePath: process.env.CHROMIUM_PATH || '/nix/store/9fjg59mab9j8c5r61dx2k5gcbd2f5mpm-chromium-148.0.7778.96/bin/chromium',
-  }
+  },
+  webServer: {
+    command: 'python3 ../manage.py --config config.test.json restore --in bootstrap/seed_backup.tar.gz && python3 ../backend/main.py --config config.test.json',
+    url: 'http://localhost:8000',
+    reuseExistingServer: !process.env.CI,
+    stdout: 'ignore',
+    stderr: 'pipe',
+  },
 });
