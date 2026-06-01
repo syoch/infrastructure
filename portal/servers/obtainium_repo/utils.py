@@ -10,14 +10,17 @@ def get_base_url(request: Request, default_port: int = 8000) -> str:
     
     # Determine the scheme. Check X-Forwarded-Proto, then fall back to Cloudflare's cf-visitor.
     proto_header = request.headers.get('X-Forwarded-Proto', '').lower()
-    if proto_header in ('https', 'http'):
-        scheme = proto_header
+    cf_visitor = request.headers.get('cf-visitor', '')
+    cf_uses_https = '"scheme":"https"' in cf_visitor
+    
+    if proto_header == 'https' or (proto_header == 'http' and cf_uses_https):
+        scheme = 'https'
+    elif proto_header == 'http':
+        scheme = 'http'
+    elif cf_uses_https:
+        scheme = 'https'
     else:
-        cf_visitor = request.headers.get('cf-visitor', '')
-        if '"scheme":"https"' in cf_visitor:
-            scheme = 'https'
-        else:
-            scheme = 'https' if request.url.scheme == 'https' else 'http'
+        scheme = 'https' if request.url.scheme == 'https' else 'http'
         
     if host_header:
         return f"{scheme}://{host_header}"
