@@ -50,7 +50,7 @@ class PortalServer:
         print(f"Portal server listening on http://{self.host}:{self.port}")
         print("-" * 60)
         
-        uvicorn.run(self.app, host=self.host, port=self.port, log_level="info")
+        uvicorn.run(self.app, host=self.host, port=self.port, log_level="info", proxy_headers=True, forwarded_allow_ips="*")
 
     def setup_backup_restore_routes(self):
         from backend.core.backup_manager import BackupManager
