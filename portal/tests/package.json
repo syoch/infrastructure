@@ -1,0 +1,12 @@
+{
+  "name": "portal-tests",
+  "version": "1.0.0",
+  "description": "E2E tests for android provisioning portal",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

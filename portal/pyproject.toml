@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "portal"
+version = "0.1.0"
+description = "Android Device Provisioning Portal"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "sqlalchemy",
+    "pydantic",
+    "python-multipart"
+]
+
+[project.scripts]
+portal-server = "backend.main:main"
+portal-manage = "manage:main"
+
+[tool.setuptools]
+packages = ["backend", "backend.core", "backend.utils", "backend.extensions", "servers", "servers.obtainium_repo", "servers.storage_manager"]
+py-modules = ["manage"]
+
+[tool.setuptools.package-data]
+"*" = ["**/*"]
+
+[tool.setuptools.exclude-package-data]
+"*" = ["**/__pycache__/*", "**/*.pyc"]

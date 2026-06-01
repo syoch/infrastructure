@@ -1,0 +1,23 @@
+{
+  "database": {
+    "url": "sqlite:///portal_test.db",
+    "sqlite_wal": true
+  },
+  "server": {
+    "port": 8000,
+    "host": "0.0.0.0"
+  },
+  "extensions": [
+    {
+      "module": "servers.storage_manager",
+      "class": "StorageManagerExtension",
+      "config": {
+        "uploads_dir": "uploads"
+      }
+    },
+    {
+      "module": "servers.obtainium_repo",
+      "class": "ObtainiumRepoExtension"
+    }
+  ]
+}

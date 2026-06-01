@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Android Device Provisioning Portal</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Background blobs for premium glassmorphic effect -->
+  <div class="blob-container">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+
+  <header>
+    <div class="header-content container">
+      <div class="logo">
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+        <span class="logo-text">Android Provisioning Portal</span>
+      </div>
+      
+      <!-- Navigation Links -->
+      <nav class="header-nav">
+        <a href="#/" class="nav-btn active" id="nav-portal">ポータル</a>
+        <a href="#/dashboard" class="nav-btn" id="nav-dashboard">ダッシュボード</a>
+      </nav>
+      
+      <div class="server-status">
+        <span class="status-indicator online"></span>
+        <span class="status-text">Repository Online</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- ①ポータルビュー (#portal-view: DEFAULT VIEW) -->
+    <div id="portal-view" class="view-section active">
+      <!-- Hero / Intro -->
+      <section class="hero-section">
+        <h1>Android 端末のプロビジョニングを快適に</h1>
+        <p class="hero-subtitle">Obtainium を活用して、必要なアプリや自作/野良 APK を一括インストール・自動アップデート管理するためのローカルリポジトリです。</p>
+        
+        <!-- Primary Action: Copy Config URL -->
+        <div class="main-import-card">
+          <div class="import-card-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="card-header-icon">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+            <div>
+              <h3>Obtainium 一括インポート用 URL</h3>
+              <p>この URL をコピーして Obtainium にインポートすることで、全アプリを一発で登録できます。</p>
+            </div>
+          </div>
+          
+          <div class="url-copy-box">
+            <input type="text" id="export-url-input" readonly value="読み込み中...">
+            <button id="copy-export-url-btn" class="btn btn-primary">
+              <span class="btn-text">URLをコピー</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            </button>
+          </div>
+          <div id="copy-toast" class="toast-message hidden">コピーしました！</div>
+        </div>
+      </section>
+
+      <!-- Provisioning Guide -->
+      <section class="guide-section">
+        <h2 class="section-title">新規端末セットアップ手順</h2>
+        <div class="guide-grid">
+          
+          <!-- Step 1 -->
+          <div class="guide-card">
+            <div class="step-badge">01</div>
+            <h3>Obtainium をインストール</h3>
+            <p>まずは更新マネージャーとなる Obtainium を端末にインストールします。下のリンクから最新の APK を直接ダウンロードできます。</p>
+            <div class="card-actions">
+              <a href="https://github.com/ImranR98/Obtainium/releases/latest" target="_blank" class="btn btn-secondary btn-sm">
+                <span>GitHub から入手</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="action-icon">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                  <polyline points="15 3 21 3 21 9"/>
+                  <line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="guide-card">
+            <div class="step-badge">02</div>
+            <h3>設定ファイルをインポート</h3>
+            <p>Obtainium を開き、メニュー下部の <strong>「Import / Export」</strong> へ進みます。 <strong>「Obtainium Import」</strong> を選択し、上のインポート用 URL を貼り付けます。</p>
+            <div class="card-note">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="note-icon">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="16" x2="12" y2="12"/>
+                <line x1="12" y1="8" x2="12.01" y2="8"/>
+              </svg>
+              <span>設定やテーマを含めたい場合は、JSONファイルとしてダウンロードしてインポートすることも可能です。</span>
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="guide-card">
+            <div class="step-badge">03</div>
+            <h3>一括インストールと更新設定</h3>
+            <p>インポートが完了すると、アプリ一覧に登録されます。Shizuku (Sui) 等を連携させておくことで、完全にバックグラウンドでのサイレント自動更新が可能になります。</p>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- App Directory -->
+      <section class="directory-section">
+        <div class="directory-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
+          <h2 class="section-title" style="margin-bottom: 0;">登録アプリ一覧</h2>
+          
+          <div class="filter-controls" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <!-- Category Filter -->
+            <select id="portal-category-filter" class="filter-select" style="background: rgba(255, 255, 255, 0.05); color: var(--color-text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px 12px; font-family: var(--font-primary); font-size: 0.9rem; outline: none; cursor: pointer; transition: var(--transition-smooth); width: 180px;">
+              <option value="">すべてのカテゴリ</option>
+            </select>
+
+            <!-- Search bar -->
+            <div class="search-box" style="margin-top: 0;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input type="text" id="app-search-input" placeholder="アプリ名で検索...">
+            </div>
+          </div>
+        </div>
+
+        <!-- App Table -->
+        <div class="apps-table-container">
+          <table class="apps-table">
+            <thead>
+              <tr>
+                <th class="col-name">アプリ名</th>
+                <th class="col-category sortable" id="portal-sort-category" style="cursor: pointer; user-select: none;">カテゴリ <span id="portal-sort-icon" class="sort-icon" style="opacity: 0.6; margin-left: 4px;">↕</span></th>
+                <th class="col-source">ソース元</th>
+                <th class="col-version">追跡バージョン</th>
+                <th class="col-actions">アクション</th>
+              </tr>
+            </thead>
+            <tbody id="apps-table-body">
+              <tr class="loading-row">
+                <td colspan="5">
+                  <div class="loading-state">
+                    <div class="spinner"></div>
+                    <p>アプリ一覧を読み込んでいます...</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- ②メインのアプリ一覧ビュー (#dashboard-view) -->
+    <div id="dashboard-view" class="view-section" style="display: none;">
+      <section class="dashboard-header-section">
+        <div class="dashboard-title-row">
+          <div>
+            <h1>アプリ管理ダッシュボード</h1>
+            <p class="hero-subtitle" style="margin: 4px 0 0 0; text-align: left;">リポジトリ内のアプリ追加・編集・削除および設定のコンパイルを行います。</p>
+          </div>
+          
+          <div class="dashboard-header-actions" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <button id="import-json-btn" class="btn btn-secondary" style="border-color: var(--accent-primary); color: var(--accent-primary);">
+              <span>📥 JSONインポート</span>
+            </button>
+            <input type="file" id="import-json-file" accept=".json" style="display: none;">
+            <button id="add-app-btn" class="btn btn-secondary" style="border-color: var(--accent-secondary); color: var(--accent-secondary);">
+              <span>➕ 新規アプリ登録</span>
+            </button>
+            <button id="compile-btn" class="btn btn-primary">
+              <span>設定をコンパイルして反映</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="btn-icon" style="width:16px; height:16px; color:#000;">
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" fill="none"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div id="compile-toast" class="toast-message hidden">反映しました！</div>
+      </section>
+
+      <!-- カテゴリ一覧のクイックリンク領域 -->
+      <section class="categories-bar-section" style="margin-bottom: 32px; background: var(--bg-card); padding: 20px; border: 1px solid var(--border-color); border-radius: var(--radius-lg); backdrop-filter: blur(20px);">
+        <h3 style="font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">カテゴリ一覧と編集</h3>
+        <div id="dashboard-categories-bar" class="category-tags" style="gap: 8px; display: flex; flex-wrap: wrap; align-items: center;">
+          <!-- Dynamically populated category chips -->
+          <button id="add-category-btn" class="category-tag tag-none interactive-tag" style="background: rgba(255,255,255,0.02); border-style: dashed; cursor: pointer; border-radius: var(--radius-sm); padding: 4px 10px;">
+            ➕ 新規カテゴリ追加
+          </button>
+        </div>
+      </section>
+
+      <!-- アプリ一覧テーブル -->
+      <section class="dashboard-list-section">
+        <h2 class="section-title">登録アプリ一覧</h2>
+        <div class="apps-table-container">
+          <table class="apps-table">
+            <thead>
+              <tr>
+                <th>アプリ名 / ID</th>
+                <th id="dashboard-sort-category" class="sortable" style="cursor: pointer; user-select: none;">カテゴリ <span id="dashboard-sort-icon" class="sort-icon" style="opacity: 0.6; margin-left: 4px;">↕</span></th>
+                <th>ソースURL</th>
+                <th style="text-align: right; padding-right: 32px;">操作</th>
+              </tr>
+            </thead>
+            <tbody id="dashboard-apps-list">
+              <!-- Dynamic admin rows -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- グローバル設定 (Global Settings) -->
+      <section class="dashboard-settings-section" style="margin-top: 32px; background: var(--bg-card); padding: 24px; border: 1px solid var(--border-color); border-radius: var(--radius-lg); backdrop-filter: blur(20px);">
+        <h3 style="font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Obtainium グローバル設定 (Global Settings)</h3>
+        <p class="hero-subtitle" style="margin: 0 0 20px 0; text-align: left; font-size: 0.85rem; color: var(--color-text-muted);">Obtainium アプリ全体の共通動作や表示テーマなどの設定を管理します。</p>
+        
+        <form id="global-settings-form">
+          <div class="form-row" style="display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px;">
+            <div class="form-group" style="flex: 1; min-width: 200px;">
+              <label for="global-setting-theme" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 6px; color: var(--color-text-secondary);">テーマ (theme)</label>
+              <select id="global-setting-theme" class="filter-select" style="width: 100%; background: rgba(255, 255, 255, 0.05); color: var(--color-text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px 12px; outline: none; cursor: pointer; transition: var(--transition-smooth);">
+                <option value="system">システム同期 (system)</option>
+                <option value="dark">ダークモード (dark)</option>
+                <option value="light">ライトモード (light)</option>
+              </select>
+            </div>
+            
+            <div class="form-group" style="flex: 1; min-width: 200px;">
+              <label for="global-setting-check-interval" style="display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 6px; color: var(--color-text-secondary);">アップデートチェック間隔 (checkInterval / 時間)</label>
+              <input type="number" id="global-setting-check-interval" min="0" placeholder="例: 24" style="width: 100%; background: rgba(255, 255, 255, 0.05); color: var(--color-text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px 12px; outline: none; transition: var(--transition-smooth);">
+            </div>
+          </div>
+          
+          <div class="checkbox-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer; color: var(--color-text-secondary);">
+              <input type="checkbox" id="global-setting-check-on-startup" style="cursor: pointer;">
+              <span>起動時にアップデート確認 (checkOnStartup)</span>
+            </label>
+            
+            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer; color: var(--color-text-secondary);">
+              <input type="checkbox" id="global-setting-prerelease" style="cursor: pointer;">
+              <span>プレリリース版を含める (includePreReleases)</span>
+            </label>
+            
+            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer; color: var(--color-text-secondary);">
+              <input type="checkbox" id="global-setting-allow-source-change" style="cursor: pointer;">
+              <span>ソース元の変更を許可 (allowSourceChange)</span>
+            </label>
+            
+            <label class="checkbox-label" style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer; color: var(--color-text-secondary);">
+              <input type="checkbox" id="global-setting-restrict-notification" style="cursor: pointer;">
+              <span>バックグラウンド制限警告を表示 (backgroundRestrictedNotification)</span>
+            </label>
+          </div>
+          
+          <div style="display: flex; justify-content: flex-end;">
+            <button type="submit" class="btn btn-primary">
+              <span>グローバル設定を保存</span>
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- システム管理（バックアップ・リストア） -->
+      <section class="dashboard-system-section" style="margin-top: 32px; background: var(--bg-card); padding: 24px; border: 1px solid var(--border-color); border-radius: var(--radius-lg); backdrop-filter: blur(20px);">
+        <h3 style="font-size: 0.85rem; color: var(--color-text-secondary); margin-bottom: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">システムバックアップ / リストア</h3>
+        <p class="hero-subtitle" style="margin: 0 0 16px 0; text-align: left; font-size: 0.85rem; color: var(--color-text-muted);">データベースのレコードおよびアップロードされた APK ファイルを一括してバックアップ・復元します。</p>
+        
+        <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+          <a href="/api/backup" id="download-backup-btn" class="btn btn-secondary" style="border-color: var(--accent-primary); color: var(--accent-primary); text-decoration: none; display: inline-flex; align-items: center;">
+            <span>📤 バックアップをダウンロード</span>
+          </a>
+          
+          <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid var(--border-color); padding-left: 16px; flex-wrap: wrap;">
+            <select id="restore-strategy" class="filter-select" style="background: rgba(255, 255, 255, 0.05); color: var(--color-text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px 12px; outline: none; cursor: pointer; height: 38px;">
+              <option value="overwrite">上書き復元 (Overwrite)</option>
+              <option value="merge">マージ復元 (Merge)</option>
+            </select>
+            <button id="restore-btn" class="btn btn-secondary" style="border-color: var(--accent-secondary); color: var(--accent-secondary); height: 38px;">
+              <span>📥 バックアップからリストア</span>
+            </button>
+            <input type="file" id="restore-file-input" accept=".tar.gz" style="display: none;">
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ③アプリ詳細設定ビュー (#app-edit-view) -->
+    <div id="app-edit-view" class="view-section" style="display: none;">
+      <section class="dashboard-header-section">
+        <div class="dashboard-title-row">
+          <div>
+            <h1 id="edit-view-title">アプリ詳細設定</h1>
+            <p class="hero-subtitle" style="margin: 4px 0 0 0; text-align: left;">アプリの詳細なスクレイピング条件やインストール時の挙動をカスタマイズします。</p>
+          </div>
+          <button id="edit-back-btn" class="btn btn-secondary">
+            <span>← 一覧に戻る</span>
+          </button>
+        </div>
+      </section>
+
+      <div class="dashboard-card" style="max-width: 800px; margin: 0 auto; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 32px; backdrop-filter: blur(20px);">
+        <form id="detailed-app-form">
+          <input type="hidden" id="edit-app-id-hidden">
+          
+          <div class="form-row">
+            <div class="form-group col-6">
+              <label>アプリ名</label>
+              <input type="text" id="edit-app-name" readonly style="background: rgba(255,255,255,0.02); color: var(--color-text-secondary);">
+            </div>
+            <div class="form-group col-6">
+              <label>パッケージID</label>
+              <input type="text" id="edit-app-id" readonly style="background: rgba(255,255,255,0.02); color: var(--color-text-secondary);">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-app-url">ソースURL (GitHub / スクラップ対象) <span class="required">*</span></label>
+            <input type="text" id="edit-app-url" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col-6">
+              <label for="edit-app-source">ソース元タイプ</label>
+              <select id="edit-app-source">
+                <option value="GitHub">GitHub</option>
+                <option value="HTML">HTML (Self-Hosted / WebScrape)</option>
+                <option value="F-Droid">F-Droid</option>
+                <option value="GitLab">GitLab</option>
+              </select>
+            </div>
+            <div class="form-group col-6">
+              <label>カテゴリの選択</label>
+              <div id="detailed-categories-checkboxes" style="display: flex; flex-direction: column; gap: 6px; max-height: 120px; overflow-y: auto; background: rgba(0,0,0,0.15); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-bottom: 8px;">
+                <!-- Dynamically rendered checkboxes -->
+              </div>
+              <input type="text" id="edit-app-categories" placeholder="新規追加（カンマ区切り）" style="font-size: 0.85rem; padding: 6px 10px;">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 24px;">
+            <label style="margin-bottom: 12px; display: block; font-weight: 600;">追加設定 (Additional Settings)</label>
+            <div class="checkbox-group">
+              <label class="checkbox-label" style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <input type="checkbox" id="edit-setting-prerelease"> プレリリース版を含める (includePrereleases)
+                </div>
+                <span style="font-size: 0.75rem; color: var(--color-text-muted); margin-left: 26px; line-height: 1.4;">GitHub等でプレリリースとしてマークされているバージョンもインストール対象にします。</span>
+              </label>
+              <label class="checkbox-label" style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 14px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <input type="checkbox" id="edit-setting-fallback"> 過去リリースへフォールバック (fallbackToOlderReleases)
+                </div>
+                <span style="font-size: 0.75rem; color: var(--color-text-muted); margin-left: 26px; line-height: 1.4;">最新リリースの解析に失敗した場合、以前のバージョンへのフォールバックを許容します。</span>
+              </label>
+              <label class="checkbox-label" style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 14px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <input type="checkbox" id="edit-setting-version-detect"> バージョン検出を有効化 (versionDetection)
+                </div>
+                <span style="font-size: 0.75rem; color: var(--color-text-muted); margin-left: 26px; line-height: 1.4;">アップデート通知のためのバージョン比較ロジックを有効にします。</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-actions" style="margin-top: 36px;">
+            <button type="submit" class="btn btn-primary" style="flex: 2;">詳細設定を保存する</button>
+            <button type="button" id="edit-delete-btn" class="btn btn-secondary" style="color: #ff5252; border-color: rgba(255, 82, 82, 0.2); flex: 1;">アプリを削除</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Self-Hosted APK management card -->
+      <div id="self-hosted-apk-card" class="dashboard-card apk-management-card" style="max-width: 800px; margin: 24px auto 0 auto; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 32px; backdrop-filter: blur(20px); display: none;">
+        <h2 class="card-title">セルフホスト APK 管理 (Self-Hosted APKs)</h2>
+        <p class="card-subtitle">このアプリに関連付けられているセルフホスト APK ファイルを管理します。</p>
+
+        <!-- Dropzone -->
+        <div class="form-group">
+          <label>APK ファイルのアップロード</label>
+          <div class="upload-dropzone" id="apk-dropzone">
+            <span class="upload-dropzone-icon">📥</span>
+            <span class="upload-dropzone-text" id="apk-dropzone-text">ここに APK ファイルをドラッグ＆ドロップするか、クリックしてファイルを選択</span>
+            <input type="file" id="apk-file-input" accept=".apk">
+          </div>
+        </div>
+
+        <div class="form-row" style="margin-top: 16px;">
+          <div class="form-group col-6">
+            <label for="apk-version-input">バージョン <span class="required">*</span></label>
+            <input type="text" id="apk-version-input" placeholder="e.g. 1.18.0">
+          </div>
+          <div class="form-group col-6">
+            <label for="apk-arch-select">アーキテクチャ</label>
+            <select id="apk-arch-select">
+              <option value="none">指定なし / 自動 (none/auto)</option>
+              <option value="universal">universal</option>
+              <option value="arm64-v8a">arm64-v8a</option>
+              <option value="armeabi-v7a">armeabi-v7a</option>
+              <option value="x86_64">x86_64</option>
+              <option value="x86">x86</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-top: 16px;">
+          <button type="button" id="apk-upload-btn" class="btn btn-primary" style="width: 100%;">APK をアップロードして登録する</button>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 32px 0 24px 0;">
+
+        <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 12px;">登録済み APK 一覧</h3>
+        <div style="overflow-x: auto;">
+          <table class="apk-table">
+            <thead>
+              <tr>
+                <th>バージョン</th>
+                <th>アーキテクチャ</th>
+                <th>ファイルハッシュ (SHA-256)</th>
+                <th style="text-align: right; width: 80px;">操作</th>
+              </tr>
+            </thead>
+            <tbody id="apk-list-tbody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ========================================== -->
+  <!-- MODAL: アプリ簡易登録・編集モーダル -->
+  <!-- ========================================== -->
+  <div id="app-modal" class="modal-backdrop">
+    <div class="modal-content">
+      <button class="modal-close-btn" id="app-modal-close" type="button">
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+      
+      <h2 class="card-title" id="app-modal-title">アプリを登録する</h2>
+      <p class="card-subtitle" id="app-modal-subtitle">アプリの基本情報を入力してください。</p>
+      
+      <form id="quick-app-form">
+        <input type="hidden" id="quick-app-edit-mode" value="false">
+        
+        <div class="form-group">
+          <label for="quick-app-id">パッケージID (Package ID) <span class="required">*</span></label>
+          <input type="text" id="quick-app-id" placeholder="e.g. com.termux" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="quick-app-name">アプリ名 (App Name) <span class="required">*</span></label>
+          <input type="text" id="quick-app-name" placeholder="e.g. Termux" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="quick-app-url">ソースURL (GitHub / スクラップ対象) <span class="required">*</span></label>
+          <input type="text" id="quick-app-url" placeholder="e.g. https://github.com/termux/termux-app" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group col-6">
+            <label for="quick-app-source">ソース元タイプ</label>
+            <select id="quick-app-source">
+              <option value="GitHub">GitHub</option>
+              <option value="HTML">HTML (Self-Hosted / WebScrape)</option>
+              <option value="F-Droid">F-Droid</option>
+              <option value="GitLab">GitLab</option>
+            </select>
+          </div>
+          <div class="form-group col-6">
+            <label>カテゴリの選択</label>
+            <div id="quick-categories-checkboxes" style="display: flex; flex-direction: column; gap: 6px; max-height: 120px; overflow-y: auto; background: rgba(0,0,0,0.15); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-bottom: 8px;">
+              <!-- Dynamically rendered checkboxes -->
+            </div>
+            <input type="text" id="quick-app-categories" placeholder="新規追加（カンマ区切り）" style="font-size: 0.85rem; padding: 6px 10px;">
+          </div>
+        </div>
+
+        <div class="form-actions" style="margin-top: 28px;">
+          <button type="submit" class="btn btn-primary" id="quick-save-btn">保存する</button>
+          <button type="button" id="quick-detail-btn" class="btn btn-secondary" style="display: none; border-color: var(--accent-secondary); color: var(--accent-secondary);">詳細設定へ ⚙️</button>
+          <button type="button" class="btn btn-secondary" id="quick-cancel-btn">キャンセル</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: カテゴリ編集・所属アプリ一覧モーダル -->
+  <!-- ========================================== -->
+  <div id="category-modal" class="modal-backdrop">
+    <div class="modal-content" style="max-width: 500px;">
+      <button class="modal-close-btn" id="category-modal-close" type="button">
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+      
+      <h2 class="card-title" id="category-modal-title">カテゴリを編集</h2>
+      <p class="card-subtitle">カテゴリ名とARGBカラーコードを設定します。10進数です。</p>
+      
+      <form id="category-modal-form">
+        <div class="form-group">
+          <label for="cat-modal-name">カテゴリ名</label>
+          <input type="text" id="cat-modal-name" required placeholder="e.g. customize">
+        </div>
+        
+        <div class="form-group">
+          <label for="cat-modal-color">カラーコード (Hex ARGB / RGB)</label>
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <input type="text" id="cat-modal-color" required placeholder="e.g. #88ffcc88 or #ffcc88" style="flex: 1;">
+            <div id="cat-modal-color-preview" style="width: 38px; height: 38px; border-radius: 8px; border: 1px solid var(--border-color); background-color: transparent; transition: background-color 0.3s ease;"></div>
+          </div>
+        </div>
+
+        <!-- 所属アプリ一覧表示領域 (チェックボックス付き) -->
+        <div class="form-group" style="margin-top: 20px;">
+          <label style="font-weight: 600; margin-bottom: 12px; display: block;">このカテゴリに所属させるアプリを選択</label>
+          <div id="category-apps-list" class="categories-list" style="max-height: 220px; background: rgba(0,0,0,0.15); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+            <!-- Dynamically populated app checklist -->
+          </div>
+        </div>
+
+        <div class="form-actions" style="margin-top: 24px;">
+          <button type="submit" class="btn btn-primary" style="flex: 2;">保存する</button>
+          <button type="button" id="cat-modal-delete" class="btn btn-secondary" style="color: #ff5252; border-color: rgba(255, 82, 82, 0.2); flex: 1; display: none;">削除</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-content container">
+      <p>Android Provisioning Repo &copy; 2026</p>
+      <p class="footer-path">Workspace: <code id="root-path">/mnt/NAS/Android Root</code></p>
+    </div>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
