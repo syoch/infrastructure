@@ -12,6 +12,7 @@ from backend.core.database import get_db
 from .models import App, Category, Setting, LocalAppAPK
 from .compiler import ObtainiumConfigCompiler
 from .manager_cli import ObtainiumRepoManagerCLI
+from .utils import get_base_url
 
 class AppSaveModel(BaseModel):
     id: str
@@ -206,13 +207,7 @@ class ObtainiumRepoExtension(BaseExtension):
         @self.router.get("/obtainium-export.json")
         def serve_export(request: Request, db: Session = Depends(get_db)):
             """Serves the dynamic, cached Obtainium configuration export JSON."""
-            forwarded_host = request.headers.get('X-Forwarded-Host')
-            host_header = forwarded_host or request.headers.get('Host')
-            proto_header = request.headers.get('X-Forwarded-Proto', 'https' if forwarded_host else 'http')
-            if host_header:
-                base_url = f"{proto_header}://{host_header}"
-            else:
-                base_url = f"http://{get_local_ip()}:{self.config.DEFAULT_PORT}"
+            base_url = get_base_url(request, self.config.DEFAULT_PORT)
 
             now = time.time()
             if base_url in _export_cache:
@@ -230,13 +225,7 @@ class ObtainiumRepoExtension(BaseExtension):
         @self.router.get("/scrape-index.html", response_class=HTMLResponse)
         def serve_scrape_index(request: Request, db: Session = Depends(get_db)):
             """Serves the HTML scraping index where Obtainium detects local APKs."""
-            forwarded_host = request.headers.get('X-Forwarded-Host')
-            host_header = forwarded_host or request.headers.get('Host')
-            proto_header = request.headers.get('X-Forwarded-Proto', 'https' if forwarded_host else 'http')
-            if host_header:
-                base_url = f"{proto_header}://{host_header}"
-            else:
-                base_url = f"http://{get_local_ip()}:{self.config.DEFAULT_PORT}"
+            base_url = get_base_url(request, self.config.DEFAULT_PORT)
 
             try:
                 db_apks = db.query(LocalAppAPK).options(selectinload(LocalAppAPK.app)).all()
@@ -363,7 +352,7 @@ class ObtainiumRepoExtension(BaseExtension):
                 raise HTTPException(status_code=500, detail=f"Error reading app configurations: {str(e)}")
 
         @self.router.get("/api/settings")
-        def serve_settings_api(request: Request, db: Session = Depends(get_db)):
+        def serve_settings_api(db: Session = Depends(get_db)):
             """API GET endpoint to retrieve global settings configuration JSON from the database."""
             try:
                 settings = {}
@@ -373,9 +362,6 @@ class ObtainiumRepoExtension(BaseExtension):
                 
                 db_cats = db.query(Category).all()
                 settings["categories"] = {c.name: c.color for c in db_cats}
-                
-                # TEMPORARY DEBUG: INJECT HEADERS INTO SETTINGS
-                settings["DEBUG_HEADERS"] = dict(request.headers)
                 
                 return settings
             except Exception as e:
@@ -449,13 +435,7 @@ class ObtainiumRepoExtension(BaseExtension):
             try:
                 invalidate_export_cache()
                 
-                forwarded_host = request.headers.get('X-Forwarded-Host')
-                host_header = forwarded_host or request.headers.get('Host')
-                proto_header = request.headers.get('X-Forwarded-Proto', 'https' if forwarded_host else 'http')
-                if host_header:
-                    base_url = f"{proto_header}://{host_header}"
-                else:
-                    base_url = f"http://{get_local_ip()}:{self.config.DEFAULT_PORT}"
+                base_url = get_base_url(request, self.config.DEFAULT_PORT)
                 
                 compiled_data = self.compiler.compile_master(base_url)
                 
