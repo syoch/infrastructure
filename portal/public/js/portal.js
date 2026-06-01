@@ -37,7 +37,7 @@ export function renderPortalApps(apps, categories = {}) {
       
     let actionButtons = '';
     if (isSelfHosted) {
-      const downloadUrl = `/Apps/${encodeURIComponent(app._filename)}`;
+      const downloadUrl = app._latest_apk_id ? `/api/apps/download/${app._latest_apk_id}` : `/scrape-index.html`;
       actionButtons = `
         <div class="table-actions">
           <a href="${safeURL(obtainiumDeepLink)}" class="btn btn-primary btn-sm">

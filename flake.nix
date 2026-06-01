@@ -96,7 +96,6 @@
           test-e2e = pkgs.writeShellApplication {
             name = "run-e2e-tests";
             runtimeInputs = with pkgs; [
-              python3
               nodejs
               chromium
               (python3.withPackages (ps: with ps; [

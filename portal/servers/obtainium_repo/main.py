@@ -206,9 +206,11 @@ class ObtainiumRepoExtension(BaseExtension):
         @self.router.get("/obtainium-export.json")
         def serve_export(request: Request, db: Session = Depends(get_db)):
             """Serves the dynamic, cached Obtainium configuration export JSON."""
-            host_header = request.headers.get('Host')
+            forwarded_host = request.headers.get('X-Forwarded-Host')
+            host_header = forwarded_host or request.headers.get('Host')
+            proto_header = request.headers.get('X-Forwarded-Proto', 'https' if forwarded_host else 'http')
             if host_header:
-                base_url = f"http://{host_header}"
+                base_url = f"{proto_header}://{host_header}"
             else:
                 base_url = f"http://{get_local_ip()}:{self.config.DEFAULT_PORT}"
 
@@ -228,9 +230,11 @@ class ObtainiumRepoExtension(BaseExtension):
         @self.router.get("/scrape-index.html", response_class=HTMLResponse)
         def serve_scrape_index(request: Request, db: Session = Depends(get_db)):
             """Serves the HTML scraping index where Obtainium detects local APKs."""
-            host_header = request.headers.get('Host')
+            forwarded_host = request.headers.get('X-Forwarded-Host')
+            host_header = forwarded_host or request.headers.get('Host')
+            proto_header = request.headers.get('X-Forwarded-Proto', 'https' if forwarded_host else 'http')
             if host_header:
-                base_url = f"http://{host_header}"
+                base_url = f"{proto_header}://{host_header}"
             else:
                 base_url = f"http://{get_local_ip()}:{self.config.DEFAULT_PORT}"
 
@@ -442,9 +446,11 @@ class ObtainiumRepoExtension(BaseExtension):
             try:
                 invalidate_export_cache()
                 
-                host_header = request.headers.get('Host')
+                forwarded_host = request.headers.get('X-Forwarded-Host')
+                host_header = forwarded_host or request.headers.get('Host')
+                proto_header = request.headers.get('X-Forwarded-Proto', 'https' if forwarded_host else 'http')
                 if host_header:
-                    base_url = f"http://{host_header}"
+                    base_url = f"{proto_header}://{host_header}"
                 else:
                     base_url = f"http://{get_local_ip()}:{self.config.DEFAULT_PORT}"
                 

@@ -70,6 +70,7 @@ class ObtainiumConfigCompiler:
                     # Get latest version from apks list
                     latest_apk = sorted(app.apks, key=lambda x: x.id)[-1]
                     export_app["_version"] = latest_apk.version
+                    export_app["_latest_apk_id"] = latest_apk.id
                     arch_str = f"_{latest_apk.architecture}" if latest_apk.architecture else ""
                     v_prefix = "" if (latest_apk.version.lower().startswith('v') or latest_apk.version.lower().startswith('r')) else "v"
                     export_app["_filename"] = f"{escaped_name}_{app.id}_{v_prefix}{latest_apk.version}{arch_str}.apk"
