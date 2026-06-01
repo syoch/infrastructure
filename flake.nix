@@ -4,7 +4,6 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/25.05";
     flake-utils.url = "github:numtide/flake-utils";
-    deploy-rs.url = "github:serokell/deploy-rs";
   };
 
   outputs =
@@ -12,24 +11,129 @@
       self,
       nixpkgs,
       flake-utils,
-      deploy-rs,
+      ...
     }:
-    {
-      checks = builtins.mapAttrs (system: deployLib: deployLib.deployChecks self.deploy) deploy-rs.lib;
-    }
-    // flake-utils.lib.eachDefaultSystem (
+    flake-utils.lib.eachDefaultSystem (
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
       in
-      {
+      rec {
+        packages = {
+          magisk = pkgs.fetchurl {
+            url = "https://github.com/topjohnwu/Magisk/releases/download/v30.7/app-debug.apk";
+            hash = "sha256-QHKVJeKYoR2tbhNYainvpIpI6Xy/ACA3mOgEfRxxDLI=";
+          };
+          magiskboot =
+            let
+              sys = if system == "x86_64-linux" then "x86_64" else "arm64";
+              exe_path = "lib/${sys}/libmagiskboot.so";
+            in
+            pkgs.stdenv.mkDerivation {
+              name = "magiskboot";
+              version = "30.7";
+              src = packages.magisk;
+              unpackPhase = ''
+                mkdir -p $out
+                ${pkgs.unzip}/bin/unzip -j $src "${exe_path}" -d $out
+              '';
+              buildPhase = ''
+                mkdir -p $out/bin
+                mv $out/libmagiskboot.so $out/bin/magiskboot
+                chmod +x $out/bin/magiskboot
+              '';
+            };
+          ksud-next =
+            let
+              pkgs-x86 = if system == "x86_64-linux" then pkgs else import nixpkgs { system = "x86_64-linux"; };
+            in
+            pkgs.stdenv.mkDerivation {
+              name = "ksud-next";
+              version = "3.2.0";
+              src = pkgs.fetchurl (
+                if system == "x86_64-linux" then
+                  {
+                    url = "https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v3.2.0/ksud-x86_64-unknown-linux-musl";
+                    hash = "sha256-NUi3XwR2HvBiy1KmPuaOS9W4b6LQEDIChybz6kjOd50=";
+                  }
+                else if system == "aarch64-linux" then
+                  {
+                    url = "https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v3.2.0/ksud-aarch64-unknown-linux-musl";
+                    hash = "";
+                  }
+                else
+                  throw "Unsupported system: ${system}"
+              );
+
+              unpackPhase = "true";
+
+              buildPhase = ''
+                mkdir -p $out/bin
+                cp $src $out/bin/ksud-next
+                chmod +x $out/bin/ksud-next
+              '';
+            };
+          portal = pkgs.python3Packages.callPackage ./portal { };
+        };
+
+        apps = {
+          default = {
+            type = "app";
+            program = "${packages.portal}/bin/portal-server";
+          };
+          ksud-next = {
+            type = "app";
+            program = "${packages.ksud-next}/bin/ksud-next";
+          };
+          portal = {
+            type = "app";
+            program = "${packages.portal}/bin/portal-server";
+          };
+          portal-manage = {
+            type = "app";
+            program = "${packages.portal}/bin/portal-manage";
+          };
+        };
+
+        checks = pkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
+          portal-test = pkgs.nixosTest {
+            name = "portal-integration-test";
+            
+            nodes.machine = { config, pkgs, ... }: {
+              imports = [ ./nixos/web-infrastructure.nix ];
+              
+              # Override uploadsDir to a safe, space-free path inside the test machine
+              services.portal.uploadsDir = "/var/uploads";
+
+              # Override domains and ACME settings for the local virtual test execution
+              services.nginx.virtualHosts."test.local" = {
+                locations."/" = {
+                  proxyPass = "http://127.0.0.1:8000";
+                };
+              };
+
+              systemd.tmpfiles.rules = [
+                "d /var/uploads 0755 root root - -"
+              ];
+            };
+
+            testScript = ''
+              machine.wait_for_unit("portal.service")
+              machine.wait_for_unit("nginx.service")
+              machine.wait_for_open_port(8000)
+              machine.wait_for_open_port(80)
+              response = machine.succeed("curl -f -H 'Host: test.local' http://127.0.0.1/obtainium-export.json")
+              print("Response:", response)
+            '';
+          };
+        };
+
 
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             git
             rsync
             openssh
-            deploy-rs.packages.${system}.deploy-rs
 
             curl
             jq
@@ -38,7 +142,24 @@
             certbot
             openssl
             unzip
-            tmux
+
+            # Android root dev tools
+            aapt
+            android-tools
+            dtc
+            usbutils
+            sunxi-tools
+            scrcpy
+            packages.ksud-next
+            (python3.withPackages (
+              ps: with ps; [
+                sqlalchemy
+                psycopg2
+                fastapi
+                uvicorn
+                python-multipart
+              ]
+            ))
           ];
 
           shellHook = ''
@@ -51,8 +172,33 @@
             if [ -z "$DEPLOY_PATH" ]; then
               export DEPLOY_PATH="~/infrastructure"
             fi
+
+            export PATH=${
+              (pkgs.python3.withPackages (
+                ps: with ps; [
+                  sqlalchemy
+                  psycopg2
+                  fastapi
+                  uvicorn
+                  python-multipart
+                ]
+              ))
+            }/bin:$PATH
+            function find_flake_root() {
+              local dir="$PWD"
+              while [ "$dir" != "/" ]; do
+                if [ -f "$dir/flake.nix" ]; then
+                  echo "$dir"
+                  return 0
+                fi
+                dir=$(dirname "$dir")
+              done
+              return 1
+            }
+            export PATH=$PATH:`find_flake_root`/app2/bin
           '';
         };
       }
     );
 }
+

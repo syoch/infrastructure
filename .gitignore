@@ -3,18 +3,6 @@ result
 result-*
 .direnv/
 
-# Nginx
-nginx/logs/
-nginx/tmp/
-
-# WireGuard
-wireguard/
-
-# Certbot
-certbot/conf/
-certbot/www/
-certbot/work/
-certbot/logs/
 
 # Environment files
 *.env
@@ -31,3 +19,6 @@ tailscale/*
 *.swp
 *.swo
 *~
+
+.antigravitycli
+__pycache__
