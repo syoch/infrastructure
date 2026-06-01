@@ -20,9 +20,33 @@ in
       default = [];
       description = "List of paths that the service is allowed to write to (e.g. SQLite database directory, uploads directory).";
     };
+
+    user = mkOption {
+      type = types.str;
+      default = "syoch-portal";
+      description = "User account under which the service runs.";
+    };
+
+    group = mkOption {
+      type = types.str;
+      default = "syoch-portal";
+      description = "Group under which the service runs.";
+    };
   };
 
   config = mkIf cfg.enable {
+    users.users = lib.optionalAttrs (cfg.user == "syoch-portal") {
+      syoch-portal = {
+        isSystemUser = true;
+        group = cfg.group;
+        description = "Android Device Provisioning Portal user";
+      };
+    };
+
+    users.groups = lib.optionalAttrs (cfg.group == "syoch-portal") {
+      syoch-portal = { };
+    };
+
     systemd.services.syoch-portal = {
       description = "Android Device Provisioning Portal Backend Service";
       after = [ "network.target" ];
@@ -30,7 +54,8 @@ in
 
       serviceConfig = {
         Type = "simple";
-        DynamicUser = true;
+        User = cfg.user;
+        Group = cfg.group;
         StateDirectory = "syoch-portal";
         
         ReadWritePaths = cfg.readWritePaths;
