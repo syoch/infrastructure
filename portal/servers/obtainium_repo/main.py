@@ -352,7 +352,7 @@ class ObtainiumRepoExtension(BaseExtension):
                 raise HTTPException(status_code=500, detail=f"Error reading app configurations: {str(e)}")
 
         @self.router.get("/api/settings")
-        def serve_settings_api(request: Request, db: Session = Depends(get_db)):
+        def serve_settings_api(db: Session = Depends(get_db)):
             """API GET endpoint to retrieve global settings configuration JSON from the database."""
             try:
                 settings = {}
@@ -362,10 +362,6 @@ class ObtainiumRepoExtension(BaseExtension):
                 
                 db_cats = db.query(Category).all()
                 settings["categories"] = {c.name: c.color for c in db_cats}
-                
-                # TEMPORARY DEBUG: INJECT HEADERS INTO SETTINGS
-                settings["DEBUG_HEADERS"] = dict(request.headers)
-                settings["DEBUG_BASE_URL"] = get_base_url(request, self.config.DEFAULT_PORT)
                 
                 return settings
             except Exception as e:
