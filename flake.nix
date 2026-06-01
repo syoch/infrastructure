@@ -296,6 +296,12 @@
           '';
         };
       }
-    );
+    ) // {
+      nixosModules = {
+        syoch-portal = ./nixos/portal-service.nix;
+        web-infrastructure = ./nixos/web-infrastructure.nix;
+        default = ./nixos;
+      };
+    };
 }
 
