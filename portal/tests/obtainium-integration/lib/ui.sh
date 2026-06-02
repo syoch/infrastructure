@@ -145,7 +145,7 @@ PY
 
 # Dismiss the Obtainium first-run welcome dialog, 2026 Google Verification
 # warning (the "Note" dialog), and Android system permission dialogs
-# (notifications, storage, etc.) if present.
+# (notifications, storage, "Install unknown apps", etc.) if present.
 # Best-effort: returns 0 either way. Safe to call repeatedly.
 #
 # Note: many Obtainium dialogs put their labels in content-desc, not text,
@@ -156,14 +156,17 @@ ui_dismiss_first_run() {
         local dump
         dump=$(ui_dump) || return 0
         # Detect a dismissable dialog: any of the known button labels or
-        # prompt phrases (welcome, permission, verification warning).
-        if ! grep -qE '(text|content-desc)="(OK|Ok|Okay|Allow|Allow access|Continue|Continue import|Got it|I understand|Acknowledged|Don.t allow)"' "$dump" 2>/dev/null \
-            && ! grep -qE '(text|content-desc)="(Welcome|welcome|Allow Obtainium|send you notifications|Google Play Protect|2026|Verification|keepandroidopen|Note|Google verification)"' "$dump" 2>/dev/null; then
+        # prompt phrases (welcome, permission, verification warning, install
+        # permission for unknown sources, etc.).
+        if ! grep -qE '(text|content-desc)="(OK|Ok|Okay|Allow|Allow access|Allow from this source|Continue|Continue import|Got it|I understand|Acknowledged|Don.t allow|Navigate up|Back)"' "$dump" 2>/dev/null \
+            && ! grep -qE '(text|content-desc)="(Welcome|welcome|Allow Obtainium|send you notifications|Google Play Protect|2026|Verification|keepandroidopen|Note|Google verification|Install unknown apps|Your phone and personal data|More vulnerable)"' "$dump" 2>/dev/null; then
             return 0
         fi
         # Try common positive-action button labels in priority order
         if ui_tap_text "Allow" 2>/dev/null; then
             log_info "Dismissed permission/notification dialog (Allow)"
+        elif ui_tap_text "Allow from this source" 2>/dev/null; then
+            log_info "Dismissed install-unknown-apps dialog (Allow from this source)"
         elif ui_tap_text "Okay" 2>/dev/null; then
             log_info "Dismissed first-run dialog (Okay)"
         elif ui_tap_text "OK" 2>/dev/null || ui_tap_text "Ok" 2>/dev/null; then
@@ -176,6 +179,10 @@ ui_dismiss_first_run() {
             log_info "Dismissed first-run dialog (I understand)"
         elif ui_tap_text "Don't allow" 2>/dev/null; then
             log_info "Dismissed permission dialog (Don't allow)"
+        elif ui_tap_text_contains "Navigate up" 2>/dev/null; then
+            # We're on a system Settings page (e.g. Install unknown apps);
+            # tap the back arrow to return to the previous app.
+            log_info "Pressed back from system Settings page (Navigate up)"
         else
             # No known button found but a prompt is on screen; give up after this attempt
             log_debug "ui_dismiss_first_run: prompt detected but no known button"
