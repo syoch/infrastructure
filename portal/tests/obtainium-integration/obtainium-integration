@@ -1,0 +1,272 @@
+#!/usr/bin/env bash
+# obtainium-integration - end-to-end test: portal export -> Obtainium APK download
+#
+# Usage: see --help
+set -euo pipefail
+
+# Resolve script dir
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export OI_ROOT="$SCRIPT_DIR"
+
+# Source libs
+for lib in common emulator portal obtainium deep_link ui verify report; do
+    # shellcheck source=lib/$lib.sh
+    source "$OI_ROOT/lib/$lib.sh"
+done
+
+trap_oi_cleanup
+
+usage() {
+    cat <<EOF
+obtainium-integration - verify Obtainium can import a portal export and download APKs
+
+Usage: $0 --backup-tarball <path> [options]
+
+Required:
+  --backup-tarball PATH        Portal backup tarball (e.g. backup-XXXX.tgz)
+
+Options:
+  --emulator-mode MODE         auto|local|docker (default: auto)
+  --output-dir DIR             Where to write report (default: ./results/obtainium-integration/<ts>)
+  --apps N                     Only test the first N apps
+  --filter REGEX               Only test apps whose id/name matches REGEX
+  --skip-source-html           Skip self-hosted apps (overrideSource=HTML)
+  --skip-download              Skip APK download trigger/verification (A2 lite)
+  --timeout SECONDS            Per-app timeout (default: 300)
+  --obtainium-version VER      Obtainium release tag (default: latest)
+  --keep-portal                Don't stop the test portal on exit
+  --keep-emulator              Don't stop the emulator on exit
+  --no-color                   Disable colored output
+  --debug                      Verbose debug logging
+  -h, --help                   Show this help
+
+Examples:
+  $0 --backup-tarball ~/backup-20260601.tgz
+  $0 --backup-tarball ~/backup.tgz --apps 3 --emulator-mode docker
+EOF
+}
+
+# Defaults
+BACKUP_TARBALL=""
+OI_EMULATOR_MODE="auto"
+OI_OUTPUT_DIR=""
+OI_APPS_LIMIT=""
+OI_FILTER=""
+OI_SKIP_HTML=0
+OI_SKIP_DOWNLOAD=0
+OI_TIMEOUT=300
+OI_OBTAINIUM_VERSION=""
+OI_KEEP_PORTAL=0
+OI_KEEP_EMULATOR=0
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --backup-tarball)   BACKUP_TARBALL="$2"; shift 2 ;;
+        --emulator-mode)    OI_EMULATOR_MODE="$2"; shift 2 ;;
+        --output-dir)       OI_OUTPUT_DIR="$2"; shift 2 ;;
+        --apps)             OI_APPS_LIMIT="$2"; shift 2 ;;
+        --filter)           OI_FILTER="$2"; shift 2 ;;
+        --skip-source-html) OI_SKIP_HTML=1; shift ;;
+        --skip-download)    OI_SKIP_DOWNLOAD=1; shift ;;
+        --timeout)          OI_TIMEOUT="$2"; shift 2 ;;
+        --obtainium-version) OI_OBTAINIUM_VERSION="$2"; shift 2 ;;
+        --keep-portal)      OI_KEEP_PORTAL=1; shift ;;
+        --keep-emulator)    OI_KEEP_EMULATOR=1; shift ;;
+        --no-color)         NO_COLOR=1; shift ;;
+        --debug)            OI_DEBUG=1; shift ;;
+        -h|--help)          usage; exit 0 ;;
+        *) die "Unknown argument: $1 (try --help)" ;;
+    esac
+done
+
+[[ -n "$BACKUP_TARBALL" ]] || { usage; die "--backup-tarball is required"; }
+[[ -f "$BACKUP_TARBALL" ]] || die "Backup tarball not found: $BACKUP_TARBALL"
+
+# Output dir
+if [[ -z "$OI_OUTPUT_DIR" ]]; then
+    OI_OUTPUT_DIR="$OI_ROOT/results/$(date '+%Y%m%d-%H%M%S')"
+fi
+mkdir -p "$OI_OUTPUT_DIR"
+export OI_OUTPUT_DIR
+
+# Adjust cleanup hooks based on flags
+if [[ $OI_KEEP_PORTAL -eq 1 ]]; then
+    # Remove portal_stop_server from the cleanup chain
+    OI_CLEANUP_HOOKS="${OI_CLEANUP_HOOKS//portal_stop_server/}"
+fi
+if [[ $OI_KEEP_EMULATOR -eq 1 ]]; then
+    OI_CLEANUP_HOOKS="${OI_CLEANUP_HOOKS//emulator_stop_local/}"
+    OI_CLEANUP_HOOKS="${OI_CLEANUP_HOOKS//emulator_stop_docker/}"
+fi
+
+log_info "Output dir: $OI_OUTPUT_DIR"
+log_info "Backup:     $BACKUP_TARBALL"
+
+# 1. Prereqs
+require adb
+require curl
+require python3
+
+# 2. Start emulator
+emulator_start
+EMULATOR_MODE=$(cat "$OI_TMP_DIR/emulator_mode")
+
+# 3. Install Obtainium
+obtainium_setup
+
+# 4. Start test portal
+EXPORT_JSON="$OI_TMP_DIR/export.json"
+portal_start "$BACKUP_TARBALL" "$EXPORT_JSON"
+
+# 5. Initialize report
+OBTAINIUM_VER="${OI_OBTAINIUM_VERSION:-$(obtainium_latest_version 2>/dev/null || echo unknown)}"
+report_init "$OI_OUTPUT_DIR" "$BACKUP_TARBALL" "$EMULATOR_MODE" "$OBTAINIUM_VER"
+
+# 6. Dismiss Obtainium first-run dialogs
+log_info "Dismissing first-run dialogs (if any)"
+adb shell am start -n "${OI_OBTAINIUM_PKG}/dev.imranr.obtainium.MainActivity" >/dev/null 2>&1 || true
+sleep 3
+ui_dismiss_first_run
+
+# 7. Iterate over apps
+log_info "Iterating over apps in export"
+python3 "$OI_ROOT/lib/filter_apps.py" "$EXPORT_JSON" "$OI_APPS_LIMIT" "$OI_FILTER" "$OI_SKIP_HTML" \
+    >"$OI_TMP_DIR/apps.txt"
+TOTAL=$(wc -l <"$OI_TMP_DIR/apps.txt" | tr -d ' ')
+log_info "Will test $TOTAL apps"
+
+INDEX=0
+while IFS=$'\t' read -r APP_JSON; do
+    INDEX=$((INDEX + 1))
+    [[ -z "$APP_JSON" ]] && continue
+
+    APP_ID=$(python3 -c "import json,sys; print(json.loads(sys.argv[1])['id'])" "$APP_JSON")
+    APP_NAME=$(python3 -c "import json,sys; print(json.loads(sys.argv[1]).get('name','?'))" "$APP_JSON")
+    APP_URL=$(python3 -c "import json,sys; print(json.loads(sys.argv[1]).get('url','?'))" "$APP_JSON")
+    APP_SOURCE=$(python3 -c "import json,sys; print(json.loads(sys.argv[1]).get('overrideSource') or 'auto')" "$APP_JSON")
+    IS_SELF_HOSTED=$(is_self_hosted_app "$APP_JSON")
+
+    log_info "[$INDEX/$TOTAL] $APP_NAME ($APP_ID) [$APP_SOURCE, self-hosted=$IS_SELF_HOSTED]"
+
+    START=$(date +%s)
+    IMPORT_STATUS="failed"
+    DOWNLOAD_STATUS="skipped"
+    APK_PATH=""
+    ERROR_MSG=""
+
+    # --send deep link (open Obtainium import dialog)
+    if ! DEEP_URL=$(build_deep_link "$APP_JSON"); then
+        ERROR_MSG="Failed to build deep link"
+        END=$(date +%s); DUR=$((END-START))
+        report_add_app "$APP_ID" "$APP_NAME" "$APP_URL" "$APP_SOURCE" "$IS_SELF_HOSTED" \
+            "failed" "skipped" "$DUR" "" "$ERROR_MSG"
+        report_running_summary
+        continue
+    fi
+    send_deep_link "$DEEP_URL"
+
+    # --wait for confirmation dialog
+    if ! ui_wait_for_text "Continue" "$OI_TIMEOUT" >/dev/null; then
+        ERROR_MSG="Confirmation dialog did not appear (timeout ${OI_TIMEOUT}s)"
+        END=$(date +%s); DUR=$((END-START))
+        report_add_app "$APP_ID" "$APP_NAME" "$APP_URL" "$APP_SOURCE" "$IS_SELF_HOSTED" \
+            "failed" "skipped" "$DUR" "" "$ERROR_MSG"
+        report_running_summary
+        continue
+    fi
+
+    # --tap Continue
+    if ! ui_tap_text "Continue" 2>/dev/null; then
+        # The dialog might be the welcome dialog that we already dismissed
+        # Try tapping "OK" instead
+        ui_tap_text "OK" 2>/dev/null || true
+        sleep 1
+    fi
+
+    # --wait briefly for import to complete, then verify DB
+    sleep 3
+    if [[ "$(verify_db_has_app "$APP_ID")" == "1" ]]; then
+        IMPORT_STATUS="success"
+        log_pass "Imported $APP_ID"
+    else
+        ERROR_MSG="App not present in Obtainium DB after import"
+        END=$(date +%s); DUR=$((END-START))
+        report_add_app "$APP_ID" "$APP_NAME" "$APP_URL" "$APP_SOURCE" "$IS_SELF_HOSTED" \
+            "failed" "skipped" "$DUR" "" "$ERROR_MSG"
+        report_running_summary
+        continue
+    fi
+
+    # --download (skippable)
+    if [[ $OI_SKIP_DOWNLOAD -eq 1 ]]; then
+        DOWNLOAD_STATUS="skipped"
+        ERROR_MSG=""
+    else
+        # Open the app detail page by tapping the app entry on the apps list
+        # (this assumes the import lands the user on the apps page; if not, navigate manually)
+        sleep 2
+        # Try to find and tap the app entry on the apps page
+        if ui_tap_text "$APP_NAME" 2>/dev/null; then
+            sleep 2
+            # Look for an "Install" / "Get" / "Update" button
+            if ui_tap_text "Install" 2>/dev/null \
+                || ui_tap_text "Get" 2>/dev/null \
+                || ui_tap_text "Update" 2>/dev/null; then
+                log_info "Triggered install for $APP_ID; waiting for download..."
+                # Wait up to OI_TIMEOUT for the APK to land
+                elapsed=0
+                while (( elapsed < OI_TIMEOUT )); do
+                    APK_PATH=$(verify_find_apk "$APP_ID")
+                    if [[ -n "$APK_PATH" ]]; then
+                        DOWNLOAD_STATUS="success"
+                        log_pass "Downloaded $APP_ID -> $APK_PATH"
+                        break
+                    fi
+                    sleep 5
+                    elapsed=$((elapsed + 5))
+                done
+                if [[ "$DOWNLOAD_STATUS" != "success" ]]; then
+                    DOWNLOAD_STATUS="failed"
+                    ERROR_MSG="APK not found after ${OI_TIMEOUT}s"
+                    log_fail "Download timed out: $APP_ID"
+                fi
+            else
+                DOWNLOAD_STATUS="skipped"
+                ERROR_MSG="No Install/Get/Update button on app detail page"
+            fi
+        else
+            DOWNLOAD_STATUS="skipped"
+            ERROR_MSG="App entry not visible on apps list"
+        fi
+    fi
+
+    # --return to apps list for next iteration
+    adb shell input keyevent KEYCODE_BACK >/dev/null 2>&1 || true
+    sleep 1
+
+    END=$(date +%s); DUR=$((END-START))
+    report_add_app "$APP_ID" "$APP_NAME" "$APP_URL" "$APP_SOURCE" "$IS_SELF_HOSTED" \
+        "$IMPORT_STATUS" "$DOWNLOAD_STATUS" "$DUR" "$APK_PATH" "$ERROR_MSG"
+    report_running_summary
+done <"$OI_TMP_DIR/apps.txt"
+
+# 8. Finalize
+report_finalize
+
+# 9. Print pointers
+echo
+log_info "Reports:"
+log_info "  JSON: $OI_OUTPUT_DIR/report.json"
+log_info "  Text: $OI_OUTPUT_DIR/report.txt"
+
+# Exit code: 0 if no failures, 1 if any app failed import/download
+TOTAL_FAILED=$(python3 -c "
+import json
+r = json.load(open('$OI_OUTPUT_DIR/report.json'))
+s = r['summary']
+print(s['failed_import'] + s['failed_download'])
+")
+if [[ "$TOTAL_FAILED" -gt 0 ]]; then
+    exit 1
+fi
+exit 0
