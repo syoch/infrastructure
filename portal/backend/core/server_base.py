@@ -1,7 +1,6 @@
 import os
 import uvicorn
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks, Depends
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
@@ -16,15 +15,7 @@ class PortalServer:
         self.host = host
         self.port = port
         self.app = FastAPI(title="Android Device Provisioning Portal")
-        
-        # Configure CORS
-        self.app.add_middleware(
-            CORSMiddleware,
-            allow_origins=["*"],
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
-        )
+
         self.setup_backup_restore_routes()
 
     def register_extension(self, extension):
@@ -50,7 +41,7 @@ class PortalServer:
         print(f"Portal server listening on http://{self.host}:{self.port}")
         print("-" * 60)
         
-        uvicorn.run(self.app, host=self.host, port=self.port, log_level="info", proxy_headers=True, forwarded_allow_ips="*")
+        uvicorn.run(self.app, host=self.host, port=self.port, log_level="info", proxy_headers=True, forwarded_allow_ips="127.0.0.1")
 
     def setup_backup_restore_routes(self):
         from backend.core.backup_manager import BackupManager

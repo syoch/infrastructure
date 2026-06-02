@@ -32,8 +32,21 @@ class StorageManagerExtension(BaseExtension):
         # Ensure uploads directory exists
         os.makedirs(self.uploads_dir, exist_ok=True)
 
+    MAX_APK_SIZE = 500 * 1024 * 1024
+    APK_MAGIC = b"PK\x03\x04"
+
     def save_file(self, file_content: bytes) -> str:
         """Computes SHA-256 and saves file. Returns the file hash."""
+        if len(file_content) > self.MAX_APK_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Uploaded file exceeds {self.MAX_APK_SIZE // (1024 * 1024)} MiB cap.",
+            )
+        if not file_content.startswith(self.APK_MAGIC):
+            raise HTTPException(
+                status_code=415,
+                detail="Uploaded file is not a valid APK (missing ZIP/local-file-header magic).",
+            )
         file_hash = hashlib.sha256(file_content).hexdigest()
         filepath = self.get_file_path(file_hash)
         with open(filepath, "wb") as f:

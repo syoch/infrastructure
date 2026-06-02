@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import shutil
 import tarfile
@@ -119,9 +120,18 @@ class BackupManager:
             raise FileNotFoundError(f"Backup file not found at: {in_path}")
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            # Extract tarball
+            # Extract tarball (safely: filter='data' on Python 3.12+,
+            # manual path-traversal check on older versions)
             with tarfile.open(in_path, "r:gz") as tar:
-                tar.extractall(path=tmp_dir)
+                if sys.version_info >= (3, 12):
+                    tar.extractall(path=tmp_dir, filter="data")
+                else:
+                    real_tmp = os.path.realpath(tmp_dir)
+                    for member in tar.getmembers():
+                        member_path = os.path.realpath(os.path.join(tmp_dir, member.name))
+                        if not member_path.startswith(real_tmp + os.sep) and member_path != real_tmp:
+                            raise ValueError(f"Path traversal attempt in tarball: {member.name}")
+                    tar.extractall(path=tmp_dir)
 
             metadata_path = os.path.join(tmp_dir, "metadata.json")
             manifest_path = os.path.join(tmp_dir, "manifest.json")

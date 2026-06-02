@@ -57,11 +57,25 @@ in
         User = cfg.user;
         Group = cfg.group;
         StateDirectory = "syoch-portal";
-        
+
         ReadWritePaths = cfg.readWritePaths;
 
         ExecStart = "${portalPkg}/bin/portal-server --config ${cfg.configFile}";
         Restart = "always";
+
+        NoNewPrivileges = true;
+        ProtectSystem = "strict";
+        PrivateTmp = true;
+        RestrictNamespaces = true;
+        RestrictAddressFamilies = [ "AF_INET" "AF_INET6" "AF_UNIX" ];
+        MemoryDenyWriteExecute = true;
+        SystemCallArchitectures = "native";
+        SystemCallFilter = [ "@system-service" "~@privileged" "~@resources" ];
+        LockPersonality = true;
+        RestrictRealtime = true;
+        RestrictSUIDSGID = true;
+        RemoveIPC = true;
+        UMask = "0077";
       };
     };
   };
