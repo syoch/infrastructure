@@ -1,14 +1,19 @@
-.PHONY: help install-deps test test-backend test-e2e test-e2e-ui test-seed clean
+.PHONY: help install-deps install-hooks test test-backend test-e2e test-e2e-ui test-seed clean
 
 help:
 	@echo "Available commands:"
 	@echo "  make install-deps  - Install frontend test dependencies (Playwright)"
+	@echo "  make install-hooks - Enable .githooks/pre-commit (secret scanner)"
 	@echo "  make test          - Run all backend and E2E tests"
 	@echo "  make test-backend  - Run Python backend tests"
 	@echo "  make test-e2e      - Run Playwright E2E tests in headless mode"
 	@echo "  make test-e2e-ui   - Run Playwright E2E tests in interactive UI mode"
 	@echo "  make test-seed     - Reset and seed the local test database"
 	@echo "  make clean         - Remove test artifacts (SQLite databases, uploads)"
+
+install-hooks:
+	git config core.hooksPath .githooks
+	@echo "core.hooksPath set to .githooks"
 
 install-deps:
 	cd portal/tests && npm install
