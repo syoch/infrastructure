@@ -15,7 +15,11 @@ ui_dump() {
     echo "$out"
 }
 
-# Extract the center coordinates of a node whose text or content-desc matches.
+# Extract the center coordinates of a node whose text or content-desc matches
+# *exactly* (case-sensitive). Exact match avoids the substring trap where
+# e.g. needle="Allow" would match the title "Allow Obtainium to send you
+# notifications?" instead of the "Allow" button. When multiple nodes match,
+# prefer the smallest (button-sized) element, falling back to the first.
 # Output format: "X Y" or empty if not found.
 ui_find_node_coords() {
     local dump="$1"
@@ -24,20 +28,22 @@ ui_find_node_coords() {
 import sys, re, xml.etree.ElementTree as ET
 dump_path, needle = sys.argv[1], sys.argv[2]
 tree = ET.parse(dump_path)
-def find(node):
-    for child in node.iter():
-        text = child.get('text','') or ''
-        desc = child.get('content-desc','') or ''
-        if needle in text or needle in desc:
-            b = child.get('bounds','')
-            m = re.match(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', b)
-            if m:
-                x1, y1, x2, y2 = map(int, m.groups())
-                return (x1 + x2) // 2, (y1 + y2) // 2
-    return None
-r = find(tree.getroot())
-if r:
-    print(r[0], r[1])
+matches = []
+for child in tree.getroot().iter():
+    text = child.get('text','') or ''
+    desc = child.get('content-desc','') or ''
+    if needle == text or needle == desc:
+        b = child.get('bounds','')
+        m = re.match(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', b)
+        if m:
+            x1, y1, x2, y2 = map(int, m.groups())
+            area = (x2 - x1) * (y2 - y1)
+            matches.append((area, (x1 + x2) // 2, (y1 + y2) // 2))
+if matches:
+    # Pick the smallest (most button-like) match. Ties broken by first-seen order.
+    matches.sort()
+    _, cx, cy = matches[0]
+    print(cx, cy)
 PY
 }
 
@@ -62,7 +68,47 @@ ui_tap_text() {
     return 0
 }
 
+# Tap a node whose text or content-desc *contains* the needle (substring).
+# Used for compound labels like "Apps\nTab 1 of 4" where exact match would
+# miss the nav tab. Returns 0 on success, 1 on miss.
+ui_tap_text_contains() {
+    local needle="$1"
+    local dump
+    dump=$(ui_dump) || return 1
+    local coords
+    coords=$(python3 - "$dump" "$needle" <<'PY'
+import sys, re, xml.etree.ElementTree as ET
+dump_path, needle = sys.argv[1], sys.argv[2]
+tree = ET.parse(dump_path)
+matches = []
+for child in tree.getroot().iter():
+    text = child.get('text','') or ''
+    desc = child.get('content-desc','') or ''
+    if needle in text or needle in desc:
+        b = child.get('bounds','')
+        m = re.match(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', b)
+        if m:
+            x1, y1, x2, y2 = map(int, m.groups())
+            area = (x2 - x1) * (y2 - y1)
+            matches.append((area, (x1 + x2) // 2, (y1 + y2) // 2))
+if matches:
+    matches.sort()
+    _, cx, cy = matches[0]
+    print(cx, cy)
+PY
+)
+    if [[ -z "$coords" ]]; then
+        log_debug "ui_tap_text_contains: '$needle' not found in current UI"
+        return 1
+    fi
+    log_debug "ui_tap_text_contains: '$needle' -> ($coords)"
+    ui_tap $coords
+    return 0
+}
+
 # Wait for a node with given text to appear; polls every 1s up to timeout.
+# Uses substring match (text OR content-desc contains needle) because app
+# rows often have composite labels like "MicroG RE\nBy MorpheApp".
 # Echoes the coordinates of the found node (or empty on timeout).
 ui_wait_for_text() {
     local needle="$1"
@@ -71,7 +117,22 @@ ui_wait_for_text() {
     while (( elapsed < timeout )); do
         local dump coords
         dump=$(ui_dump) || { sleep 1; elapsed=$((elapsed+1)); continue; }
-        coords=$(ui_find_node_coords "$dump" "$needle")
+        coords=$(python3 - "$dump" "$needle" <<'PY'
+import sys, re, xml.etree.ElementTree as ET
+dump_path, needle = sys.argv[1], sys.argv[2]
+tree = ET.parse(dump_path)
+for child in tree.getroot().iter():
+    text = child.get('text','') or ''
+    desc = child.get('content-desc','') or ''
+    if needle in text or needle in desc:
+        b = child.get('bounds','')
+        m = re.match(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', b)
+        if m:
+            x1, y1, x2, y2 = map(int, m.groups())
+            print((x1 + x2) // 2, (y1 + y2) // 2)
+            sys.exit(0)
+PY
+)
         if [[ -n "$coords" ]]; then
             echo "$coords"
             return 0
@@ -82,26 +143,48 @@ ui_wait_for_text() {
     return 1
 }
 
-# Dismiss the Obtainium first-run welcome dialog and 2026 Google Verification
-# warning if present. Best-effort: returns 0 either way.
+# Dismiss the Obtainium first-run welcome dialog, 2026 Google Verification
+# warning (the "Note" dialog), and Android system permission dialogs
+# (notifications, storage, etc.) if present.
+# Best-effort: returns 0 either way. Safe to call repeatedly.
+#
+# Note: many Obtainium dialogs put their labels in content-desc, not text,
+# so we match against both with the same exact-match rule.
 ui_dismiss_first_run() {
     local tries=0
-    while (( tries < 5 )); do
+    while (( tries < 12 )); do
         local dump
         dump=$(ui_dump) || return 0
-        if grep -qE 'text="(OK|Welcome|welcome|note|Note)"' "$dump" 2>/dev/null; then
-            # Try to find OK / Continue button
-            if ui_tap_text "OK" 2>/dev/null || ui_tap_text "Ok" 2>/dev/null; then
-                log_info "Dismissed first-run dialog"
-                sleep 1
-            else
-                break
-            fi
-        else
-            break
+        # Detect a dismissable dialog: any of the known button labels or
+        # prompt phrases (welcome, permission, verification warning).
+        if ! grep -qE '(text|content-desc)="(OK|Ok|Okay|Allow|Allow access|Continue|Continue import|Got it|I understand|Acknowledged|Don.t allow)"' "$dump" 2>/dev/null \
+            && ! grep -qE '(text|content-desc)="(Welcome|welcome|Allow Obtainium|send you notifications|Google Play Protect|2026|Verification|keepandroidopen|Note|Google verification)"' "$dump" 2>/dev/null; then
+            return 0
         fi
+        # Try common positive-action button labels in priority order
+        if ui_tap_text "Allow" 2>/dev/null; then
+            log_info "Dismissed permission/notification dialog (Allow)"
+        elif ui_tap_text "Okay" 2>/dev/null; then
+            log_info "Dismissed first-run dialog (Okay)"
+        elif ui_tap_text "OK" 2>/dev/null || ui_tap_text "Ok" 2>/dev/null; then
+            log_info "Dismissed first-run dialog (OK)"
+        elif ui_tap_text "Continue" 2>/dev/null; then
+            log_info "Dismissed first-run dialog (Continue)"
+        elif ui_tap_text "Got it" 2>/dev/null; then
+            log_info "Dismissed first-run dialog (Got it)"
+        elif ui_tap_text "I understand" 2>/dev/null; then
+            log_info "Dismissed first-run dialog (I understand)"
+        elif ui_tap_text "Don't allow" 2>/dev/null; then
+            log_info "Dismissed permission dialog (Don't allow)"
+        else
+            # No known button found but a prompt is on screen; give up after this attempt
+            log_debug "ui_dismiss_first_run: prompt detected but no known button"
+            return 0
+        fi
+        sleep 1
         tries=$((tries + 1))
     done
+    log_debug "ui_dismiss_first_run: gave up after $tries attempts"
 }
 
 # Tap a button with the given label; if not found, try ENTER key as fallback.

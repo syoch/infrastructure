@@ -43,14 +43,14 @@ test-obtainium:
 		echo "Usage: make test-obtainium BACKUP=path/to/backup-XXXX.tgz" >&2; \
 		exit 2; \
 	fi
-	./portal/tests/obtainium-integration/obtainium-integration --backup-tarball "$(BACKUP)"
+	nix develop -c ./portal/tests/obtainium-integration/obtainium-integration --backup-tarball "$(BACKUP)"
 
 test-obtainium-smoke:
 	@if [[ -z "$(BACKUP)" ]]; then \
 		echo "Usage: make test-obtainium-smoke BACKUP=path/to/backup-XXXX.tgz" >&2; \
 		exit 2; \
 	fi
-	./portal/tests/obtainium-integration/obtainium-integration \
+	nix develop -c ./portal/tests/obtainium-integration/obtainium-integration \
 		--backup-tarball "$(BACKUP)" \
 		--apps 3 \
 		--output-dir ./portal/tests/obtainium-integration/results/smoke-$$(date +%s)

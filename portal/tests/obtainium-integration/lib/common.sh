@@ -26,7 +26,7 @@ export OI_TMP_DIR="${TMPDIR:-/tmp}/obtainium-integration-$$"
 export OI_PORTAL_PORT="${OI_PORTAL_PORT:-18000}"
 export OI_AVD_NAME="${OI_AVD_NAME:-oi_test_avd}"
 export OI_AVD_SDK="${OI_AVD_SDK:-34}"
-export OI_OBTAINIUM_PKG="com.imranr98.obtainium"
+export OI_OBTAINIUM_PKG="dev.imranr.obtainium"
 
 mkdir -p "$OI_CACHE_DIR" "$OI_RESULTS_DIR" "$OI_TMP_DIR"
 

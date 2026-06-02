@@ -88,6 +88,10 @@ emulator_start_local() {
 }
 
 emulator_stop_local() {
+    if [[ "${OI_KEEP_EMULATOR:-0}" == "1" ]]; then
+        log_info "OI_KEEP_EMULATOR=1: not stopping local emulator"
+        return 0
+    fi
     if [[ -f "$OI_TMP_DIR/emulator.pid" ]]; then
         local pid
         pid=$(cat "$OI_TMP_DIR/emulator.pid")
@@ -131,6 +135,10 @@ emulator_start_docker() {
 }
 
 emulator_stop_docker() {
+    if [[ "${OI_KEEP_EMULATOR:-0}" == "1" ]]; then
+        log_info "OI_KEEP_EMULATOR=1: not stopping docker container"
+        return 0
+    fi
     if [[ -f "$OI_TMP_DIR/docker_container" ]]; then
         local name
         name=$(cat "$OI_TMP_DIR/docker_container")

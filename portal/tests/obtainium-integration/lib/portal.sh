@@ -92,6 +92,10 @@ portal_start_server() {
 }
 
 portal_stop_server() {
+    if [[ "${OI_KEEP_PORTAL:-0}" == "1" ]]; then
+        log_info "OI_KEEP_PORTAL=1: not stopping portal server"
+        return 0
+    fi
     if [[ -f "$OI_TMP_DIR/portal.pid" ]]; then
         local pid
         pid=$(cat "$OI_TMP_DIR/portal.pid")
@@ -110,6 +114,7 @@ portal_adb_reverse() {
 portal_adb_unreverse() {
     adb reverse --remove "tcp:${OI_PORTAL_PORT}" 2>/dev/null || true
 }
+
 
 # Fetch /obtainium-export.json from the running portal
 portal_fetch_export() {

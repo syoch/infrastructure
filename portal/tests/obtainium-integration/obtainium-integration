@@ -16,6 +16,35 @@ done
 
 trap_oi_cleanup
 
+# Diagnostic: save current UI dump and print a short screen summary.
+# Args: <label>
+_oi_diag_screen() {
+    local label="$1"
+    local dump_path="$OI_TMP_DIR/diag_${label}.xml"
+    if ! dump=$(ui_dump "$dump_path" 2>/dev/null); then
+        return 0
+    fi
+    [[ -f "$dump_path" ]] || return 0
+    local screen
+    screen=$(python3 - "$dump_path" <<'PY'
+import sys, xml.etree.ElementTree as ET
+try:
+    tree = ET.parse(sys.argv[1])
+    descs, texts = [], []
+    for c in tree.getroot().iter():
+        d = c.get('content-desc','') or ''
+        t = c.get('text','') or ''
+        if d.strip(): descs.append(d[:60])
+        if t.strip(): texts.append(t[:60])
+    print('D=' + ' | '.join(descs[:8]))
+    print('T=' + ' | '.join(texts[:8]))
+except Exception as e:
+    print(f'err: {e}')
+PY
+)
+    log_debug "screen[$label]: $screen"
+}
+
 usage() {
     cat <<EOF
 obtainium-integration - verify Obtainium can import a portal export and download APKs
@@ -36,6 +65,7 @@ Options:
   --obtainium-version VER      Obtainium release tag (default: latest)
   --keep-portal                Don't stop the test portal on exit
   --keep-emulator              Don't stop the emulator on exit
+  --keep-tmp                   Don't delete the per-run tmp dir on exit
   --no-color                   Disable colored output
   --debug                      Verbose debug logging
   -h, --help                   Show this help
@@ -58,6 +88,7 @@ OI_TIMEOUT=300
 OI_OBTAINIUM_VERSION=""
 OI_KEEP_PORTAL=0
 OI_KEEP_EMULATOR=0
+OI_KEEP_TMP=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -72,6 +103,7 @@ while [[ $# -gt 0 ]]; do
         --obtainium-version) OI_OBTAINIUM_VERSION="$2"; shift 2 ;;
         --keep-portal)      OI_KEEP_PORTAL=1; shift ;;
         --keep-emulator)    OI_KEEP_EMULATOR=1; shift ;;
+        --keep-tmp)         OI_KEEP_TMP=1; shift ;;
         --no-color)         NO_COLOR=1; shift ;;
         --debug)            OI_DEBUG=1; shift ;;
         -h|--help)          usage; exit 0 ;;
@@ -89,15 +121,9 @@ fi
 mkdir -p "$OI_OUTPUT_DIR"
 export OI_OUTPUT_DIR
 
-# Adjust cleanup hooks based on flags
-if [[ $OI_KEEP_PORTAL -eq 1 ]]; then
-    # Remove portal_stop_server from the cleanup chain
-    OI_CLEANUP_HOOKS="${OI_CLEANUP_HOOKS//portal_stop_server/}"
-fi
-if [[ $OI_KEEP_EMULATOR -eq 1 ]]; then
-    OI_CLEANUP_HOOKS="${OI_CLEANUP_HOOKS//emulator_stop_local/}"
-    OI_CLEANUP_HOOKS="${OI_CLEANUP_HOOKS//emulator_stop_docker/}"
-fi
+# Note: --keep-portal / --keep-emulator flags are checked at cleanup time
+# inside the respective *_stop_* functions (lib/portal.sh, lib/emulator.sh).
+# No pre-stripping of OI_CLEANUP_HOOKS is needed.
 
 log_info "Output dir: $OI_OUTPUT_DIR"
 log_info "Backup:     $BACKUP_TARBALL"
@@ -113,6 +139,9 @@ EMULATOR_MODE=$(cat "$OI_TMP_DIR/emulator_mode")
 
 # 3. Install Obtainium
 obtainium_setup
+
+# 3b. Enable adb root for verification (needs /data/media/0/ read access)
+verify_db_setup
 
 # 4. Start test portal
 EXPORT_JSON="$OI_TMP_DIR/export.json"
@@ -136,7 +165,14 @@ TOTAL=$(wc -l <"$OI_TMP_DIR/apps.txt" | tr -d ' ')
 log_info "Will test $TOTAL apps"
 
 INDEX=0
-while IFS=$'\t' read -r APP_JSON; do
+# Read the apps into an array first. Using `while read; done < file` here
+# is fragile: any subshell or external command inside the loop body
+# (e.g. `adb shell` and the `python3 - ... <<'PY'` heredocs) can inherit
+# the redirected stdin and silently consume the rest of the file, causing
+# the loop to terminate after the first iteration.
+mapfile -t APPS <"$OI_TMP_DIR/apps.txt"
+INDEX=0
+for APP_JSON in "${APPS[@]}"; do
     INDEX=$((INDEX + 1))
     [[ -z "$APP_JSON" ]] && continue
 
@@ -153,6 +189,20 @@ while IFS=$'\t' read -r APP_JSON; do
     DOWNLOAD_STATUS="skipped"
     APK_PATH=""
     ERROR_MSG=""
+
+    # --bring Obtainium to the foreground and re-dismiss any pending dialogs
+    # (notifications permission, Google Play Protect, etc.) before each app.
+    # We also force-stop and re-launch from the launcher so that any in-app
+    # navigation state from the previous iteration (e.g. stuck on an app
+    # detail page) is cleared — the app always opens to the Apps tab.
+    adb shell am force-stop "${OI_OBTAINIUM_PKG}" >/dev/null 2>&1 || true
+    adb shell monkey -p "${OI_OBTAINIUM_PKG}" -c android.intent.category.LAUNCHER 1 \
+        >/dev/null 2>&1 || \
+        adb shell am start -n "${OI_OBTAINIUM_PKG}/dev.imranr.obtainium.MainActivity" >/dev/null 2>&1 || true
+    sleep 2
+    ui_dismiss_first_run
+    # Diagnostic: save UI state and a short screen summary (only with --debug)
+    [[ -n "${OI_DEBUG:-}" ]] && _oi_diag_screen "pre_${APP_ID//\//_}"
 
     # --send deep link (open Obtainium import dialog)
     if ! DEEP_URL=$(build_deep_link "$APP_JSON"); then
@@ -202,53 +252,73 @@ while IFS=$'\t' read -r APP_JSON; do
         DOWNLOAD_STATUS="skipped"
         ERROR_MSG=""
     else
-        # Open the app detail page by tapping the app entry on the apps list
-        # (this assumes the import lands the user on the apps page; if not, navigate manually)
+        # Navigate explicitly to the Apps tab. After import, the user may
+        # be on a different tab (e.g. Add app) or the app list may not have
+        # refreshed yet. Try in this order:
+        #  1. Just wait — we're usually already on Apps tab after import.
+        #  2. If the app name isn't visible, tap the Apps tab and wait again.
+        log_info "Navigating to Apps tab..."
         sleep 2
-        # Try to find and tap the app entry on the apps page
-        if ui_tap_text "$APP_NAME" 2>/dev/null; then
-            sleep 2
-            # Look for an "Install" / "Get" / "Update" button
-            if ui_tap_text "Install" 2>/dev/null \
-                || ui_tap_text "Get" 2>/dev/null \
-                || ui_tap_text "Update" 2>/dev/null; then
-                log_info "Triggered install for $APP_ID; waiting for download..."
-                # Wait up to OI_TIMEOUT for the APK to land
-                elapsed=0
-                while (( elapsed < OI_TIMEOUT )); do
-                    APK_PATH=$(verify_find_apk "$APP_ID")
-                    if [[ -n "$APK_PATH" ]]; then
-                        DOWNLOAD_STATUS="success"
-                        log_pass "Downloaded $APP_ID -> $APK_PATH"
-                        break
+        # Make sure Obtainium is in foreground
+        adb shell am start -n "${OI_OBTAINIUM_PKG}/dev.imranr.obtainium.MainActivity" >/dev/null 2>&1 || true
+        sleep 1
+        # Try waiting for the app to appear (we may already be on the Apps tab)
+        if ! ui_wait_for_text "$APP_NAME" 5 >/dev/null; then
+            # Not on Apps tab; tap the Apps tab (bottom nav, "Apps\nTab 1 of 4").
+            # The full tab label includes literal backslash-n, so we use a
+            # substring match via ui_tap_text_contains.
+            if ! ui_tap_text_contains "Tab 1 of 4" 2>/dev/null; then
+                [[ -n "${OI_DEBUG:-}" ]] && _oi_diag_screen "fail_tab_${APP_ID//\//_}"
+                DOWNLOAD_STATUS="skipped"
+                ERROR_MSG="Could not navigate to Apps tab"
+            else
+                sleep 2
+                ui_wait_for_text "$APP_NAME" 15 >/dev/null \
+                    || { DOWNLOAD_STATUS="skipped"; ERROR_MSG="App entry not visible on apps list after 15s"; }
+            fi
+        fi
+        # At this point we should be on Apps tab with the app visible (unless ERROR_MSG is set)
+        if [[ -z "$ERROR_MSG" ]]; then
+            if ui_tap_text_contains "$APP_NAME" 2>/dev/null; then
+                sleep 3
+                # Look for an "Install" / "Get" / "Update" button
+                if ui_tap_text "Install" 2>/dev/null \
+                    || ui_tap_text "Get" 2>/dev/null \
+                    || ui_tap_text "Update" 2>/dev/null; then
+                    log_info "Triggered install for $APP_ID; waiting for download..."
+                    # Wait up to OI_TIMEOUT for the APK to land
+                    elapsed=0
+                    while (( elapsed < OI_TIMEOUT )); do
+                        APK_PATH=$(verify_find_apk "$APP_ID")
+                        if [[ -n "$APK_PATH" ]]; then
+                            DOWNLOAD_STATUS="success"
+                            log_pass "Downloaded $APP_ID -> $APK_PATH"
+                            break
+                        fi
+                        sleep 5
+                        elapsed=$((elapsed + 5))
+                    done
+                    if [[ "$DOWNLOAD_STATUS" != "success" ]]; then
+                        DOWNLOAD_STATUS="failed"
+                        ERROR_MSG="APK not found after ${OI_TIMEOUT}s"
+                        log_fail "Download timed out: $APP_ID"
                     fi
-                    sleep 5
-                    elapsed=$((elapsed + 5))
-                done
-                if [[ "$DOWNLOAD_STATUS" != "success" ]]; then
-                    DOWNLOAD_STATUS="failed"
-                    ERROR_MSG="APK not found after ${OI_TIMEOUT}s"
-                    log_fail "Download timed out: $APP_ID"
+                else
+                    DOWNLOAD_STATUS="skipped"
+                    ERROR_MSG="No Install/Get/Update button on app detail page"
                 fi
             else
                 DOWNLOAD_STATUS="skipped"
-                ERROR_MSG="No Install/Get/Update button on app detail page"
+                ERROR_MSG="Could not tap app entry $APP_NAME on apps list"
             fi
-        else
-            DOWNLOAD_STATUS="skipped"
-            ERROR_MSG="App entry not visible on apps list"
         fi
     fi
-
-    # --return to apps list for next iteration
-    adb shell input keyevent KEYCODE_BACK >/dev/null 2>&1 || true
-    sleep 1
 
     END=$(date +%s); DUR=$((END-START))
     report_add_app "$APP_ID" "$APP_NAME" "$APP_URL" "$APP_SOURCE" "$IS_SELF_HOSTED" \
         "$IMPORT_STATUS" "$DOWNLOAD_STATUS" "$DUR" "$APK_PATH" "$ERROR_MSG"
     report_running_summary
-done <"$OI_TMP_DIR/apps.txt"
+done
 
 # 8. Finalize
 report_finalize
