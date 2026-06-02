@@ -43,28 +43,11 @@
   };
 
   # Nginx Reverse Proxy with TLS integration
+  # (Note: portal.syoch.org vhost lives in dotfiles components/host/sv01/default.nix;
+  #  the f5.si vhosts that used to be declared here were removed in Wave 2.)
   services.nginx = {
     enable = true;
     recommendedProxySettings = true;
     recommendedTlsSettings = true;
-
-    virtualHosts = {
-      "kgoelamv.syoch.f5.si" = {
-        enableACME = true;
-        forceSSL = true;
-        locations."/" = {
-          proxyPass = "http://127.0.0.1:8000";
-          proxyWebsockets = true;
-        };
-      };
-      "btwainft.syoch.f5.si" = {
-        enableACME = true;
-        forceSSL = true;
-        locations."/" = {
-          proxyPass = "http://127.0.0.1:8000";
-          proxyWebsockets = true;
-        };
-      };
-    };
   };
 }
