@@ -231,10 +231,15 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await expect(selfHostedCard).toBeVisible();
 
     // ---- 4-3. Upload a mock APK ----
+    // (Buffer starts with PK\x03\x04 to pass the storage_manager
+    //  magic-byte check added in Wave 3.)
     const mockApk = {
       name: 'TestApp_com.selfhosted.test_v1.0.0_arm64-v8a.apk',
       mimeType: 'application/vnd.android.package-archive',
-      buffer: Buffer.from('mock-apk-binary-content')
+      buffer: Buffer.concat([
+        Buffer.from([0x50, 0x4b, 0x03, 0x04]),
+        Buffer.from('mock-apk-binary-content'),
+      ]),
     };
 
     await page.setInputFiles('#apk-file-input', mockApk);
