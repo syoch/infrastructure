@@ -21,10 +21,14 @@ Not part of `make test` / CI; run on demand when:
 3. **Start** an Android emulator (B1: local AVD, or B2: `budtmo/docker-android`)
 4. **Install** the latest Obtainium APK
 5. For each app in the export:
+   - Force-stop and re-launch Obtainium from the launcher (so the next
+     iteration always starts on the Apps tab, never stuck on the previous
+     app's detail page)
    - Build `obtainium://app/<urlencoded_json>` deep link
    - Send to device via `adb shell am start`
    - Tap "Continue" on Obtainium's import dialog
-   - Verify the app row appears in Obtainium's Room DB
+   - Verify the app row appears in Obtainium's per-app JSON file
+     (at `/data/media/0/Android/data/dev.imranr.obtainium/files/app_data/`)
    - Tap "Install" / "Get" / "Update" on the app detail page
    - Wait for the APK to land in Obtainium's download dir
 6. Write a per-app report (JSON + text) to the output directory
@@ -53,12 +57,13 @@ make test-obtainium BACKUP=~/backups/portal-backup-20260601.tgz
 # Smoke test (3 apps only)
 make test-obtainium-smoke BACKUP=~/backups/portal-backup-20260601.tgz
 
-# Or invoke the script directly
-./portal/tests/obtainium-integration/obtainium-integration \
+# Or invoke the script directly. Wrap in `nix develop -c` to get the
+# matching Python/tarfile/argparse environment.
+nix develop -c ./portal/tests/obtainium-integration/obtainium-integration \
   --backup-tarball ~/backups/portal-backup-20260601.tgz
 
 # With explicit options
-./portal/tests/obtainium-integration/obtainium-integration \
+nix develop -c ./portal/tests/obtainium-integration/obtainium-integration \
   --backup-tarball ~/backups/portal-backup-20260601.tgz \
   --emulator-mode docker \
   --apps 5 \
@@ -80,6 +85,7 @@ make test-obtainium-smoke BACKUP=~/backups/portal-backup-20260601.tgz
 --obtainium-version VER      Obtainium release tag (default: latest)
 --keep-portal                Don't stop the test portal on exit
 --keep-emulator              Don't stop the emulator on exit
+--keep-tmp                   Don't delete the per-run tmp dir on exit
 --no-color                   Disable colored output
 --debug                      Verbose debug logging
 -h, --help                   Show this help
@@ -110,9 +116,15 @@ Exit code: `0` if all imports and downloads succeeded, `1` otherwise.
   `input tap` to click "Continue". If Obtainium's UI changes (new button
   text, different layout), the matcher in `lib/ui.sh:ui_confirm_button` may
   need updating.
-- **First-run dialogs**: the welcome dialog and 2026 Google Verification
-  warning are dismissed best-effort. If the device has a clean slate, the
-  script taps "OK" up to 5 times.
+- **First-run dialogs**: the welcome dialog, 2026 Google Verification
+  warning, and the Android "Install unknown apps" permission dialog are
+  dismissed best-effort. If the device has a clean slate, the script taps
+  "OK" / "Allow from this source" / etc. up to 12 times.
+- **Apps list visibility**: the test only sees apps that are visible in
+  the Apps tab viewport. If the apps list is long, newly-imported apps
+  may be below the fold and the test reports `App entry not visible on
+  apps list after 15s`. This currently affects some apps in the
+  27-app backup but not the 3-app smoke test.
 - **Download step depends on UI**: not all apps expose an "Install" / "Get"
   / "Update" button. If none is found, `download_status="skipped"` with a
   descriptive error.
@@ -121,7 +133,8 @@ Exit code: `0` if all imports and downloads succeeded, `1` otherwise.
   rewritten incorrectly, it will fail.
 - **Network flakiness**: A3 hits GitHub / GitLab / etc. for real. A single
   app timing out does not abort the suite (per-app `failed` status), but
-  total runtime can be long.
+  total runtime can be long (about 40s per app on a warm emulator, plus
+  ~30-90s of first-run/dialog handling on the first iteration).
 - **No CI integration**: by design. KVM + emulator boot is too slow for
   every-PR testing.
 
@@ -162,3 +175,8 @@ obtainium-integration/
 - **All apps skipped** — check the export file:
   `python3 -c "import json; print(len(json.load(open('export.json'))['apps']))"`
   Also verify the filter regex doesn't exclude everything.
+- **Run with `--debug --keep-tmp`** to keep UI dumps (`diag_*.xml` and
+  `ui.xml`) and verbose logs in the per-run tmp dir. The diagnostic
+  output includes a short screen summary like
+  `screen[pre_<appid>]: D=Apps | MicroG RE | 1 | ...` so you can see
+  what's on screen at each iteration.
