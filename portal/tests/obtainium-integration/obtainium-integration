@@ -215,8 +215,27 @@ for APP_JSON in "${APPS[@]}"; do
     fi
     send_deep_link "$DEEP_URL"
 
-    # --wait for confirmation dialog
-    if ! ui_wait_for_text "Continue" "$OI_TIMEOUT" >/dev/null; then
+    # The deep link can trigger a permission dialog (e.g. Obtainium needs
+    # to be brought to the foreground) or a system dialog that the
+    # pre-deep-link dismiss missed. Run another dismiss pass to clear
+    # anything that just appeared.
+    sleep 1
+    ui_dismiss_first_run
+
+    # --wait for confirmation dialog. The wait is wrapped in a dismiss
+    # loop so that a permission dialog that appears mid-wait doesn't
+    # block the test until OI_TIMEOUT. Each iteration: dismiss whatever
+    # is on screen, then check for "Continue" with a 2s poll.
+    elapsed=0
+    while (( elapsed < OI_TIMEOUT )); do
+        ui_dismiss_first_run
+        if ui_wait_for_text "Continue" 2 1 >/dev/null; then
+            break
+        fi
+        sleep 3
+        elapsed=$((elapsed + 5))
+    done
+    if (( elapsed >= OI_TIMEOUT )); then
         ERROR_MSG="Confirmation dialog did not appear (timeout ${OI_TIMEOUT}s)"
         END=$(date +%s); DUR=$((END-START))
         report_add_app "$APP_ID" "$APP_NAME" "$APP_URL" "$APP_SOURCE" "$IS_SELF_HOSTED" \
@@ -235,11 +254,15 @@ for APP_JSON in "${APPS[@]}"; do
 
     # --wait briefly for import to complete, then verify DB
     sleep 3
+    # After tapping Continue, an error dialog may appear if the source
+    # resolution failed (e.g. HTML scrape found no release). Dismiss it
+    # before checking the DB.
+    ui_dismiss_first_run
     if [[ "$(verify_db_has_app "$APP_ID")" == "1" ]]; then
         IMPORT_STATUS="success"
         log_pass "Imported $APP_ID"
     else
-        ERROR_MSG="App not present in Obtainium DB after import"
+        ERROR_MSG="App not present in Obtainium DB after import (or no release was resolved)"
         END=$(date +%s); DUR=$((END-START))
         report_add_app "$APP_ID" "$APP_NAME" "$APP_URL" "$APP_SOURCE" "$IS_SELF_HOSTED" \
             "failed" "skipped" "$DUR" "" "$ERROR_MSG"
@@ -247,42 +270,82 @@ for APP_JSON in "${APPS[@]}"; do
         continue
     fi
 
+    # --use the actual name Obtainium stored (may differ from the export's
+    # "name" field; Obtainium re-fetches the name from the source URL on
+    # import, e.g. for GitHub releases the name is the repo name).
+    STORED_NAME=$(verify_db_app_name "$APP_ID")
+    if [[ -n "$STORED_NAME" && "$STORED_NAME" != "$APP_NAME" ]]; then
+        log_debug "Stored name differs from export name: '$APP_NAME' -> '$STORED_NAME'"
+        APP_NAME="$STORED_NAME"
+    fi
+
     # --download (skippable)
     if [[ $OI_SKIP_DOWNLOAD -eq 1 ]]; then
         DOWNLOAD_STATUS="skipped"
         ERROR_MSG=""
     else
-        # Navigate explicitly to the Apps tab. After import, the user may
-        # be on a different tab (e.g. Add app) or the app list may not have
-        # refreshed yet. Try in this order:
-        #  1. Just wait — we're usually already on Apps tab after import.
-        #  2. If the app name isn't visible, tap the Apps tab and wait again.
+        # Navigate explicitly to the Apps tab and find the newly-imported
+        # app entry. After import, the user may be on a different tab, the
+        # app list may not have refreshed yet, or the new entry may be
+        # below the fold of a long apps list. We try in this order:
+        #  1. Make sure Obtainium is in foreground, then wait 5s for the
+        #     name — it often appears at the top of the list immediately.
+        #  2. If not visible, tap the Apps tab and scroll-to-top in case
+        #     a previous iteration left the list scrolled.
+        #  3. Search the list with up to 8 swipes; each swipe scrolls
+        #     ~one screenful so the new entry comes into view.
         log_info "Navigating to Apps tab..."
         sleep 2
         # Make sure Obtainium is in foreground
         adb shell am start -n "${OI_OBTAINIUM_PKG}/dev.imranr.obtainium.MainActivity" >/dev/null 2>&1 || true
         sleep 1
-        # Try waiting for the app to appear (we may already be on the Apps tab)
-        if ! ui_wait_for_text "$APP_NAME" 5 >/dev/null; then
-            # Not on Apps tab; tap the Apps tab (bottom nav, "Apps\nTab 1 of 4").
-            # The full tab label includes literal backslash-n, so we use a
-            # substring match via ui_tap_text_contains.
-            if ! ui_tap_text_contains "Tab 1 of 4" 2>/dev/null; then
-                [[ -n "${OI_DEBUG:-}" ]] && _oi_diag_screen "fail_tab_${APP_ID//\//_}"
-                DOWNLOAD_STATUS="skipped"
-                ERROR_MSG="Could not navigate to Apps tab"
-            else
-                sleep 2
-                ui_wait_for_text "$APP_NAME" 15 >/dev/null \
-                    || { DOWNLOAD_STATUS="skipped"; ERROR_MSG="App entry not visible on apps list after 15s"; }
+        # Make sure we're on the Apps tab.
+        if ! ui_tap_text_contains "Tab 1 of 4" 2>/dev/null; then
+            [[ -n "${OI_DEBUG:-}" ]] && _oi_diag_screen "fail_tab_${APP_ID//\//_}"
+            DOWNLOAD_STATUS="skipped"
+            ERROR_MSG="Could not navigate to Apps tab"
+        else
+            # Reset the list scroll to top in case a previous iteration
+            # left it scrolled down. A few swipes is enough; the list
+            # won't scroll past the first entry.
+            ui_scroll_list_to_top 5
+            # Obtainium's "Some errors occurred" dialog (a batched report
+            # of all import errors so far) tends to pop up on its own
+            # when the apps list is opened, especially when many imports
+            # have failed (rate limits, 404, scrape misses). Dismiss it
+            # before searching, and also periodically during the search
+            # in case it pops back up.
+            ui_dismiss_first_run
+            # Now search: first check without scrolling (gives the new
+            # entry a chance to already be visible), then scroll-search
+            # up to 12 swipes. Total wait is bounded by the 18s timeout
+            # in ui_wait_for_text_in_list. The function now does
+            # batch-swipes (3 at a time) for speed.
+            if ! ui_wait_for_text_in_list "$APP_NAME" 18 12 >/dev/null; then
+                # One more attempt after a dismiss in case a dialog was
+                # blocking the list view all along.
+                ui_dismiss_first_run
+                if ! ui_wait_for_text_in_list "$APP_NAME" 8 4 >/dev/null; then
+                    DOWNLOAD_STATUS="skipped"
+                    ERROR_MSG="App entry '$APP_NAME' not found in apps list after scroll-search"
+                fi
             fi
         fi
         # At this point we should be on Apps tab with the app visible (unless ERROR_MSG is set)
         if [[ -z "$ERROR_MSG" ]]; then
             if ui_tap_text_contains "$APP_NAME" 2>/dev/null; then
                 sleep 3
-                # Look for an "Install" / "Get" / "Update" button
-                if ui_tap_text "Install" 2>/dev/null \
+                # Dismiss any dialog that appeared on top of the detail page.
+                ui_dismiss_first_run
+                # Look for an "Install" / "Get" / "Update" button. We use
+                # substring-match first because the button label may have
+                # extra text (e.g. "INSTALL", "Install app", or an icon
+                # with content-desc but no text). Fall back to exact-match
+                # in case the substring matches the wrong element.
+                if ui_tap_text_contains "Install" 2>/dev/null \
+                    || ui_tap_text_contains "Get" 2>/dev/null \
+                    || ui_tap_text_contains "Update" 2>/dev/null \
+                    || ui_tap_text "Install" 2>/dev/null \
                     || ui_tap_text "Get" 2>/dev/null \
                     || ui_tap_text "Update" 2>/dev/null; then
                     log_info "Triggered install for $APP_ID; waiting for download..."

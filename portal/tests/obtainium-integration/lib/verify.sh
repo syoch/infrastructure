@@ -31,8 +31,12 @@ verify_db_setup() {
         >/dev/null 2>&1 || log_warn "could not grant REQUEST_INSTALL_PACKAGES via appops"
 }
 
-# Check that an app with the given id exists in Obtainium's app_data.
-# Echoes "1" if found, "0" otherwise.
+# Check that an app with the given id exists in Obtainium's app_data AND
+# has a valid (non-empty) apkUrls field. An app whose import "succeeded"
+# at the JSON level (file exists) but whose source resolution failed
+# (e.g. HTML scrape with no matching release) will have an empty or
+# near-empty apkUrls. The test should treat that as a failed import.
+# Echoes "1" if found and usable, "0" otherwise.
 verify_db_has_app() {
     local app_id="$1"
     local app_data_dir="/storage/emulated/0/Android/data/${OI_OBTAINIUM_PKG}/files/app_data"
@@ -46,16 +50,41 @@ verify_db_has_app() {
     if [[ -z "$result" ]]; then
         # Fallback: list the directory and grep for the filename
         result=$(adb shell "ls /data/media/0/Android/data/${OI_OBTAINIUM_PKG}/files/app_data/ 2>/dev/null" 2>/dev/null | grep -c "^${app_id}\.json$" 2>/dev/null)
-        if [[ "$result" =~ ^[1-9][0-9]*$ ]]; then
-            echo "1"
+        if [[ ! "$result" =~ ^[1-9][0-9]*$ ]]; then
+            echo "0"
             return 0
         fi
-    fi
-    if [[ -n "$result" && "$result" == *"${app_id}.json"* ]]; then
-        echo "1"
+    elif [[ -z "$result" || "$result" != *"${app_id}.json"* ]]; then
+        echo "0"
         return 0
     fi
-    echo "0"
+    # File exists; now validate that the import actually resolved a release.
+    # A failed import has empty apkUrls (e.g. an HTML scrape with no
+    # matching APK). We require either apkUrls or latestVersion to be
+    # populated.
+    local path="/data/media/0/Android/data/${OI_OBTAINIUM_PKG}/files/app_data/${app_id}.json"
+    adb shell "cat $path 2>/dev/null" 2>/dev/null \
+        | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    apk = d.get('apkUrls','')
+    ver = d.get('latestVersion','')
+    # apkUrls is always a JSON-encoded string of an array of [name,url] pairs.
+    # Empty array, '[]', or empty string all mean no release was resolved.
+    if not apk or apk in ('[]','null'):
+        sys.exit(1)
+    if not ver or ver in ('','null'):
+        sys.exit(1)
+except Exception:
+    sys.exit(1)
+sys.exit(0)
+"
+    if [[ $? -eq 0 ]]; then
+        echo "1"
+    else
+        echo "0"
+    fi
 }
 
 # Check if the package is installed on the device
@@ -110,6 +139,25 @@ import sys, json
 try:
     d = json.load(sys.stdin)
     print(d.get('latestVersion',''))
+except Exception:
+    pass
+"
+}
+
+# Get the name Obtainium actually stored for an imported app. This can
+# differ from the export's "name" field because Obtainium re-fetches the
+# name from the source URL on first import (e.g. for GitHub releases the
+# name is the repo name). We need the actual stored name to find the app
+# entry in the Apps list. Echoes empty string on failure.
+verify_db_app_name() {
+    local app_id="$1"
+    local path="/data/media/0/Android/data/${OI_OBTAINIUM_PKG}/files/app_data/${app_id}.json"
+    adb shell "cat $path 2>/dev/null" 2>/dev/null \
+        | python3 -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    print(d.get('name',''))
 except Exception:
     pass
 "
