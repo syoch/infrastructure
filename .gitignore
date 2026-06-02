@@ -22,3 +22,8 @@ tailscale/*
 
 .antigravitycli
 __pycache__
+
+# Legacy f5.si / DDNS scripts (deleted, kept here so they never return)
+update-ip.sh
+init-cert.sh
+setup.sh

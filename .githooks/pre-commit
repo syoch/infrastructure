@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Pre-commit secret scanner for infrastructure repo.
+# Catches accidental commits of real secrets.
+
+set -e
+
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR)
+if [ -z "$STAGED_FILES" ]; then
+    exit 0
+fi
+
+# This hook file legitimately contains the pattern strings; skip it.
+STAGED_FILES=$(echo "$STAGED_FILES" | grep -v '^\.githooks/pre-commit$' || true)
+if [ -z "$STAGED_FILES" ]; then
+    exit 0
+fi
+
+PATTERNS=(
+    'tskey-auth-[A-Za-z0-9]+'
+    'f5\.si/update\.php\?domain=[^[:space:]&]+'
+    'TS_AUTH_KEY=tskey-'
+)
+
+FAIL=0
+for FILE in $STAGED_FILES; do
+    if [ ! -f "$FILE" ]; then
+        continue
+    fi
+    for PATTERN in "${PATTERNS[@]}"; do
+        if grep -nE "$PATTERN" "$FILE" >/dev/null 2>&1; then
+            echo "pre-commit: secret pattern '$PATTERN' found in $FILE" >&2
+            grep -nE "$PATTERN" "$FILE" >&2 || true
+            FAIL=1
+        fi
+    done
+done
+
+if [ "$FAIL" -ne 0 ]; then
+    echo "pre-commit: refusing to commit. Remove the secret or rewrite the line." >&2
+    exit 1
+fi
