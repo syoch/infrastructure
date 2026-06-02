@@ -91,6 +91,7 @@
               echo "=== Running Python Backend Tests ==="
               python3 portal/tests/backend/test_backup_restore.py
               python3 portal/tests/backend/verify_roundtrip.py
+              python3 portal/tests/backend/test_export_schema.py
             '';
           };
           test-e2e = pkgs.writeShellApplication {
