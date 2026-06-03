@@ -61,6 +61,7 @@ Options:
   --filter REGEX               Only test apps whose id/name matches REGEX
   --skip-source-html           Skip self-hosted apps (overrideSource=HTML)
   --skip-download              Skip APK download trigger/verification (A2 lite)
+  --phase PHASE                Run only one phase: import|download|all (default: all)
   --timeout SECONDS            Per-app timeout (default: 300)
   --obtainium-version VER      Obtainium release tag (default: latest)
   --keep-portal                Don't stop the test portal on exit
@@ -84,6 +85,7 @@ OI_APPS_LIMIT=""
 OI_FILTER=""
 OI_SKIP_HTML=0
 OI_SKIP_DOWNLOAD=0
+OI_PHASE="all"
 OI_TIMEOUT=300
 OI_OBTAINIUM_VERSION=""
 OI_KEEP_PORTAL=0
@@ -99,6 +101,7 @@ while [[ $# -gt 0 ]]; do
         --filter)           OI_FILTER="$2"; shift 2 ;;
         --skip-source-html) OI_SKIP_HTML=1; shift ;;
         --skip-download)    OI_SKIP_DOWNLOAD=1; shift ;;
+        --phase)            OI_PHASE="$2"; shift 2 ;;
         --timeout)          OI_TIMEOUT="$2"; shift 2 ;;
         --obtainium-version) OI_OBTAINIUM_VERSION="$2"; shift 2 ;;
         --keep-portal)      OI_KEEP_PORTAL=1; shift ;;
@@ -402,6 +405,16 @@ for APP_JSON in "${APPS[@]}"; do
         "$IMPORT_STATUS" "$DOWNLOAD_STATUS" "$DUR" "$APK_PATH" "$ERROR_MSG"
     report_running_summary
 done
+
+# 7.5 Bulk download phase (only when --phase is "all" or "download", and
+# downloads weren't skipped). After the per-app loop above, all apps in
+# the export are imported. Now use Obtainium's bulk-install UI to
+# download all of them at once. This is much faster than per-app
+# download + wait (which takes 30s-300s per app due to APK download
+# time + UI navigation overhead).
+if [[ "$OI_PHASE" != "import" ]] && [[ $OI_SKIP_DOWNLOAD -eq 0 ]]; then
+    bulk_download_all
+fi
 
 # 8. Finalize
 report_finalize

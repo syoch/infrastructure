@@ -347,3 +347,210 @@ ui_scroll_list_to_top() {
         ui_scroll_apps_list down 1
     done
 }
+
+# Bulk download phase: use Obtainium's "Install/update selected apps"
+# bulk-install feature. Strategy:
+#   1. Make sure we're on the Apps tab.
+#   2. Filter to "Non-installed apps" to limit selection to installable ones.
+#   3. Long-press the first app row to enter select mode.
+#   4. Tap each visible app row to select it. After each tap, the count
+#      in the bottom-left increases.
+#   5. Scroll down to the next batch and repeat until we see the bottom
+#      of the list (i.e. all apps in the filtered list are selected).
+#   6. Tap "Install/update selected apps" → "Continue" to start downloads.
+#   7. Wait for all APKs to land in Obtainium's cache directory.
+# This replaces the slow per-app download loop, which took 30-300s per app.
+# Bulk download + wait typically finishes in 2-5 minutes for 27 apps.
+bulk_download_all() {
+    log_info "=== Phase 2: Bulk download ==="
+    # This function expects $OI_OUTPUT_DIR/report.json to exist and
+    # contains the per-app import results. After the bulk download, we
+    # update the report with actual download statuses.
+
+    # Make sure Obtainium is in foreground
+    adb shell am force-stop "${OI_OBTAINIUM_PKG}" >/dev/null 2>&1 || true
+    adb shell am start -n "${OI_OBTAINIUM_PKG}/dev.imranr.obtainium.MainActivity" >/dev/null 2>&1 || true
+    sleep 2
+    ui_dismiss_first_run
+
+    # 1. Navigate to Apps tab
+    if ! ui_tap_text_contains "Tab 1 of 4" 2>/dev/null; then
+        log_warn "Could not navigate to Apps tab; skipping bulk download"
+        return 1
+    fi
+    sleep 2
+
+    # 2. Filter to "Non-installed apps" only
+    if ui_tap_text_contains "Filter apps" 2>/dev/null; then
+        sleep 1
+        # The "Non-installed apps" checkbox is at approximately y=1158 on
+        # a 1080x1920 device. Tap it to enable filtering, then Continue.
+        adb shell input tap 192 1158 2>/dev/null
+        sleep 1
+        if ui_tap_text "Continue" 2>/dev/null; then
+            log_info "Filtered to non-installed apps"
+            sleep 2
+        else
+            log_warn "Could not apply filter; will use all apps"
+        fi
+    fi
+    ui_dismiss_first_run
+
+    # 3. Long-press to enter select mode
+    adb shell input swipe 540 480 540 480 1500
+    sleep 2
+
+    # 4-5. Select all visible apps by tapping each row. The list
+    # viewport fits about 5 app rows. After each pass, scroll down to
+    # the next batch. We stop when the bottom counter equals the
+    # visible total OR after a max number of iterations.
+    local max_passes=20
+    local selected=0
+    for ((pass = 0; pass < max_passes; pass++)); do
+        # Check the bottom-left counter to see how many are selected.
+        # The counter is a content-desc at bounds [24,1464][201,1584].
+        local counter
+        counter=$(adb shell uiautomator dump /sdcard/ui.xml 2>/dev/null \
+            && adb pull /sdcard/ui.xml /tmp/_oi_counter.xml 2>/dev/null \
+            && python3 -c "
+import xml.etree.ElementTree as ET, re
+t = ET.parse('/tmp/_oi_counter.xml')
+for c in t.getroot().iter():
+    b = c.get('bounds','')
+    m = re.match(r'\[24,1464\]\[20[0-9],1584\]', b)
+    if m:
+        d = c.get('content-desc','')
+        if d.isdigit():
+            print(d)
+            break
+" 2>/dev/null)
+        if [[ -n "$counter" ]] && (( counter > 0 )); then
+            selected=$counter
+            log_debug "Bulk select pass $pass: $counter apps selected"
+        fi
+        # Tap each row in the visible viewport. Row y-centers: 480, 696, 912, 1128, 1344.
+        for y in 480 696 912 1128 1344; do
+            adb shell input tap 540 $y
+            sleep 0.3
+        done
+        # Scroll down to reveal more apps
+        ui_scroll_apps_list up 1
+        sleep 1
+    done
+    log_info "Selected $selected apps in bulk"
+
+    # 6. Tap "Install/update selected apps"
+    if ! ui_tap_text_contains "Install/update selected apps" 2>/dev/null; then
+        log_warn "Could not tap 'Install/update selected apps' button"
+        return 1
+    fi
+    sleep 2
+    # Confirmation dialog: "Continue" triggers the actual downloads
+    if ! ui_tap_text "Continue" 2>/dev/null; then
+        log_warn "Could not confirm bulk install"
+        return 1
+    fi
+    log_info "Bulk install triggered; waiting for APKs to download..."
+
+    # 7. Wait for downloads to complete. Poll the cache directory for
+    # APK files. Downloads are parallel, so we just wait for the count
+    # of APKs in the cache to stabilize.
+    local elapsed=0
+    local last_count=-1
+    local stable_polls=0
+    while (( elapsed < OI_TIMEOUT )); do
+        # Count APKs in Obtainium's cache
+        local count
+        count=$(adb shell "ls /data/media/0/Android/data/${OI_OBTAINIUM_PKG}/cache/ 2>/dev/null | grep -c '\.apk\$'" 2>/dev/null | tr -d '\r\n ')
+        count=${count:-0}
+        if [[ "$count" -gt 0 ]]; then
+            if [[ "$count" -eq "$last_count" ]]; then
+                stable_polls=$((stable_polls + 1))
+            else
+                stable_polls=0
+            fi
+            last_count=$count
+            log_debug "Bulk download: $count APKs in cache (stable_polls=$stable_polls)"
+            # If count has been stable for 3 polls (30s) and >0, assume done
+            if (( stable_polls >= 3 )) && (( count > 0 )); then
+                log_pass "Bulk download complete: $count APKs"
+                break
+            fi
+        fi
+        sleep 10
+        elapsed=$((elapsed + 10))
+    done
+
+    if [[ "$elapsed" -ge "$OI_TIMEOUT" ]]; then
+        log_warn "Bulk download timed out after ${OI_TIMEOUT}s ($last_count APKs found)"
+    fi
+
+    # 8. Update the report: walk through the report.json and for each
+    # app, check if its APK landed in the cache. If yes, mark it as
+    # downloaded; if not, mark as failed (or skipped if it wasn't
+    # supposed to download, e.g. an already-installed app).
+    log_info "Updating report with bulk download results..."
+    local report="$OI_OUTPUT_DIR/report.json"
+    if [[ ! -f "$report" ]]; then
+        log_warn "Report not found at $report; cannot update"
+        return 0
+    fi
+    # Build a list of APKs in the cache for quick lookup
+    local apk_list
+    apk_list=$(adb shell "ls /data/media/0/Android/data/${OI_OBTAINIUM_PKG}/cache/ 2>/dev/null" 2>/dev/null \
+        | tr -d '\r' | grep '\.apk$' || true)
+    # Use python to update the report
+    OI_TMP_DIR="$OI_TMP_DIR" OI_OBTAINIUM_PKG="$OI_OBTAINIUM_PKG" \
+        OI_APK_LIST="$apk_list" python3 - "$report" <<'PY'
+import json, os, sys
+report_path = sys.argv[1]
+apk_list = os.environ.get('OI_APK_LIST', '')
+pkg = os.environ.get('OI_OBTAINIUM_PKG', 'dev.imranr.obtainium')
+
+# Parse APK list to get {app_id: apk_path}
+apks = {}
+for line in apk_list.splitlines():
+    line = line.strip()
+    if not line.endswith('.apk'):
+        continue
+    # Filename format: <id>-<hash>.apk
+    if '-' in line:
+        aid = line.rsplit('-', 1)[0]
+    else:
+        aid = line.rsplit('.', 1)[0]
+    apks[aid] = f'/data/media/0/Android/data/{pkg}/cache/{line}'
+
+# Load report
+with open(report_path) as f:
+    r = json.load(f)
+
+# Update each app's download status
+for app in r.get('apps', []):
+    app_id = app.get('id', '')
+    if not app_id:
+        continue
+    if app_id in apks:
+        app['download_status'] = 'success'
+        app['apk_path'] = apks[app_id]
+        app['error_message'] = None
+    elif app.get('download_status') == 'skipped':
+        pass  # Leave as-is
+    else:
+        if app.get('import_status') == 'success':
+            app['download_status'] = 'failed'
+            if not app.get('error_message'):
+                app['error_message'] = 'APK not found in cache after bulk download'
+
+# Update summary
+s = r.get('summary', {})
+s['downloaded'] = sum(1 for a in r.get('apps', []) if a.get('download_status') == 'success')
+s['failed_download'] = sum(1 for a in r.get('apps', []) if a.get('download_status') == 'failed')
+s['skipped'] = sum(1 for a in r.get('apps', []) if a.get('download_status') == 'skipped')
+r['summary'] = s
+
+with open(report_path, 'w') as f:
+    json.dump(r, f, indent=2)
+
+print(f'Updated report: {s["downloaded"]}/{s["total"]} downloaded')
+PY
+}
