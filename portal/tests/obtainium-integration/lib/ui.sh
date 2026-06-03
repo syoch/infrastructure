@@ -448,6 +448,51 @@ for c in t.getroot().iter():
     local last_count=-1
     local stable_polls=0
     while (( elapsed < OI_TIMEOUT )); do
+        # Check if the "Pick an APK" dialog is showing (happens for unpinned
+        # apps with multiple APKs in a release). We need to handle this or
+        # it will block all subsequent downloads.
+        local dump_file
+        dump_file=$(ui_dump) || true
+        if [[ -n "$dump_file" ]] && grep -q 'content-desc="Pick an APK"' "$dump_file" 2>/dev/null; then
+            local unpinned_app_name
+            unpinned_app_name=$(grep -oE 'content-desc="[^"]* has more than one package:"' "$dump_file" 2>/dev/null \
+                | head -1 | sed 's/content-desc="//; s/ has more than one package:"//' || true)
+            if [[ -n "$unpinned_app_name" ]]; then
+                log_warn "Pick an APK dialog detected for: $unpinned_app_name"
+                echo "$unpinned_app_name" >> "$OI_TMP_DIR/unpinned_apps.txt"
+            fi
+            
+            local apk_coords
+            apk_coords=$(python3 - "$dump_file" <<'PY'
+import sys, re, xml.etree.ElementTree as ET
+try:
+    t = ET.parse(sys.argv[1])
+    for c in t.getroot().iter():
+        d = c.get('content-desc', '')
+        if d.endswith('.apk'):
+            b = c.get('bounds', '')
+            m = re.match(r'\[(\d+),(\d+)\]\[(\d+),(\d+)\]', b)
+            if m:
+                x1, y1, x2, y2 = map(int, m.groups())
+                print(f"{(x1+x2)//2} {(y1+y2)//2}")
+                sys.exit(0)
+except Exception:
+    pass
+PY
+)
+            if [[ -n "$apk_coords" ]]; then
+                log_debug "Tapping arbitrary APK at $apk_coords to proceed"
+                ui_tap $apk_coords
+                sleep 1
+                ui_tap_text "Continue" 2>/dev/null || true
+                sleep 2
+            else
+                log_debug "Could not find an APK in the list; tapping Cancel to unblock"
+                ui_tap_text "Cancel" 2>/dev/null || true
+                sleep 2
+            fi
+        fi
+
         # Count APKs in Obtainium's cache
         local count
         count=$(adb shell "ls /data/media/0/Android/data/${OI_OBTAINIUM_PKG}/cache/ 2>/dev/null | grep -c '\.apk\$'" 2>/dev/null | tr -d '\r\n ' || true)
@@ -495,6 +540,14 @@ import json, os, sys
 report_path = sys.argv[1]
 apk_list = os.environ.get('OI_APK_LIST', '')
 pkg = os.environ.get('OI_OBTAINIUM_PKG', 'dev.imranr.obtainium')
+tmp_dir = os.environ.get('OI_TMP_DIR', '/tmp')
+
+# Read unpinned apps if any
+unpinned_names = set()
+unpinned_file = os.path.join(tmp_dir, 'unpinned_apps.txt')
+if os.path.exists(unpinned_file):
+    with open(unpinned_file) as f:
+        unpinned_names = {line.strip() for line in f if line.strip()}
 
 # Parse APK list to get {app_id: apk_path}
 apks = {}
@@ -516,8 +569,14 @@ with open(report_path) as f:
 # Update each app's download status
 for app in r.get('apps', []):
     app_id = app.get('id', '')
+    app_name = app.get('name', '')
     if not app_id:
         continue
+    if app_name in unpinned_names:
+        app['download_status'] = 'unpinned'
+        app['error_message'] = 'Pick an APK dialog appeared (unpinned)'
+        continue
+    
     if app_id in apks:
         app['download_status'] = 'success'
         app['apk_path'] = apks[app_id]
@@ -535,11 +594,12 @@ s = r.get('summary', {})
 s['downloaded'] = sum(1 for a in r.get('apps', []) if a.get('download_status') == 'success')
 s['failed_download'] = sum(1 for a in r.get('apps', []) if a.get('download_status') == 'failed')
 s['skipped'] = sum(1 for a in r.get('apps', []) if a.get('download_status') == 'skipped')
+s['unpinned'] = sum(1 for a in r.get('apps', []) if a.get('download_status') == 'unpinned')
 r['summary'] = s
 
 with open(report_path, 'w') as f:
     json.dump(r, f, indent=2)
 
-print(f'Updated report: {s["downloaded"]}/{s["total"]} downloaded')
+print(f'Updated report: {s["downloaded"]}/{s["total"]} downloaded, {s.get("unpinned", 0)} unpinned')
 PY
 }
