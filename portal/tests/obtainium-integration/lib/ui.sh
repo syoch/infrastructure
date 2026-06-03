@@ -424,7 +424,7 @@ for c in t.getroot().iter():
             print(d)
             break
 " 2>/dev/null)
-        if [[ -n "$counter" ]] && (( counter > 0 )); then
+        if [[ -n "${counter:-}" ]] && [[ "${counter:-0}" =~ ^[0-9]+$ ]] && (( counter > 0 )); then
             selected=$counter
             log_debug "Bulk select pass $pass: $counter apps selected"
         fi
