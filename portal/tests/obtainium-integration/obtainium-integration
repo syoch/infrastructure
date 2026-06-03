@@ -342,17 +342,36 @@ for APP_JSON in "${APPS[@]}"; do
                 # extra text (e.g. "INSTALL", "Install app", or an icon
                 # with content-desc but no text). Fall back to exact-match
                 # in case the substring matches the wrong element.
+                # NOTE: "Update" means the app is already installed and we're
+                # updating it. On some emulator images (with built-in GMS),
+                # system apps like com.android.vending show "Update". Since
+                # we want to test fresh downloads, skip Update in this test.
                 if ui_tap_text_contains "Install" 2>/dev/null \
                     || ui_tap_text_contains "Get" 2>/dev/null \
-                    || ui_tap_text_contains "Update" 2>/dev/null \
                     || ui_tap_text "Install" 2>/dev/null \
-                    || ui_tap_text "Get" 2>/dev/null \
-                     || ui_tap_text "Update" 2>/dev/null; then
+                    || ui_tap_text "Get" 2>/dev/null; then
                     log_info "Triggered install for $APP_ID; waiting for download..."
                     # Wait up to OI_TIMEOUT for the APK to land. Poll every
                     # 10s to reduce adb shell overhead (each call takes 2-3s).
+                    # Also check for error dialogs that indicate the download
+                    # will not complete (e.g. "Error 404", "Could not find release").
                     elapsed=0
                     while (( elapsed < OI_TIMEOUT )); do
+                        # Check for download error dialogs (e.g. "Error 404",
+                        # "Error downloading", "Could not find release", etc.).
+                        # These are common with failed GitHub releases or scrapes.
+                        local dump
+                        dump=$(ui_dump) || { sleep 10; elapsed=$((elapsed + 10)); continue; }
+                        if grep -qiE '(text|content-desc)="(Error|Could not|Not found|404|403|Network|Connection failed|Failed to|No suitable release)"' "$dump" 2>/dev/null; then
+                            # Error dialog detected; extract the error text
+                            local error_text
+                            error_text=$(grep -oiE '(text|content-desc)="[^"]*Error[^"]*"' "$dump" 2>/dev/null | head -1 | cut -d'"' -f2)
+                            [[ -n "$error_text" ]] || error_text="Download error detected"
+                            DOWNLOAD_STATUS="failed"
+                            ERROR_MSG="$error_text"
+                            log_fail "Download failed for $APP_ID: $error_text"
+                            break
+                        fi
                         APK_PATH=$(verify_find_apk "$APP_ID")
                         if [[ -n "$APK_PATH" ]]; then
                             DOWNLOAD_STATUS="success"
@@ -362,7 +381,7 @@ for APP_JSON in "${APPS[@]}"; do
                         sleep 10
                         elapsed=$((elapsed + 10))
                     done
-                    if [[ "$DOWNLOAD_STATUS" != "success" ]]; then
+                    if [[ "$DOWNLOAD_STATUS" != "success" ]] && [[ -z "$ERROR_MSG" ]]; then
                         DOWNLOAD_STATUS="failed"
                         ERROR_MSG="APK not found after ${OI_TIMEOUT}s"
                         log_fail "Download timed out: $APP_ID"
