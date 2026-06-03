@@ -414,7 +414,7 @@ import xml.etree.ElementTree as ET, re
 t = ET.parse('/tmp/_oi_counter.xml')
 for c in t.getroot().iter():
     b = c.get('bounds','')
-    m = re.match(r'\[24,1464\]\[20[0-9],1584\]', b)
+    m = re.match(r'\[24,1464\]\[\d+,1584\]', b)
     if m:
         d = c.get('content-desc','')
         if d.isdigit():
@@ -493,9 +493,9 @@ PY
             fi
         fi
 
-        # Count APKs in Obtainium's cache
+        # Count APKs in Obtainium's cache and app_data dirs
         local count
-        count=$(adb shell "ls /data/media/0/Android/data/${OI_OBTAINIUM_PKG}/cache/ 2>/dev/null | grep -c '\.apk\$'" 2>/dev/null | tr -d '\r\n ' || true)
+        count=$(adb shell "find /data/media/0/Android/data/${OI_OBTAINIUM_PKG}/ -type f -name '*.apk' 2>/dev/null | wc -l" 2>/dev/null | tr -d '\r\n ' || true)
         count=${count:-0}
         if [[ "$count" -gt 0 ]]; then
             if [[ "$count" -eq "$last_count" ]]; then
@@ -529,10 +529,10 @@ PY
         log_warn "Report not found at $report; cannot update"
         return 0
     fi
-    # Build a list of APKs in the cache for quick lookup
+    # Build a list of APKs in the cache and app_data dirs for quick lookup
     local apk_list
-    apk_list=$(adb shell "ls /data/media/0/Android/data/${OI_OBTAINIUM_PKG}/cache/ 2>/dev/null" 2>/dev/null \
-        | tr -d '\r' | grep '\.apk$' || true)
+    apk_list=$(adb shell "find /data/media/0/Android/data/${OI_OBTAINIUM_PKG}/ -type f -name '*.apk' 2>/dev/null" 2>/dev/null \
+        | tr -d '\r' || true)
     # Use python to update the report
     OI_TMP_DIR="$OI_TMP_DIR" OI_OBTAINIUM_PKG="$OI_OBTAINIUM_PKG" \
         OI_APK_LIST="$apk_list" python3 - "$report" <<'PY'
@@ -555,12 +555,14 @@ for line in apk_list.splitlines():
     line = line.strip()
     if not line.endswith('.apk'):
         continue
-    # Filename format: <id>-<hash>.apk
-    if '-' in line:
-        aid = line.rsplit('-', 1)[0]
+    filename = os.path.basename(line)
+    # Filename format: <id>-<hash>.apk or <id>.apk or <id>_<version>.apk
+    # We try to extract app ID by splitting on '-'
+    if '-' in filename:
+        aid = filename.rsplit('-', 1)[0]
     else:
-        aid = line.rsplit('.', 1)[0]
-    apks[aid] = f'/data/media/0/Android/data/{pkg}/cache/{line}'
+        aid = filename.rsplit('.', 1)[0]
+    apks[aid] = line
 
 # Load report
 with open(report_path) as f:
