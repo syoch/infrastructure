@@ -396,23 +396,20 @@ bulk_download_all() {
     fi
     ui_dismiss_first_run
 
-    # 3. Long-press to enter select mode
-    adb shell input swipe 540 480 540 480 1500
+    # 3-5. Select all apps. There is a "Select All" button in the bottom left
+    # (shows the total number of apps, e.g. "27"). Tapping it selects all
+    # apps in the list and enters selection mode automatically.
+    # The button is at bounds [24,1464][201,1584]. Center: x=112, y=1524.
+    log_info "Tapping Select All button"
+    adb shell input tap 112 1524
     sleep 2
 
-    # 4-5. Select all visible apps by tapping each row. The list
-    # viewport fits about 5 app rows. After each pass, scroll down to
-    # the next batch. We stop when the bottom counter equals the
-    # visible total OR after a max number of iterations.
-    local max_passes=20
+    # Verify we are in selection mode by checking the counter
     local selected=0
-    for ((pass = 0; pass < max_passes; pass++)); do
-        # Check the bottom-left counter to see how many are selected.
-        # The counter is a content-desc at bounds [24,1464][201,1584].
-        local counter
-        counter=$(adb shell uiautomator dump /sdcard/ui.xml 2>/dev/null \
-            && adb pull /sdcard/ui.xml /tmp/_oi_counter.xml 2>/dev/null \
-            && python3 -c "
+    local counter
+    counter=$(adb shell uiautomator dump /sdcard/ui.xml 2>/dev/null \
+        && adb pull /sdcard/ui.xml /tmp/_oi_counter.xml 2>/dev/null \
+        && python3 -c "
 import xml.etree.ElementTree as ET, re
 t = ET.parse('/tmp/_oi_counter.xml')
 for c in t.getroot().iter():
@@ -424,20 +421,12 @@ for c in t.getroot().iter():
             print(d)
             break
 " 2>/dev/null)
-        if [[ -n "${counter:-}" ]] && [[ "${counter:-0}" =~ ^[0-9]+$ ]] && (( counter > 0 )); then
-            selected=$counter
-            log_debug "Bulk select pass $pass: $counter apps selected"
-        fi
-        # Tap each row in the visible viewport. Row y-centers: 480, 696, 912, 1128, 1344.
-        for y in 480 696 912 1128 1344; do
-            adb shell input tap 540 $y
-            sleep 0.3
-        done
-        # Scroll down to reveal more apps
-        ui_scroll_apps_list up 1
-        sleep 1
-    done
-    log_info "Selected $selected apps in bulk"
+    if [[ -n "${counter:-}" ]] && [[ "${counter:-0}" =~ ^[0-9]+$ ]] && (( counter > 0 )); then
+        selected=$counter
+        log_info "Selected $selected apps in bulk"
+    else
+        log_warn "Select All may have failed (counter=$counter)"
+    fi
 
     # 6. Tap "Install/update selected apps"
     if ! ui_tap_text_contains "Install/update selected apps" 2>/dev/null; then
