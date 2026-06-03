@@ -282,8 +282,12 @@ for APP_JSON in "${APPS[@]}"; do
         APP_NAME="$STORED_NAME"
     fi
 
-    # --download (skippable)
-    if [[ $OI_SKIP_DOWNLOAD -eq 1 ]]; then
+    # --download (skippable). When --phase is "import" or "all", skip
+    # the per-app download step entirely. "all" runs the bulk download
+    # phase after the per-app import loop finishes, so per-app downloads
+    # would be redundant work. "download" re-runs only the bulk download
+    # phase on a pre-populated emulator.
+    if [[ $OI_SKIP_DOWNLOAD -eq 1 ]] || [[ "$OI_PHASE" != "download" ]]; then
         DOWNLOAD_STATUS="skipped"
         ERROR_MSG=""
     else
@@ -412,7 +416,7 @@ done
 # download all of them at once. This is much faster than per-app
 # download + wait (which takes 30s-300s per app due to APK download
 # time + UI navigation overhead).
-if [[ "$OI_PHASE" != "import" ]] && [[ $OI_SKIP_DOWNLOAD -eq 0 ]]; then
+if [[ "$OI_PHASE" == "all" || "$OI_PHASE" == "download" ]] && [[ $OI_SKIP_DOWNLOAD -eq 0 ]]; then
     bulk_download_all
 fi
 
