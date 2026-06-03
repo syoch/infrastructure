@@ -1300,3 +1300,50 @@ footer {
   background: rgba(255, 82, 82, 0.1);
 }
 
+/* URL/Source validation warning */
+.app-warning-text {
+  font-size: 0.75rem;
+  color: #ffa726;
+  margin-top: 4px;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-source-badge {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.source-recommendation {
+  font-size: 0.8rem;
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  color: #81c784;
+  line-height: 1.4;
+}
+
+.validation-warning {
+  font-size: 0.8rem;
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 167, 38, 0.1);
+  border: 1px solid rgba(255, 167, 38, 0.3);
+  color: #ffa726;
+  line-height: 1.4;
+}
+
+.toast-warning {
+  background: #e65100;
+  color: white;
+}
+

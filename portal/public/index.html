@@ -358,11 +358,14 @@
             <div class="form-group col-6">
               <label for="edit-app-source">ソース元タイプ</label>
               <select id="edit-app-source">
+                <option value="">Auto-detect (推奨)</option>
                 <option value="GitHub">GitHub</option>
                 <option value="HTML">HTML (Self-Hosted / WebScrape)</option>
                 <option value="F-Droid">F-Droid</option>
                 <option value="GitLab">GitLab</option>
+                <option value="APKPure">APKPure</option>
               </select>
+              <div id="source-recommendation" class="source-recommendation" style="display: none;"></div>
             </div>
             <div class="form-group col-6">
               <label>カテゴリの選択</label>
@@ -394,6 +397,19 @@
                 </div>
                 <span style="font-size: 0.75rem; color: var(--color-text-muted); margin-left: 26px; line-height: 1.4;">アップデート通知のためのバージョン比較ロジックを有効にします。</span>
               </label>
+            </div>
+          </div>
+
+          <div class="form-row" style="margin-top: 20px;">
+            <div class="form-group col-12">
+              <label style="font-size: 0.9rem; font-weight: 500;">APK フィルタ (apkFilterRegEx / invertAPKFilter)</label>
+              <div style="display: flex; gap: 12px; align-items: center; margin-top: 6px;">
+                <input type="text" id="edit-setting-apk-filter" placeholder="正規表現パターン (例: .*arm64.*\\.apk)" style="flex: 1; font-size: 0.85rem; padding: 6px 10px; background: rgba(0,0,0,0.15); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--color-text);">
+                <label class="checkbox-label" style="display: flex; align-items: center; gap: 6px; margin: 0; white-space: nowrap;">
+                  <input type="checkbox" id="edit-setting-invert-filter"> 反転 (invert)
+                </label>
+              </div>
+              <span style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 4px; display: block;">正規表現に一致する APK のみダウンロードします。「反転」を有効にすると、一致する APK を除外します。</span>
             </div>
           </div>
 

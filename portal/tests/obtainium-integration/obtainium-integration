@@ -59,6 +59,7 @@ Options:
   --output-dir DIR             Where to write report (default: ./results/obtainium-integration/<ts>)
   --apps N                     Only test the first N apps
   --filter REGEX               Only test apps whose id/name matches REGEX
+  --mode MODE                 bulk|individual (default: bulk)
   --skip-source-html           Skip self-hosted apps (overrideSource=HTML)
   --skip-download              Skip APK download trigger/verification (A2 lite)
   --phase PHASE                Run only one phase: import|download|all (default: all)
@@ -74,6 +75,7 @@ Options:
 Examples:
   $0 --backup-tarball ~/backup-20260601.tgz
   $0 --backup-tarball ~/backup.tgz --apps 3 --emulator-mode docker
+  $0 --backup-tarball ~/backup.tgz --mode individual --timeout 120
 EOF
 }
 
@@ -86,6 +88,7 @@ OI_FILTER=""
 OI_SKIP_HTML=0
 OI_SKIP_DOWNLOAD=0
 OI_PHASE="all"
+OI_MODE="bulk"
 OI_TIMEOUT=300
 OI_OBTAINIUM_VERSION=""
 OI_KEEP_PORTAL=0
@@ -99,6 +102,7 @@ while [[ $# -gt 0 ]]; do
         --output-dir)       OI_OUTPUT_DIR="$2"; shift 2 ;;
         --apps)             OI_APPS_LIMIT="$2"; shift 2 ;;
         --filter)           OI_FILTER="$2"; shift 2 ;;
+        --mode)             OI_MODE="$2"; shift 2 ;;
         --skip-source-html) OI_SKIP_HTML=1; shift ;;
         --skip-download)    OI_SKIP_DOWNLOAD=1; shift ;;
         --phase)            OI_PHASE="$2"; shift 2 ;;
@@ -160,267 +164,33 @@ adb shell am start -n "${OI_OBTAINIUM_PKG}/dev.imranr.obtainium.MainActivity" >/
 sleep 3
 ui_dismiss_first_run
 
-# 7. Iterate over apps
-log_info "Iterating over apps in export"
+# 7. Generate apps list
+log_info "Preparing apps list"
 python3 "$OI_ROOT/lib/filter_apps.py" "$EXPORT_JSON" "$OI_APPS_LIMIT" "$OI_FILTER" "$OI_SKIP_HTML" \
     >"$OI_TMP_DIR/apps.txt"
 TOTAL=$(wc -l <"$OI_TMP_DIR/apps.txt" | tr -d ' ')
 log_info "Will test $TOTAL apps"
 
-INDEX=0
-# Read the apps into an array first. Using `while read; done < file` here
-# is fragile: any subshell or external command inside the loop body
-# (e.g. `adb shell` and the `python3 - ... <<'PY'` heredocs) can inherit
-# the redirected stdin and silently consume the rest of the file, causing
-# the loop to terminate after the first iteration.
-mapfile -t APPS <"$OI_TMP_DIR/apps.txt"
-INDEX=0
-for APP_JSON in "${APPS[@]}"; do
-    INDEX=$((INDEX + 1))
-    [[ -z "$APP_JSON" ]] && continue
-
-    APP_ID=$(python3 -c "import json,sys; print(json.loads(sys.argv[1])['id'])" "$APP_JSON")
-    APP_NAME=$(python3 -c "import json,sys; print(json.loads(sys.argv[1]).get('name','?'))" "$APP_JSON")
-    APP_URL=$(python3 -c "import json,sys; print(json.loads(sys.argv[1]).get('url','?'))" "$APP_JSON")
-    APP_SOURCE=$(python3 -c "import json,sys; print(json.loads(sys.argv[1]).get('overrideSource') or 'auto')" "$APP_JSON")
-    IS_SELF_HOSTED=$(is_self_hosted_app "$APP_JSON")
-
-    log_info "[$INDEX/$TOTAL] $APP_NAME ($APP_ID) [$APP_SOURCE, self-hosted=$IS_SELF_HOSTED]"
-
-    START=$(date +%s)
-    IMPORT_STATUS="failed"
-    DOWNLOAD_STATUS="skipped"
-    APK_PATH=""
-    ERROR_MSG=""
-
-    # --bring Obtainium to the foreground and re-dismiss any pending dialogs
-    # (notifications permission, Google Play Protect, etc.) before each app.
-    # We also force-stop and re-launch from the launcher so that any in-app
-    # navigation state from the previous iteration (e.g. stuck on an app
-    # detail page) is cleared — the app always opens to the Apps tab.
-    adb shell am force-stop "${OI_OBTAINIUM_PKG}" >/dev/null 2>&1 || true
-    adb shell monkey -p "${OI_OBTAINIUM_PKG}" -c android.intent.category.LAUNCHER 1 \
-        >/dev/null 2>&1 || \
-        adb shell am start -n "${OI_OBTAINIUM_PKG}/dev.imranr.obtainium.MainActivity" >/dev/null 2>&1 || true
-    sleep 2
-    ui_dismiss_first_run
-    # Diagnostic: save UI state and a short screen summary (only with --debug)
-    [[ -n "${OI_DEBUG:-}" ]] && _oi_diag_screen "pre_${APP_ID//\//_}"
-
-    # --send deep link (open Obtainium import dialog)
-    if ! DEEP_URL=$(build_deep_link "$APP_JSON"); then
-        ERROR_MSG="Failed to build deep link"
-        END=$(date +%s); DUR=$((END-START))
-        report_add_app "$APP_ID" "$APP_NAME" "$APP_URL" "$APP_SOURCE" "$IS_SELF_HOSTED" \
-            "failed" "skipped" "$DUR" "" "$ERROR_MSG"
-        report_running_summary
-        continue
-    fi
-    send_deep_link "$DEEP_URL"
-
-    # The deep link can trigger a permission dialog (e.g. Obtainium needs
-    # to be brought to the foreground) or a system dialog that the
-    # pre-deep-link dismiss missed. Run another dismiss pass to clear
-    # anything that just appeared.
-    sleep 1
-    ui_dismiss_first_run
-
-    # --wait for confirmation dialog. The wait is wrapped in a dismiss
-    # loop so that a permission dialog that appears mid-wait doesn't
-    # block the test until OI_TIMEOUT. Each iteration: dismiss whatever
-    # is on screen, then check for "Continue" with a 2s poll.
-    elapsed=0
-    while (( elapsed < OI_TIMEOUT )); do
-        ui_dismiss_first_run
-        if ui_wait_for_text "Continue" 2 1 >/dev/null; then
-            break
-        fi
-        sleep 3
-        elapsed=$((elapsed + 5))
-    done
-    if (( elapsed >= OI_TIMEOUT )); then
-        ERROR_MSG="Confirmation dialog did not appear (timeout ${OI_TIMEOUT}s)"
-        END=$(date +%s); DUR=$((END-START))
-        report_add_app "$APP_ID" "$APP_NAME" "$APP_URL" "$APP_SOURCE" "$IS_SELF_HOSTED" \
-            "failed" "skipped" "$DUR" "" "$ERROR_MSG"
-        report_running_summary
-        continue
-    fi
-
-    # --tap Continue
-    if ! ui_tap_text "Continue" 2>/dev/null; then
-        # The dialog might be the welcome dialog that we already dismissed
-        # Try tapping "OK" instead
-        ui_tap_text "OK" 2>/dev/null || true
-        sleep 1
-    fi
-
-    # --wait briefly for import to complete, then verify DB
-    sleep 3
-    # After tapping Continue, an error dialog may appear if the source
-    # resolution failed (e.g. HTML scrape found no release). Dismiss it
-    # before checking the DB.
-    ui_dismiss_first_run
-    if [[ "$(verify_db_has_app "$APP_ID")" == "1" ]]; then
-        IMPORT_STATUS="success"
-        log_pass "Imported $APP_ID"
+# 8. Run Import and Download (Python Automator)
+if [[ "$OI_MODE" == "individual" ]]; then
+    log_info "Running individual download test (one-by-one)..."
+    chmod +x "$OI_ROOT/lib/individual_download.py"
+    if [[ $OI_SKIP_DOWNLOAD -eq 1 ]] || [[ "$OI_PHASE" == "import" ]]; then
+        python3 -u "$OI_ROOT/lib/individual_download.py" "$OI_TMP_DIR/apps.txt" "$OI_OUTPUT_DIR/report.json" "--skip-download"
     else
-        ERROR_MSG="App not present in Obtainium DB after import (or no release was resolved)"
-        END=$(date +%s); DUR=$((END-START))
-        report_add_app "$APP_ID" "$APP_NAME" "$APP_URL" "$APP_SOURCE" "$IS_SELF_HOSTED" \
-            "failed" "skipped" "$DUR" "" "$ERROR_MSG"
-        report_running_summary
-        continue
+        python3 -u "$OI_ROOT/lib/individual_download.py" "$OI_TMP_DIR/apps.txt" "$OI_OUTPUT_DIR/report.json" "--timeout" "$OI_TIMEOUT"
     fi
-
-    # --use the actual name Obtainium stored (may differ from the export's
-    # "name" field; Obtainium re-fetches the name from the source URL on
-    # import, e.g. for GitHub releases the name is the repo name).
-    STORED_NAME=$(verify_db_app_name "$APP_ID")
-    if [[ -n "$STORED_NAME" && "$STORED_NAME" != "$APP_NAME" ]]; then
-        log_debug "Stored name differs from export name: '$APP_NAME' -> '$STORED_NAME'"
-        APP_NAME="$STORED_NAME"
-    fi
-
-    # --download (skippable). When --phase is "import" or "all", skip
-    # the per-app download step entirely. "all" runs the bulk download
-    # phase after the per-app import loop finishes, so per-app downloads
-    # would be redundant work. "download" re-runs only the bulk download
-    # phase on a pre-populated emulator.
-    if [[ $OI_SKIP_DOWNLOAD -eq 1 ]] || [[ "$OI_PHASE" != "download" ]]; then
-        DOWNLOAD_STATUS="skipped"
-        ERROR_MSG=""
+else
+    log_info "Running fast Python automator for Phase 1 & 2..."
+    chmod +x "$OI_ROOT/lib/fast_runner.py"
+    if [[ $OI_SKIP_DOWNLOAD -eq 1 ]] || [[ "$OI_PHASE" == "import" ]]; then
+        python3 -u "$OI_ROOT/lib/fast_runner.py" "$OI_TMP_DIR/apps.txt" "$OI_OUTPUT_DIR/report.json" "--skip-download"
     else
-        # Navigate explicitly to the Apps tab and find the newly-imported
-        # app entry. After import, the user may be on a different tab, the
-        # app list may not have refreshed yet, or the new entry may be
-        # below the fold of a long apps list. We try in this order:
-        #  1. Make sure Obtainium is in foreground, then wait 5s for the
-        #     name — it often appears at the top of the list immediately.
-        #  2. If not visible, tap the Apps tab and scroll-to-top in case
-        #     a previous iteration left the list scrolled.
-        #  3. Search the list with up to 8 swipes; each swipe scrolls
-        #     ~one screenful so the new entry comes into view.
-        log_info "Navigating to Apps tab..."
-        sleep 2
-        # Make sure Obtainium is in foreground
-        adb shell am start -n "${OI_OBTAINIUM_PKG}/dev.imranr.obtainium.MainActivity" >/dev/null 2>&1 || true
-        sleep 1
-        # Make sure we're on the Apps tab.
-        if ! ui_tap_text_contains "Tab 1 of 4" 2>/dev/null; then
-            [[ -n "${OI_DEBUG:-}" ]] && _oi_diag_screen "fail_tab_${APP_ID//\//_}"
-            DOWNLOAD_STATUS="skipped"
-            ERROR_MSG="Could not navigate to Apps tab"
-        else
-            # Reset the list scroll to top in case a previous iteration
-            # left it scrolled down. A few swipes is enough; the list
-            # won't scroll past the first entry.
-            ui_scroll_list_to_top 5
-            # Obtainium's "Some errors occurred" dialog (a batched report
-            # of all import errors so far) tends to pop up on its own
-            # when the apps list is opened, especially when many imports
-            # have failed (rate limits, 404, scrape misses). Dismiss it
-            # before searching, and also periodically during the search
-            # in case it pops back up.
-            ui_dismiss_first_run
-            # Now search: first check without scrolling (gives the new
-            # entry a chance to already be visible), then scroll-search
-            # up to 12 swipes. Total wait is bounded by the 18s timeout
-            # in ui_wait_for_text_in_list. The function now does
-            # batch-swipes (3 at a time) for speed.
-            if ! ui_wait_for_text_in_list "$APP_NAME" 18 12 >/dev/null; then
-                # One more attempt after a dismiss in case a dialog was
-                # blocking the list view all along.
-                ui_dismiss_first_run
-                if ! ui_wait_for_text_in_list "$APP_NAME" 8 4 >/dev/null; then
-                    DOWNLOAD_STATUS="skipped"
-                    ERROR_MSG="App entry '$APP_NAME' not found in apps list after scroll-search"
-                fi
-            fi
-        fi
-        # At this point we should be on Apps tab with the app visible (unless ERROR_MSG is set)
-        if [[ -z "$ERROR_MSG" ]]; then
-            if ui_tap_text_contains "$APP_NAME" 2>/dev/null; then
-                sleep 3
-                # Dismiss any dialog that appeared on top of the detail page.
-                ui_dismiss_first_run
-                # Look for an "Install" / "Get" / "Update" button. We use
-                # substring-match first because the button label may have
-                # extra text (e.g. "INSTALL", "Install app", or an icon
-                # with content-desc but no text). Fall back to exact-match
-                # in case the substring matches the wrong element.
-                # NOTE: "Update" means the app is already installed and we're
-                # updating it. On some emulator images (with built-in GMS),
-                # system apps like com.android.vending show "Update". Since
-                # we want to test fresh downloads, skip Update in this test.
-                if ui_tap_text_contains "Install" 2>/dev/null \
-                    || ui_tap_text_contains "Get" 2>/dev/null \
-                    || ui_tap_text "Install" 2>/dev/null \
-                    || ui_tap_text "Get" 2>/dev/null; then
-                     log_info "Triggered install for $APP_ID; waiting for download..."
-                    # Wait up to OI_TIMEOUT for the APK to land. Poll every
-                    # 10s to reduce adb shell overhead (each call takes 2-3s).
-                    # Also check for error dialogs that indicate the download
-                    # will not complete (e.g. "Error 404", "Could not find release").
-                    elapsed=0
-                    dump_file=""
-                    error_text=""
-                    while (( elapsed < OI_TIMEOUT )); do
-                        # Check for download error dialogs (e.g. "Error 404",
-                        # "Error downloading", "Could not find release", etc.).
-                        # These are common with failed GitHub releases or scrapes.
-                        dump_file=$(ui_dump) || { sleep 10; elapsed=$((elapsed + 10)); continue; }
-                        if grep -qiE '(text|content-desc)="(Error|Could not|Not found|404|403|Network|Connection failed|Failed to|No suitable release)"' "$dump_file" 2>/dev/null; then
-                            # Error dialog detected; extract the error text
-                            error_text=$(grep -oiE '(text|content-desc)="[^"]*Error[^"]*"' "$dump_file" 2>/dev/null | head -1 | cut -d'"' -f2)
-                            [[ -n "$error_text" ]] || error_text="Download error detected"
-                            DOWNLOAD_STATUS="failed"
-                            ERROR_MSG="$error_text"
-                            log_fail "Download failed for $APP_ID: $error_text"
-                            break
-                        fi
-                        APK_PATH=$(verify_find_apk "$APP_ID")
-                        if [[ -n "$APK_PATH" ]]; then
-                            DOWNLOAD_STATUS="success"
-                            log_pass "Downloaded $APP_ID -> $APK_PATH"
-                            break
-                        fi
-                        sleep 10
-                        elapsed=$((elapsed + 10))
-                    done
-                    if [[ "$DOWNLOAD_STATUS" != "success" ]] && [[ -z "$ERROR_MSG" ]]; then
-                        DOWNLOAD_STATUS="failed"
-                        ERROR_MSG="APK not found after ${OI_TIMEOUT}s"
-                        log_fail "Download timed out: $APP_ID"
-                    fi
-                else
-                    DOWNLOAD_STATUS="skipped"
-                    ERROR_MSG="No Install/Get/Update button on app detail page"
-                fi
-            else
-                DOWNLOAD_STATUS="skipped"
-                ERROR_MSG="Could not tap app entry $APP_NAME on apps list"
-            fi
-        fi
+        python3 -u "$OI_ROOT/lib/fast_runner.py" "$OI_TMP_DIR/apps.txt" "$OI_OUTPUT_DIR/report.json" "--timeout" "$OI_TIMEOUT"
     fi
-
-    END=$(date +%s); DUR=$((END-START))
-    report_add_app "$APP_ID" "$APP_NAME" "$APP_URL" "$APP_SOURCE" "$IS_SELF_HOSTED" \
-        "$IMPORT_STATUS" "$DOWNLOAD_STATUS" "$DUR" "$APK_PATH" "$ERROR_MSG"
-    report_running_summary
-done
-
-# 7.5 Bulk download phase (only when --phase is "all" or "download", and
-# downloads weren't skipped). After the per-app loop above, all apps in
-# the export are imported. Now use Obtainium's bulk-install UI to
-# download all of them at once. This is much faster than per-app
-# download + wait (which takes 30s-300s per app due to APK download
-# time + UI navigation overhead).
-if [[ "$OI_PHASE" == "all" || "$OI_PHASE" == "download" ]] && [[ $OI_SKIP_DOWNLOAD -eq 0 ]]; then
-    bulk_download_all
 fi
 
-# 8. Finalize
+# 9. Finalize
 report_finalize
 
 # 9. Print pointers

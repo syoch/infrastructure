@@ -83,12 +83,42 @@ export function safeURL(url) {
   if (!url) return '#';
   const lower = url.trim().toLowerCase();
   if (
-    lower.startsWith('http://') || 
-    lower.startsWith('https://') || 
+    lower.startsWith('http://') ||
+    lower.startsWith('https://') ||
     lower.startsWith('obtainium://') ||
     (lower.startsWith('/') && !lower.startsWith('//'))
   ) {
     return url;
   }
   return '#';
+}
+
+// URL ↔ Source validation
+
+const URL_SOURCE_MAP = [
+  { source: 'GitHub',  pattern: /^https?:\/\/github\.com\/[^/]+\/[^/]+/ },
+  { source: 'GitLab',  pattern: /^https?:\/\/gitlab\.com\/[^/]+\/[^/]+/ },
+  { source: 'F-Droid', pattern: /^https?:\/\/(f-droid\.org|fdroid\.github\.io)/ },
+  { source: 'APKPure', pattern: /^https?:\/\/([^/]+\.)?apkpure\.(com|net)/ },
+  { source: 'HTML',    pattern: /^\// },
+];
+
+export function detectSourceFromUrl(url) {
+  if (!url) return null;
+  const trimmed = url.trim();
+  for (const { source, pattern } of URL_SOURCE_MAP) {
+    if (pattern.test(trimmed)) return source;
+  }
+  return null;
+}
+
+export function validateUrlSourceMatch(url, source) {
+  if (!source) return { valid: true, warning: null };
+  const detected = detectSourceFromUrl(url);
+  if (!detected) return { valid: true, warning: null };
+  if (detected === source) return { valid: true, warning: null };
+  return {
+    valid: false,
+    warning: `この URL は ${detected} として自動検出されます。手動で「${source}」に設定されています。Auto-detect に変更することを推奨します。`
+  };
 }

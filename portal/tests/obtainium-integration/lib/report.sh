@@ -140,7 +140,9 @@ Summary: {s['total']} apps / {s['imported']} imported / {s['downloaded']} downlo
 ")
     {
         echo "$summary"
-        cat "$OI_REPORT_TXT"
+        if [[ -f "$OI_REPORT_TXT" ]]; then
+            cat "$OI_REPORT_TXT"
+        fi
     } >"$OI_TMP_DIR/report.tmp"
     mv "$OI_TMP_DIR/report.tmp" "$OI_REPORT_TXT"
 

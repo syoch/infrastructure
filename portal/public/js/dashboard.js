@@ -1,11 +1,12 @@
 import { saveApp, deleteApp, saveSettings, compileSettings, uploadLocalAPK, deleteLocalAPK, importObtainiumConfig, restoreBackup } from './api.js';
-import { showToast, applyCategoryStyleToElement, getCategoryColorStyle, getCategoryModalColorPreview, colorIntToHex, parseHexToColorInt, escapeHTML, safeURL } from './ui.js';
+import { showToast, applyCategoryStyleToElement, getCategoryColorStyle, getCategoryModalColorPreview, colorIntToHex, parseHexToColorInt, escapeHTML, safeURL, validateUrlSourceMatch, detectSourceFromUrl } from './ui.js';
 
 
 let dashboardApps = [];
 let globalSettings = {};
 let onDataChangedCallback = null;
 let dashboardSortDirection = null; // null, 'asc', 'desc'
+let saveConfirmPending = false;
 
 function showCustomToast(msg, type = 'info', duration = 3000) {
   let toast = document.getElementById('custom-toast');
@@ -137,13 +138,23 @@ export function renderDashboardAppsList(apps, categories = {}) {
   sortedApps.forEach(app => {
     const row = document.createElement('tr');
     row.className = 'app-row';
-    
+
     const categoriesHtml = (app.categories || []).map(cat => {
       const colorCode = categories[cat];
       const colorStyle = getCategoryColorStyle(colorCode);
       return `<span class="category-tag" data-cat="${escapeHTML(cat)}" style="${colorStyle}">${escapeHTML(cat)}</span>`;
     }).join(' ') || '<span class="color-text-muted">-</span>';
-    
+
+    // URL/source mismatch warning
+    const { valid, warning } = validateUrlSourceMatch(app.url, app.overrideSource);
+    const detected = detectSourceFromUrl(app.url);
+    let sourceLabel = app.overrideSource || 'Auto';
+    let warningHtml = '';
+    if (!valid && warning) {
+      sourceLabel = `⚠️ ${app.overrideSource}`;
+      warningHtml = `<div class="app-warning-text" title="${escapeHTML(warning)}">${escapeHTML(warning)}</div>`;
+    }
+
     row.innerHTML = `
       <td>
         <div class="app-identity">
@@ -154,9 +165,11 @@ export function renderDashboardAppsList(apps, categories = {}) {
       <td><div class="category-tags">${categoriesHtml}</div></td>
       <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
         <span style="color: var(--accent-secondary); font-size: 0.85rem;">${escapeHTML(app.url)}</span>
+        ${warningHtml}
       </td>
       <td style="text-align: right;">
         <div class="table-actions" style="justify-content: flex-end; gap: 8px;">
+          <span class="app-source-badge">${escapeHTML(sourceLabel)}</span>
           <button class="btn btn-secondary btn-sm quick-edit-btn" data-id="${escapeHTML(app.id)}">簡易編集</button>
           <button class="btn btn-secondary btn-sm delete-app-btn" data-id="${escapeHTML(app.id)}" style="color: #ff5252; border-color: rgba(255, 82, 82, 0.2);">削除</button>
         </div>
@@ -310,6 +323,8 @@ export function showDetailedEdit(id) {
     return;
   }
 
+  saveConfirmPending = false;
+
   if (dashboardView) dashboardView.style.display = 'none';
   if (appEditView) appEditView.style.display = 'block';
 
@@ -317,7 +332,7 @@ export function showDetailedEdit(id) {
   editAppName.value = app.name;
   editAppId.value = app.id;
   editAppUrl.value = app.url;
-  editAppSource.value = app.overrideSource || 'GitHub';
+  editAppSource.value = app.overrideSource || '';
 
   // Update dynamic URL input state based on source
   if (editAppSource.value === 'HTML') {
@@ -327,6 +342,35 @@ export function showDetailedEdit(id) {
     editAppUrl.disabled = false;
   }
 
+  // Show auto-detect recommendation
+  function updateSourceRecommendation() {
+    const rec = document.getElementById('source-recommendation');
+    if (!rec) return;
+    const url = editAppUrl.value.trim();
+    const source = editAppSource.value;
+    if (!source) {
+      const detected = detectSourceFromUrl(url);
+      if (detected) {
+        rec.textContent = `💡 この URL は ${detected} として自動検出されます`;
+        rec.style.display = 'block';
+      } else {
+        rec.style.display = 'none';
+      }
+    } else {
+      const { valid, warning } = validateUrlSourceMatch(url, source);
+      if (!valid && warning) {
+        rec.textContent = `⚠️ ${warning}`;
+        rec.style.display = 'block';
+      } else {
+        rec.style.display = 'none';
+      }
+    }
+  }
+
+  updateSourceRecommendation();
+  editAppUrl.addEventListener('input', updateSourceRecommendation);
+  editAppSource.addEventListener('change', updateSourceRecommendation);
+
   renderCategoryCheckboxes('detailed-categories-checkboxes', app.categories || []);
   if (editAppCategories) editAppCategories.value = '';
 
@@ -334,6 +378,11 @@ export function showDetailedEdit(id) {
   editSettingPrerelease.checked = addSettings.includePrereleases || false;
   editSettingFallback.checked = addSettings.fallbackToOlderReleases !== false;
   editSettingVersionDetect.checked = addSettings.versionDetection !== false;
+
+  const apkFilterInput = document.getElementById('edit-setting-apk-filter');
+  const invertFilterInput = document.getElementById('edit-setting-invert-filter');
+  if (apkFilterInput) apkFilterInput.value = addSettings.apkFilterRegEx || '';
+  if (invertFilterInput) invertFilterInput.checked = addSettings.invertAPKFilter || false;
   
   editDeleteBtn.onclick = () => handleDeleteApp(app.id);
 
@@ -796,18 +845,31 @@ export function initDashboard(onDataChanged) {
         
       const categories = Array.from(new Set([...checkedCategories, ...customCats]));
 
+      const currentApp = dashboardApps.find(a => a.id === appId);
       const appData = {
         id: appId,
         name: editAppName.value,
         url: editAppUrl.value.trim(),
-        overrideSource: editAppSource.value,
+        overrideSource: editAppSource.value || null,
         categories: categories,
         additionalSettings: {
+          ...(currentApp?.additionalSettings || {}),
           includePrereleases: editSettingPrerelease.checked,
           fallbackToOlderReleases: editSettingFallback.checked,
-          versionDetection: editSettingVersionDetect.checked
+          versionDetection: editSettingVersionDetect.checked,
+          apkFilterRegEx: document.getElementById('edit-setting-apk-filter')?.value || '',
+          invertAPKFilter: document.getElementById('edit-setting-invert-filter')?.checked || false
         }
       };
+
+      // 2-step save lock: warn on first save if URL/source mismatch
+      const { valid } = validateUrlSourceMatch(appData.url, appData.overrideSource);
+      if (!valid && !saveConfirmPending) {
+        saveConfirmPending = true;
+        showCustomToast('⚠️ URL とソース元の組み合わせに問題がある可能性があります。もう一度「保存」を押して確認してください。', 'warning', 5000);
+        return;
+      }
+      saveConfirmPending = false;
 
       try {
         await saveApp(appData);
