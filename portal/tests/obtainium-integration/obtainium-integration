@@ -350,22 +350,22 @@ for APP_JSON in "${APPS[@]}"; do
                     || ui_tap_text_contains "Get" 2>/dev/null \
                     || ui_tap_text "Install" 2>/dev/null \
                     || ui_tap_text "Get" 2>/dev/null; then
-                    log_info "Triggered install for $APP_ID; waiting for download..."
+                     log_info "Triggered install for $APP_ID; waiting for download..."
                     # Wait up to OI_TIMEOUT for the APK to land. Poll every
                     # 10s to reduce adb shell overhead (each call takes 2-3s).
                     # Also check for error dialogs that indicate the download
                     # will not complete (e.g. "Error 404", "Could not find release").
                     elapsed=0
+                    dump_file=""
+                    error_text=""
                     while (( elapsed < OI_TIMEOUT )); do
                         # Check for download error dialogs (e.g. "Error 404",
                         # "Error downloading", "Could not find release", etc.).
                         # These are common with failed GitHub releases or scrapes.
-                        local dump
-                        dump=$(ui_dump) || { sleep 10; elapsed=$((elapsed + 10)); continue; }
-                        if grep -qiE '(text|content-desc)="(Error|Could not|Not found|404|403|Network|Connection failed|Failed to|No suitable release)"' "$dump" 2>/dev/null; then
+                        dump_file=$(ui_dump) || { sleep 10; elapsed=$((elapsed + 10)); continue; }
+                        if grep -qiE '(text|content-desc)="(Error|Could not|Not found|404|403|Network|Connection failed|Failed to|No suitable release)"' "$dump_file" 2>/dev/null; then
                             # Error dialog detected; extract the error text
-                            local error_text
-                            error_text=$(grep -oiE '(text|content-desc)="[^"]*Error[^"]*"' "$dump" 2>/dev/null | head -1 | cut -d'"' -f2)
+                            error_text=$(grep -oiE '(text|content-desc)="[^"]*Error[^"]*"' "$dump_file" 2>/dev/null | head -1 | cut -d'"' -f2)
                             [[ -n "$error_text" ]] || error_text="Download error detected"
                             DOWNLOAD_STATUS="failed"
                             ERROR_MSG="$error_text"
