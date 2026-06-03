@@ -259,7 +259,7 @@ class ObtainiumRepoExtension(BaseExtension):
                     arch_str = f"_{apk.architecture}" if apk.architecture else ""
                     export_filename = f"{safe_name}_{apk.app_id}_v{apk.version}{arch_str}.apk"
                     
-                    download_url = f"{base_url}/api/apps/download/{apk.id}"
+                    download_url = f"{base_url}/api/apps/download/{apk.id}/{export_filename}"
                     html_lines.append(f'    <li>')
                     html_lines.append(f'      <a href="{download_url}">{export_filename}</a>')
                     html_lines.append(f'      <span class="version">{apk.version}</span>')
@@ -275,43 +275,54 @@ class ObtainiumRepoExtension(BaseExtension):
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"Error generating scraping HTML: {str(e)}")
 
+        def _serve_download_impl(apk_id: int, db: Session):
+            """Shared implementation for APK download."""
+            apk = db.query(LocalAppAPK).options(selectinload(LocalAppAPK.app)).filter_by(id=apk_id).first()
+            if not apk:
+                raise HTTPException(status_code=404, detail=f"APK record not found for ID: {apk_id}")
+
+            if not apk.app:
+                raise HTTPException(status_code=404, detail=f"App associated with APK ID {apk_id} does not exist.")
+
+            storage_ext = self.storage_ext
+            if not storage_ext:
+                raise HTTPException(status_code=500, detail="Storage provider is not initialized.")
+            filepath = storage_ext.get_file_path(apk.file_hash)
+
+            if not os.path.exists(filepath):
+                raise HTTPException(status_code=404, detail=f"APK file not found on disk: {apk.file_hash}.apk")
+
+            app_name = apk.app.name
+            safe_name = "".join(c for c in app_name if c.isalnum() or c in (' ', '_', '-')).strip()
+            safe_name = safe_name.replace(' ', '_')
+            arch_str = f"_{apk.architecture}" if apk.architecture else ""
+            export_filename = f"{safe_name}_{apk.app_id}_v{apk.version}{arch_str}.apk"
+
+            safe_filename_quoted = urllib.parse.quote(export_filename)
+            headers = {
+                "Content-Disposition": f"attachment; filename*=UTF-8''{safe_filename_quoted}"
+            }
+            return FileResponse(
+                path=filepath,
+                media_type="application/vnd.android.package-archive",
+                headers=headers
+            )
+
+        @self.router.get("/api/apps/download/{apk_id}/{filename}")
+        def serve_download_apk_with_filename(apk_id: int, filename: str = "", db: Session = Depends(get_db)):
+            """Streams APK file. URL includes filename for Obtainium HTML source provider matching."""
+            try:
+                return _serve_download_impl(apk_id, db)
+            except HTTPException:
+                raise
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Error serving download: {str(e)}")
+
         @self.router.get("/api/apps/download/{apk_id}")
         def serve_download_apk(apk_id: int, db: Session = Depends(get_db)):
-            """Streams the physical APK file from storage with dynamic filename renaming."""
+            """Streams APK file. Legacy route without filename in URL."""
             try:
-                apk = db.query(LocalAppAPK).options(selectinload(LocalAppAPK.app)).filter_by(id=apk_id).first()
-                if not apk:
-                    raise HTTPException(status_code=404, detail=f"APK record not found for ID: {apk_id}")
-
-                if not apk.app:
-                    raise HTTPException(status_code=404, detail=f"App associated with APK ID {apk_id} does not exist.")
-
-                # Resolve file path dynamically from storage extension
-                storage_ext = self.storage_ext
-                if not storage_ext:
-                    raise HTTPException(status_code=500, detail="Storage provider is not initialized.")
-                filepath = storage_ext.get_file_path(apk.file_hash)
-
-                if not os.path.exists(filepath):
-                    raise HTTPException(status_code=404, detail=f"APK file not found on disk: {apk.file_hash}.apk")
-
-                # Formulate user-friendly download filename
-                app_name = apk.app.name
-                safe_name = "".join(c for c in app_name if c.isalnum() or c in (' ', '_', '-')).strip()
-                safe_name = safe_name.replace(' ', '_')
-                arch_str = f"_{apk.architecture}" if apk.architecture else ""
-                export_filename = f"{safe_name}_{apk.app_id}_v{apk.version}{arch_str}.apk"
-
-                # Standard RFC-compliant Content-Disposition header
-                safe_filename_quoted = urllib.parse.quote(export_filename)
-                headers = {
-                    "Content-Disposition": f"attachment; filename*=UTF-8''{safe_filename_quoted}"
-                }
-                return FileResponse(
-                    path=filepath,
-                    media_type="application/vnd.android.package-archive",
-                    headers=headers
-                )
+                return _serve_download_impl(apk_id, db)
             except HTTPException:
                 raise
             except Exception as e:

@@ -74,7 +74,7 @@ class ObtainiumConfigCompiler:
                 or latest_apk.version.lower().startswith('r')
             ) else "v"
             filename = f"{escaped_name}_{app.id}_{v_prefix}{latest_apk.version}{arch_str}.apk"
-            apk_download_url = f"{base_url}/api/apps/download/{latest_apk.id}"
+            apk_download_url = f"{base_url}/api/apps/download/{latest_apk.id}/{filename}"
             apk_urls = [[filename, apk_download_url]]
             other_asset_urls = []
             latest_version = latest_apk.version
