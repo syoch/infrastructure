@@ -347,9 +347,10 @@ for APP_JSON in "${APPS[@]}"; do
                     || ui_tap_text_contains "Update" 2>/dev/null \
                     || ui_tap_text "Install" 2>/dev/null \
                     || ui_tap_text "Get" 2>/dev/null \
-                    || ui_tap_text "Update" 2>/dev/null; then
+                     || ui_tap_text "Update" 2>/dev/null; then
                     log_info "Triggered install for $APP_ID; waiting for download..."
-                    # Wait up to OI_TIMEOUT for the APK to land
+                    # Wait up to OI_TIMEOUT for the APK to land. Poll every
+                    # 10s to reduce adb shell overhead (each call takes 2-3s).
                     elapsed=0
                     while (( elapsed < OI_TIMEOUT )); do
                         APK_PATH=$(verify_find_apk "$APP_ID")
@@ -358,8 +359,8 @@ for APP_JSON in "${APPS[@]}"; do
                             log_pass "Downloaded $APP_ID -> $APK_PATH"
                             break
                         fi
-                        sleep 5
-                        elapsed=$((elapsed + 5))
+                        sleep 10
+                        elapsed=$((elapsed + 10))
                     done
                     if [[ "$DOWNLOAD_STATUS" != "success" ]]; then
                         DOWNLOAD_STATUS="failed"

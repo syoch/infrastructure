@@ -97,36 +97,27 @@ verify_package_installed() {
 # Obtainium v1.4+ stores downloaded APKs in:
 #   /data/media/0/Android/data/<pkg>/cache/<id>-<hash>.apk   (downloaded)
 #   /data/media/0/Android/data/<pkg>/files/app_data/<id>/    (organized per-app)
-#   and the app's private files dir as well.
+# NOTE: we skip the private files dir and recursive find because they are
+# too slow (adb shell hangs for several seconds). If the APK isn't in
+# the common locations, the download likely failed.
 verify_find_apk() {
     local app_id="$1"
     local pkg="${OI_OBTAINIUM_PKG}"
     local path
     # 1) Per-app organized directory (after import organizes the APK)
-    path=$(adb shell "ls /data/media/0/Android/data/${pkg}/files/app_data/${app_id}/ 2>/dev/null" 2>/dev/null \
+    path=$(timeout 5 adb shell "ls /data/media/0/Android/data/${pkg}/files/app_data/${app_id}/ 2>/dev/null" 2>/dev/null \
         | tr -d '\r' | grep '\.apk$' | head -1)
     if [[ -n "$path" ]]; then
         echo "/data/media/0/Android/data/${pkg}/files/app_data/${app_id}/${path}"
         return 0
     fi
     # 2) Cache directory (downloaded but not yet organized)
-    path=$(adb shell "ls /data/media/0/Android/data/${pkg}/cache/ 2>/dev/null" 2>/dev/null \
+    path=$(timeout 5 adb shell "ls /data/media/0/Android/data/${pkg}/cache/ 2>/dev/null" 2>/dev/null \
         | tr -d '\r' | grep "^${app_id}.*\.apk$" | head -1)
     if [[ -n "$path" ]]; then
         echo "/data/media/0/Android/data/${pkg}/cache/${path}"
         return 0
     fi
-    # 3) Private files dir
-    path=$(adb shell "run-as ${pkg} sh -c 'ls files/app_data/${app_id}/ 2>/dev/null'" 2>/dev/null \
-        | tr -d '\r' | grep '\.apk$' | head -1)
-    if [[ -n "$path" ]]; then
-        echo "files/app_data/${app_id}/${path}"
-        return 0
-    fi
-    # 4) Recursive search as last resort
-    path=$(adb shell "find /data/media/0/Android/data/${pkg}/ -name '*.apk' 2>/dev/null" 2>/dev/null \
-        | tr -d '\r' | grep -i "$app_id" | head -1)
-    echo "$path"
 }
 
 # Get the current "latest version" of an app from Obtainium's app_data JSON.
