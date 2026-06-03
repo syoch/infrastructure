@@ -407,8 +407,8 @@ bulk_download_all() {
     # Verify we are in selection mode by checking the counter
     local selected=0
     local counter
-    counter=$(adb shell uiautomator dump /sdcard/ui.xml 2>/dev/null \
-        && adb pull /sdcard/ui.xml /tmp/_oi_counter.xml 2>/dev/null \
+    counter=$(adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 \
+        && adb pull /sdcard/ui.xml /tmp/_oi_counter.xml >/dev/null 2>&1 \
         && python3 -c "
 import xml.etree.ElementTree as ET, re
 t = ET.parse('/tmp/_oi_counter.xml')
@@ -420,7 +420,7 @@ for c in t.getroot().iter():
         if d.isdigit():
             print(d)
             break
-" 2>/dev/null)
+" 2>/dev/null || true)
     if [[ -n "${counter:-}" ]] && [[ "${counter:-0}" =~ ^[0-9]+$ ]] && (( counter > 0 )); then
         selected=$counter
         log_info "Selected $selected apps in bulk"
@@ -450,7 +450,7 @@ for c in t.getroot().iter():
     while (( elapsed < OI_TIMEOUT )); do
         # Count APKs in Obtainium's cache
         local count
-        count=$(adb shell "ls /data/media/0/Android/data/${OI_OBTAINIUM_PKG}/cache/ 2>/dev/null | grep -c '\.apk\$'" 2>/dev/null | tr -d '\r\n ')
+        count=$(adb shell "ls /data/media/0/Android/data/${OI_OBTAINIUM_PKG}/cache/ 2>/dev/null | grep -c '\.apk\$'" 2>/dev/null | tr -d '\r\n ' || true)
         count=${count:-0}
         if [[ "$count" -gt 0 ]]; then
             if [[ "$count" -eq "$last_count" ]]; then

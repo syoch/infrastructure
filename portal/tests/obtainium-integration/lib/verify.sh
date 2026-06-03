@@ -49,7 +49,7 @@ verify_db_has_app() {
     fi
     if [[ -z "$result" ]]; then
         # Fallback: list the directory and grep for the filename
-        result=$(adb shell "ls /data/media/0/Android/data/${OI_OBTAINIUM_PKG}/files/app_data/ 2>/dev/null" 2>/dev/null | grep -c "^${app_id}\.json$" 2>/dev/null)
+        result=$(adb shell "ls /data/media/0/Android/data/${OI_OBTAINIUM_PKG}/files/app_data/ 2>/dev/null" 2>/dev/null | grep -c "^${app_id}\.json$" 2>/dev/null || true)
         if [[ ! "$result" =~ ^[1-9][0-9]*$ ]]; then
             echo "0"
             return 0
