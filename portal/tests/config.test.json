@@ -18,6 +18,10 @@
     {
       "module": "servers.obtainium_repo",
       "class": "ObtainiumRepoExtension"
+    },
+    {
+      "module": "servers.control_plane",
+      "class": "ControlPlaneExtension"
     }
   ]
 }

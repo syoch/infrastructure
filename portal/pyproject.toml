@@ -12,15 +12,19 @@ dependencies = [
     "sqlalchemy",
     "pydantic",
     "python-multipart",
-    "psycopg2"
+    "psycopg2",
+    "jsonschema",
+    "websockets"
 ]
 
 [project.scripts]
 portal-server = "backend.main:main"
 portal-manage = "manage:main"
+portal-control-bridge = "servers.control_plane.bridge:main"
+portal-device-agent = "agents.device_agent:main"
 
 [tool.setuptools]
-packages = ["backend", "backend.core", "backend.utils", "backend.extensions", "servers", "servers.obtainium_repo", "servers.storage_manager"]
+packages = ["backend", "backend.core", "backend.utils", "backend.extensions", "servers", "servers.obtainium_repo", "servers.storage_manager", "servers.control_plane", "agents"]
 py-modules = ["manage"]
 
 [tool.setuptools.package-data]

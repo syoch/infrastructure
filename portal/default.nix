@@ -8,6 +8,8 @@
   pydantic,
   python-multipart,
   psycopg2,
+  websockets,
+  jsonschema,
   setuptools,
 }:
 
@@ -25,6 +27,8 @@ buildPythonApplication {
     pydantic
     python-multipart
     psycopg2
+    websockets
+    jsonschema
     setuptools
   ];
 

@@ -11,6 +11,7 @@ import {
   showDetailedEdit,
   closeAllModals
 } from './js/dashboard.js';
+import { initControlPlane, teardownControlPlane } from './js/control_dashboard.js';
 
 let allApps = [];
 let dashboardApps = [];
@@ -44,7 +45,7 @@ async function loadAllData() {
 }
 
 function showSection(sectionId) {
-  ['portal-view', 'dashboard-view', 'app-edit-view'].forEach(id => {
+  ['portal-view', 'dashboard-view', 'app-edit-view', 'control-view'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
       if (id === sectionId) {
@@ -63,11 +64,19 @@ function handleRouting() {
 
   const navPortal = document.getElementById('nav-portal');
   const navDashboard = document.getElementById('nav-dashboard');
+  const navControl = document.getElementById('nav-control');
 
   let activeSectionId = 'portal-view';
   const isAdminRoute = ['dashboard', 'list', 'new', 'edit'].includes(route);
 
-  if (isAdminRoute) {
+  if (route === 'control') {
+    activeSectionId = 'control-view';
+    if (navPortal) navPortal.classList.remove('active');
+    if (navDashboard) navDashboard.classList.remove('active');
+    if (navControl) navControl.classList.add('active');
+    teardownControlPlane();
+    initControlPlane();
+  } else if (isAdminRoute) {
     if (route === 'edit' && params.type === 'app') {
       activeSectionId = 'app-edit-view';
     } else {
@@ -75,10 +84,12 @@ function handleRouting() {
     }
     if (navPortal) navPortal.classList.remove('active');
     if (navDashboard) navDashboard.classList.add('active');
+    if (navControl) navControl.classList.remove('active');
   } else {
     activeSectionId = 'portal-view';
     if (navPortal) navPortal.classList.add('active');
     if (navDashboard) navDashboard.classList.remove('active');
+    if (navControl) navControl.classList.remove('active');
   }
 
   showSection(activeSectionId);

@@ -27,6 +27,10 @@ test-backend:
 	@echo "Running backend tests..."
 	python3 portal/tests/backend/test_backup_restore.py
 	python3 portal/tests/backend/verify_roundtrip.py
+	python3 portal/tests/backend/test_control_plane.py
+	python3 portal/tests/backend/test_control_plane_backup.py
+	python3 portal/tests/backend/test_control_plane_ws.py
+	python3 portal/tests/backend/test_device_agent.py
 
 test-e2e: portal/tests/node_modules
 	@echo "Running Playwright E2E tests..."

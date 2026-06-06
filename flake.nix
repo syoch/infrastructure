@@ -83,6 +83,8 @@
                 fastapi
                 uvicorn
                 python-multipart
+                websockets
+                jsonschema
               ]))
             ];
             text = ''
@@ -91,7 +93,10 @@
               echo "=== Running Python Backend Tests ==="
               python3 portal/tests/backend/test_backup_restore.py
               python3 portal/tests/backend/verify_roundtrip.py
-              python3 portal/tests/backend/test_export_schema.py
+              python3 portal/tests/backend/test_control_plane.py
+              python3 portal/tests/backend/test_control_plane_backup.py
+              python3 portal/tests/backend/test_control_plane_ws.py
+              python3 portal/tests/backend/test_device_agent.py
             '';
           };
           test-e2e = pkgs.writeShellApplication {
@@ -105,6 +110,7 @@
                 fastapi
                 uvicorn
                 python-multipart
+                jsonschema
               ]))
             ];
             text = ''
@@ -254,6 +260,8 @@
                 fastapi
                 uvicorn
                 python-multipart
+                websockets
+                jsonschema
               ]
             ))
           ];
@@ -277,6 +285,8 @@
                   fastapi
                   uvicorn
                   python-multipart
+                  websockets
+                  jsonschema
                 ]
               ))
             }/bin:$PATH
@@ -299,6 +309,7 @@
     ) // {
       nixosModules = {
         syoch-portal = ./nixos/portal-service.nix;
+        syoch-portal-device-agent = ./nixos/portal-device-agent.nix;
         web-infrastructure = ./nixos/web-infrastructure.nix;
         default = ./nixos;
       };

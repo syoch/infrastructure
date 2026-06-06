@@ -11,13 +11,14 @@ Obtainium と連携し、APK の配信・更新管理を行う。
 |-------------|------|
 | `portal/` | Python/FastAPI ベースの Portal Web アプリ |
 | `portal/backend/` | コアサーバー (extension loader, backup manager, database) |
-| `portal/servers/` | エクステンション (StorageManager, ObtainiumRepo) |
+| `portal/servers/` | エクステンション (StorageManager, ObtainiumRepo, **ControlPlane**) |
 | `portal/public/` | フロントエンド (SPA, vanilla JS) |
 | `portal/tests/` | E2E テスト (Playwright) + バックエンドテスト |
 | `portal/tests/obtainium-integration/` | Obtainium 統合試験 (AVD 使用) |
 | `nixos/` | NixOS モジュール (portal-service, web-infrastructure) |
 | `tailscale/` | Tailscale VPN 設定テンプレート |
 | `gamemcbe/` | Minecraft Bedrock Dedicated Server |
+| `.opencode/control-plane/` | Control plane 設計ドキュメント (Phase 1-10) |
 
 ## 開発環境
 
@@ -39,6 +40,7 @@ make test
 
 # バックエンドテストのみ
 make test-backend
+# 注: control_plane_ws テストは `nix develop` 環境 (websockets パッケージ) を必要とします
 
 # Playwright E2E テスト (pwd はリポジトリルート必須)
 make test-e2e
@@ -85,7 +87,15 @@ make test-obtainium-smoke BACKUP=path/to/backup.tgz
 - Portal サーバー: `http://localhost:8000` (テスト時)
 - テスト DB: `portal/tests/portal_test.db` (SQLite, WAL モード)
 - テスト設定: `portal/tests/config.test.json`
-
+- Control plane REST: `/api/control/{devices,acls,operations,commands,events}`
+- Control plane WS: `/api/control/devices/{device_id}/ws?token=tk_xxx`
+- Control plane bridge: `portal-control-bridge --server-url <...> --bootstrap-token <...>`
+- Device agent: `portal-device-agent --config /path/to/config.json` (generic shell-command-based)
+- Device dogfooding: `bridge.py` が `acl.*` / `device_admin.*` を advertise
+- WebUI: `#/control` ルート
+- Schema renderer: `portal/public/js/schema_renderer.js` (JSON Schema → form, `ui_hint.widget: json|textarea|password`)
+- Schema editor: `portal/public/js/schema_editor.js` (visual JSON Schema editor)
+- 設計: `.opencode/control-plane/PHASE{1..10}.md` を参照
 ## 注意事項
 
 - `nix develop` はリポジトリルートで実行してください (flake.nix の検索)
