@@ -106,7 +106,10 @@ def _http_register(server_url: str, device_id: str, display_name: str, bootstrap
     req = urllib.request.Request(
         f"{server_url.rstrip('/')}/api/control/devices/register",
         data=body, method="POST",
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type": "application/json",
+            "User-Agent": "portal-device-agent",
+        },
     )
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:

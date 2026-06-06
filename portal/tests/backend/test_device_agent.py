@@ -36,6 +36,7 @@ from agents.device_agent import (
     Agent,
     _build_command,
     _execute_shell,
+    _http_register,
     _interpolate,
     _load_credentials,
     _materialize_operation,
@@ -191,6 +192,34 @@ def test_execute_shell_timeout(tmp_dir):
 def _write_tmp_config(path: str, data: dict) -> None:
     with open(path, "w") as f:
         json.dump(data, f)
+
+
+def test_http_register_uses_custom_user_agent(tmp_dir):
+    captured = {}
+    real_open = urllib.request.urlopen
+
+    def fake_open(req, timeout=None):
+        captured["url"] = req.full_url
+        captured["method"] = req.method
+        captured["ua"] = req.get_header("User-agent")
+        captured["ct"] = req.get_header("Content-type")
+        class _Resp:
+            def read(self_inner): return b'{"bearer_token": "tk_x", "id": "d1"}'
+            def __enter__(self_inner): return self_inner
+            def __exit__(self_inner, *a): return False
+        return _Resp()
+
+    urllib.request.urlopen = fake_open
+    try:
+        info = _http_register("https://portal.example/", "d1", "D1", "bt")
+    finally:
+        urllib.request.urlopen = real_open
+    assert info == {"bearer_token": "tk_x", "id": "d1"}
+    assert captured["url"] == "https://portal.example/api/control/devices/register"
+    assert captured["method"] == "POST"
+    assert captured["ct"] == "application/json"
+    assert captured["ua"] == "portal-device-agent"
+    print("  -> http_register uses portal-device-agent UA: OK")
 
 
 def test_load_config_minimal(tmp_dir):
@@ -740,6 +769,7 @@ def main() -> int:
     _run("execute_shell_timeout", test_execute_shell_timeout)
     print()
     print("[unit: load/save config]")
+    _run("http_register_uses_custom_user_agent", test_http_register_uses_custom_user_agent)
     _run("load_config_minimal", test_load_config_minimal)
     _run("load_config_invalid", test_load_config_invalid)
     _run("credentials_roundtrip", test_credentials_roundtrip)
