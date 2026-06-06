@@ -43,6 +43,8 @@ def main():
         print(f"Loading extension: {ext.__class__.__name__}...")
         ext.setup()
         server.register_extension(ext)
+        if hasattr(ext, "install_event_loop_capture"):
+            ext.install_event_loop_capture(server.app)
         
     print("-" * 60)
     print("Available Portal Access URLs:")

@@ -77,4 +77,68 @@ test.describe('Schema Renderer E2E Tests', () => {
     });
     expect(stillAlive).toBe(true);
   });
+
+  test('operation button click opens modal', async () => {
+    // Mock the API responses
+    await page.route('**/api/control/devices/me', async route => {
+      await route.fulfill({ json: { id: "admin", is_first_webui_device: true } });
+    });
+    await page.route('**/api/control/devices', async route => {
+      await route.fulfill({ json: { devices: [
+        { id: "device1", display_name: "Device 1", ws_state: "online", is_first_webui_device: false }
+      ] } });
+    });
+    await page.route('**/api/control/operations', async route => {
+      await route.fulfill({ json: { operations: [
+        { 
+          id: "op1", 
+          name: "Test Op", 
+          group: "test", 
+          provider: "device:device1", 
+          params_schema: { type: "object", properties: { param1: { type: "string" } } } 
+        }
+      ] } });
+    });
+    await page.route('**/api/control/acls', async route => {
+      await route.fulfill({ json: { acls: [] } });
+    });
+    await page.route('**/api/control/commands', async route => {
+      await route.fulfill({ json: { commands: [] } });
+    });
+    // Mock SSE
+    await page.route('/api/control/events*', async route => {
+      await route.fulfill({ body: 'retry: 10000\n\n', contentType: 'text/event-stream' });
+    });
+
+    // We must ensure the UI thinks we have a token so it calls the APIs
+    await page.goto('/');
+    await page.evaluate(() => {
+      localStorage.setItem('syoch_control_token', 'dummy');
+    });
+    // Now go to control view directly, APIs will be called
+    await page.goto('/#/control');
+    await page.waitForLoadState('networkidle');
+
+    // Wait to see if #ops-list populates
+    await page.waitForTimeout(1000);
+
+    // Verify button exists
+    const btn = page.locator('#ops-list button', { hasText: 'Test Op' });
+    await expect(btn).toBeVisible();
+
+    // Click it
+    await btn.click();
+
+    // Verify modal appears
+    const modal = page.locator('.modal-backdrop.active');
+    await expect(modal).toBeVisible();
+
+    // Verify form content
+    await expect(modal.locator('h2')).toHaveText('Test Op');
+    await expect(modal.locator('input[type="text"]')).toBeVisible(); // param1 input
+
+    // Cancel
+    await modal.locator('button', { hasText: 'キャンセル' }).click();
+    await expect(modal).toBeHidden();
+  });
 });

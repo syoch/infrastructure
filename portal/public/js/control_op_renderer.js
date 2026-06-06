@@ -13,7 +13,7 @@ export function renderOpButton(op, onClick) {
 
 export function renderOpForm(op, sourceDeviceId, targetDeviceId, onSubmit) {
   const overlay = document.createElement("div");
-  overlay.className = "modal-backdrop";
+  overlay.className = "modal-backdrop active";
   overlay.style.display = "flex";
 
   const modal = document.createElement("div");
