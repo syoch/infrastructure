@@ -325,7 +325,22 @@ class Agent:
             print(f"[device-agent] credentials saved to {creds_path}", file=sys.stderr)
         return self.bearer_token
 
-    async def _register_ops(self, ws) -> None:
+    async def _consume_welcome(self, ws) -> list:
+        raw = await ws.recv()
+        try:
+            msg = json.loads(raw)
+        except json.JSONDecodeError:
+            print(f"[device-agent] non-JSON welcome: {raw!r}", file=sys.stderr)
+            return []
+        if msg.get("type") != "welcome":
+            print(f"[device-agent] unexpected first message: {msg.get('type')!r}", file=sys.stderr)
+            return []
+        pending = msg.get("pending_commands") or []
+        if pending:
+            print(f"[device-agent] welcome: {len(pending)} pending command(s) from server", file=sys.stderr)
+        return pending
+
+    async def _register_ops(self, ws, pending_commands: list = None) -> None:
         ops = _all_ops(self.config)
         await ws.send(json.dumps({"type": "operations_register", "operations": ops}))
         ack_raw = await ws.recv()
@@ -339,6 +354,18 @@ class Agent:
             return
         self._registered_ops = ops
         print(f"[device-agent] registered {ack.get('count', 0)} operations", file=sys.stderr)
+
+    async def _drain_pending(self, ws, pending: list) -> None:
+        for cmd in pending:
+            await self._process_command(ws, {
+                "type": "command",
+                "command_id": cmd["command_id"],
+                "operation": cmd["operation"],
+                "params": cmd.get("params") or {},
+                "timeout_seconds": cmd.get("timeout_seconds") or 60,
+                "claim_token": cmd.get("claim_token"),
+                "source_device_id": cmd.get("source_device_id"),
+            })
 
     async def _send_claim(self, ws, command_id: str, claim_token: str) -> bool:
         await ws.send(json.dumps({"type": "claim", "command_id": command_id, "claim_token": claim_token}))
@@ -462,7 +489,10 @@ class Agent:
         })
 
     async def _serve(self, ws) -> None:
+        pending = await self._consume_welcome(ws)
         await self._register_ops(ws)
+        if pending:
+            await self._drain_pending(ws, pending)
         while True:
             if self._reload_event.is_set():
                 self.reload_config()

@@ -222,6 +222,61 @@ def test_http_register_uses_custom_user_agent(tmp_dir):
     print("  -> http_register uses portal-device-agent UA: OK")
 
 
+def test_consume_welcome_returns_pending_commands(tmp_dir):
+    import asyncio
+    cfg_path = os.path.join(tmp_dir, "dummy.json")
+    _write_tmp_config(cfg_path, {"device_id": "d1", "server_url": "http://x", "bootstrap_token": "x"})
+    class _WS:
+        def __init__(self, payload):
+            self._payload = payload
+            self.received = None
+        async def recv(self):
+            return self._payload
+        async def send(self, raw):
+            self.received = raw
+    ws = _WS(json.dumps({
+        "type": "welcome",
+        "device_id": "d1",
+        "display_name": "D1",
+        "is_first_webui_device": False,
+        "pending_commands": [
+            {"command_id": "c1", "operation": "device.info", "params": {},
+             "timeout_seconds": 30, "claim_token": "tk", "source_device_id": "webui"},
+            {"command_id": "c2", "operation": "device.info", "params": {},
+             "timeout_seconds": 30, "claim_token": "tk2", "source_device_id": "webui"},
+        ],
+    }))
+    agent = Agent(cfg_path)
+    pending = asyncio.run(agent._consume_welcome(ws))
+    assert len(pending) == 2
+    assert pending[0]["command_id"] == "c1"
+    print("  -> consume_welcome returns pending commands: OK")
+
+
+def test_consume_welcome_with_no_pending(tmp_dir):
+    import asyncio
+    cfg_path = os.path.join(tmp_dir, "dummy.json")
+    _write_tmp_config(cfg_path, {"device_id": "d1", "server_url": "http://x", "bootstrap_token": "x"})
+    class _WS:
+        async def recv(self): return json.dumps({"type": "welcome", "pending_commands": []})
+    agent = Agent(cfg_path)
+    pending = asyncio.run(agent._consume_welcome(_WS()))
+    assert pending == []
+    print("  -> consume_welcome with empty pending: OK")
+
+
+def test_consume_welcome_non_welcome_first_message(tmp_dir):
+    import asyncio
+    cfg_path = os.path.join(tmp_dir, "dummy.json")
+    _write_tmp_config(cfg_path, {"device_id": "d1", "server_url": "http://x", "bootstrap_token": "x"})
+    class _WS:
+        async def recv(self): return json.dumps({"type": "operations_registered", "count": 0})
+    agent = Agent(cfg_path)
+    pending = asyncio.run(agent._consume_welcome(_WS()))
+    assert pending == []
+    print("  -> consume_welcome tolerates non-welcome first message: OK")
+
+
 def test_load_config_minimal(tmp_dir):
     p = os.path.join(tmp_dir, "config.json")
     _write_tmp_config(p, {
@@ -770,6 +825,9 @@ def main() -> int:
     print()
     print("[unit: load/save config]")
     _run("http_register_uses_custom_user_agent", test_http_register_uses_custom_user_agent)
+    _run("consume_welcome_returns_pending", test_consume_welcome_returns_pending_commands)
+    _run("consume_welcome_empty_pending", test_consume_welcome_with_no_pending)
+    _run("consume_welcome_non_welcome_first", test_consume_welcome_non_welcome_first_message)
     _run("load_config_minimal", test_load_config_minimal)
     _run("load_config_invalid", test_load_config_invalid)
     _run("credentials_roundtrip", test_credentials_roundtrip)
