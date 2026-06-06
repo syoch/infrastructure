@@ -35,13 +35,7 @@ export async function initControlPlane() {
     return;
   }
   await refreshAll();
-  subscribeSse(handleSseEvent);
-  _sseUnsub = () => {
-    if (_sseUnsub && typeof _sseUnsub === "function") {
-      _sseUnsub();
-      _sseUnsub = null;
-    }
-  };
+  _sseUnsub = subscribeSse(handleSseEvent);
   startAutoRefresh();
 }
 

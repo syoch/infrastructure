@@ -57,4 +57,24 @@ test.describe('Schema Renderer E2E Tests', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(500);
   });
+
+  test('control <-> dashboard navigation does not crash (no stack overflow)', async () => {
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message || String(e)));
+    await page.goto('/#/control');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(300);
+    await page.goto('/#/dashboard');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(300);
+    await page.goto('/#/control');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(500);
+    expect(errors).toEqual([]);
+    const stillAlive = await page.evaluate(() => {
+      const el = document.getElementById('control-view');
+      return el && el.querySelector('h2') !== null;
+    });
+    expect(stillAlive).toBe(true);
+  });
 });
