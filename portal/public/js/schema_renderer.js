@@ -1,4 +1,5 @@
 import { escapeHTML } from "./ui.js";
+import { renderSchemaEditor } from "./schema_editor.js";
 
 /**
  * schema_renderer.js — render an HTML form from a JSON Schema, suitable for
@@ -355,6 +356,20 @@ function renderNode(schema, ctx) {
   if (schema.const !== undefined) return renderConst(schema, ctx);
   if (schema.oneOf || schema.anyOf) return renderOneOf(schema, ctx);
   if (schema.enum) return renderString({ ...schema, type: "string" }, ctx);
+
+  if (schema.ui_hint?.widget === "schema_editor") {
+    const container = makeEl("div", {});
+    const editor = renderSchemaEditor(schema.default || { type: "object", properties: {} }, container);
+    return wrap({
+      el: container,
+      getValue: () => editor.getSchema(),
+      setValue: (v) => {
+        container.innerHTML = "";
+        const newEditor = renderSchemaEditor(v || { type: "object", properties: {} }, container);
+        editor.getSchema = newEditor.getSchema;
+      }
+    }, { title: schema.title, required: schema._required });
+  }
 
   const t = effectiveType(schema);
   switch (t) {

@@ -44,14 +44,20 @@ def _add_or_update_schema() -> dict:
                 "minimum": 1,
             },
             "params_schema": {
-                "type": "string",
-                "title": "params_schema (JSON Schema as JSON text)",
-                "ui_hint": {"widget": "json"},
+                "type": "object",
+                "title": "params_schema (JSON Schema)",
+                "ui_hint": {"widget": "schema_editor"},
             },
             "ui_hint": {
-                "type": "string",
-                "title": "ui_hint (JSON object as JSON text)",
-                "ui_hint": {"widget": "json"},
+                "type": "object",
+                "title": "ui_hint (UI Configuration)",
+                "properties": {
+                    "kind": {"type": "string", "enum": ["button", "form"]},
+                    "label": {"type": "string", "title": "Display Label"},
+                    "confirm": {"type": "boolean", "title": "Require Confirmation?"},
+                    "timeout_seconds": {"type": "integer", "title": "Timeout (seconds)"},
+                    "widget": {"type": "string", "enum": ["textarea", "password", "json", "schema_editor"], "title": "Widget (for string/object fields)"}
+                }
             },
         },
     }

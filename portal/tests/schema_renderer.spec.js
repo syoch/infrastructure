@@ -96,6 +96,30 @@ test.describe('Schema Renderer E2E Tests', () => {
           group: "test", 
           provider: "device:device1", 
           params_schema: { type: "object", properties: { param1: { type: "string" } } } 
+        },
+        {
+          id: "device.config.add_operation",
+          name: "Add Operation",
+          group: "device.config",
+          provider: "device:device1",
+          params_schema: {
+              type: "object",
+              required: ["id", "name", "command"],
+              properties: {
+                  id: { type: "string", title: "Operation ID" },
+                  name: { type: "string", title: "Display name" },
+                  command: { type: "string", title: "Command" },
+                  params_schema: { type: "object", title: "params_schema", ui_hint: { widget: "schema_editor" } },
+                  ui_hint: {
+                      type: "object",
+                      title: "ui_hint",
+                      properties: {
+                          kind: { type: "string", enum: ["button", "form"] },
+                          label: { type: "string" }
+                      }
+                  }
+              }
+          }
         }
       ] } });
     });
@@ -106,7 +130,7 @@ test.describe('Schema Renderer E2E Tests', () => {
       await route.fulfill({ json: { commands: [] } });
     });
     // Mock SSE
-    await page.route('/api/control/events*', async route => {
+    await page.route('**/api/control/events*', async route => {
       await route.fulfill({ body: 'retry: 10000\n\n', contentType: 'text/event-stream' });
     });
 
@@ -140,5 +164,21 @@ test.describe('Schema Renderer E2E Tests', () => {
     // Cancel
     await modal.locator('button', { hasText: 'キャンセル' }).click();
     await expect(modal).toBeHidden();
+    
+    // Now test the Add Operation form with schema_editor
+    const addBtn = page.locator('#ops-list button', { hasText: 'Add Operation' });
+    await expect(addBtn).toBeVisible();
+    await addBtn.click();
+    
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('h2')).toHaveText('Add Operation');
+    
+    // Verify the schema editor is rendered for params_schema
+    const schemaEditor = modal.locator('.schema-editor-root');
+    await expect(schemaEditor).toBeVisible();
+    
+    // Verify ui_hint form is rendered
+    const uiHintKind = modal.locator('select').filter({ hasText: 'button' });
+    await expect(uiHintKind).toBeVisible();
   });
 });
