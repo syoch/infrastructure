@@ -34,6 +34,8 @@ test-backend:
 	python3 portal/tests/backend/test_device_agent.py
 
 test-e2e: portal/tests/node_modules
+	@echo "Building frontend..."
+	cd portal/public && npm install && npm run build
 	@echo "Running Playwright E2E tests..."
 	cd portal/tests && npx playwright test
 

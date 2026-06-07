@@ -11,8 +11,21 @@
   websockets,
   jsonschema,
   setuptools,
+  buildNpmPackage,
 }:
 
+let
+  frontend = buildNpmPackage {
+    pname = "portal-frontend";
+    version = "0.1.0";
+    src = ./public;
+    npmDepsHash = "sha256-NE75Agamw3ztrgvbCD66JL5TIQbVgx1Eb+2Su40tmno=";
+    installPhase = ''
+      mkdir -p $out
+      cp -r dist $out/
+    '';
+  };
+in
 buildPythonApplication {
   pname = "portal";
   version = "0.1.0";
@@ -32,17 +45,18 @@ buildPythonApplication {
     setuptools
   ];
 
-  # public ディレクトリなど、実行時に必要な静的ファイルを site-packages にコピー
+  # ビルド時にフロントエンドの成果物を取り込む
   postInstall = ''
     SITE_PACKAGES=$out/${python.sitePackages}
     cp -r public $SITE_PACKAGES/
-    # もし他に実行時に必要なディレクトリがあればコピーする
-    # cp -r docs $SITE_PACKAGES/
+    # ビルド済みの dist を derivation からコピー（ソースの dist を上書き）
+    rm -rf $SITE_PACKAGES/public/dist
+    cp -r ${frontend}/dist $SITE_PACKAGES/public/
   '';
 
   meta = with lib; {
     description = "Android Device Provisioning Portal";
-    license = licenses.mit; # 適宜変更
+    license = licenses.mit;
     maintainers = [ ];
   };
 }

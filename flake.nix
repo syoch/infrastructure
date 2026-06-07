@@ -73,7 +73,9 @@
                 chmod +x $out/bin/ksud-next
               '';
             };
-          portal = pkgs.python3Packages.callPackage ./portal { };
+          portal = pkgs.python3Packages.callPackage ./portal {
+            buildNpmPackage = pkgs.buildNpmPackage;
+          };
           test-backend = pkgs.writeShellApplication {
             name = "run-backend-tests";
             runtimeInputs = with pkgs; [
