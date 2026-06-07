@@ -60,6 +60,13 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
     return r.json();
   }
 
+  function promoteToAdmin(deviceId) {
+    execSync(
+      `python3 manage.py --config tests/config.test.json control set-admin --device-id ${deviceId}`,
+      { cwd: path.join(__dirname, '..') }
+    );
+  }
+
   test('bootstrap flow: #/control without token shows bootstrap form', async () => {
     await page.goto('/');
     await page.evaluate(() => {
@@ -273,6 +280,52 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
       headers: { 'Authorization': `Bearer ${regResult.bearer_token}` },
     });
     expect(r.status()).toBe(400);
+  });
+
+  test('bootstrap token management (admin only)', async () => {
+    const adminId = uniqueId('admin');
+    const adminBootstrapToken = issueToken(adminId, 'Admin User');
+    const regResult = await registerDevice(adminBootstrapToken, adminId, 'Admin User');
+    promoteToAdmin(adminId);
+
+    await page.goto('/');
+    await page.evaluate(({ tok, dId }) => {
+      localStorage.setItem('syoch_control_token', tok);
+      localStorage.setItem('syoch_control_device_id', dId);
+    }, { tok: regResult.bearer_token, dId: adminId });
+
+    await page.goto('/#/control/devices');
+    await expect(page.locator('h2', { hasText: 'Bootstrap Tokens' })).toBeVisible();
+
+    // Mock prompt for issue token
+    const targetDevId = 'new-device-999';
+    page.on('dialog', async dialog => {
+      if (dialog.message().includes('Target Device ID')) {
+        await dialog.accept(targetDevId);
+      } else if (dialog.message().includes('Display Name')) {
+        await dialog.accept('New Test Device');
+      } else if (dialog.message().includes('TTL in minutes')) {
+        await dialog.accept('30');
+      } else if (dialog.message().includes('Token issued successfully')) {
+        expect(dialog.message()).toContain('ID:');
+        await dialog.accept();
+      } else if (dialog.message().includes('を失効させますか')) {
+        await dialog.accept();
+      }
+    });
+
+    await page.click('#issue-token-btn');
+
+    // Verify token appears in list
+    const tokenRow = page.locator('#tokens-list tr').filter({ hasText: targetDevId });
+    await expect(tokenRow).toBeVisible();
+    await expect(tokenRow).toContainText('Pending');
+
+    // Revoke token
+    await tokenRow.locator('button', { hasText: 'Revoke' }).click();
+
+    // Verify token disappeared or changed
+    await expect(tokenRow).not.toBeVisible();
   });
 });
 

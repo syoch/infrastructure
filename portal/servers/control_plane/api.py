@@ -1,6 +1,7 @@
 import re
 import secrets
-from datetime import datetime
+import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from fastapi.responses import StreamingResponse
@@ -57,14 +58,61 @@ async def sse_events(
 
 
 def _device_to_dict(d: Device, include_token: bool = False) -> dict:
-    data = {
+    res = {
         "id": d.id,
         "display_name": d.display_name,
         "ws_state": d.ws_state,
+        "last_seen": d.last_seen.isoformat() + "Z" if d.last_seen else None,
+        "registered_at": d.registered_at.isoformat() + "Z" if d.registered_at else None,
         "is_first_webui_device": d.is_first_webui_device,
-        "last_seen": d.last_seen.isoformat() if d.last_seen else None,
-        "registered_at": d.registered_at.isoformat() if d.registered_at else None,
     }
+    if include_token:
+        res["bearer_token"] = d.bearer_token
+    return res
+
+
+def _acl_to_dict(a: DeviceACL) -> dict:
+    return {
+        "id": a.id,
+        "source_device": a.source_device,
+        "target_device": a.target_device,
+        "operation": a.operation,
+        "extra": a.extra,
+        "created_at": a.created_at.isoformat() + "Z" if a.created_at else None,
+    }
+
+
+def _operation_to_dict(o: OperationSpec) -> dict:
+    return {
+        "id": o.id,
+        "provider": o.provider,
+        "group": o.group,
+        "name": o.name,
+        "description": o.description,
+        "params_schema": o.params_schema,
+        "result_schema": o.result_schema,
+        "ui_hint": o.ui_hint,
+        "registered_at": o.registered_at.isoformat() + "Z" if o.registered_at else None,
+        "last_seen": o.last_seen.isoformat() + "Z" if o.last_seen else None,
+    }
+
+
+def _command_to_dict(c: CommandRequest) -> dict:
+    return {
+        "id": c.id,
+        "target_device_id": c.target_device_id,
+        "source_device_id": c.source_device_id,
+        "operation": c.operation,
+        "params": c.params,
+        "status": c.status,
+        "created_at": c.created_at.isoformat() + "Z" if c.created_at else None,
+        "claimed_at": c.claimed_at.isoformat() + "Z" if c.claimed_at else None,
+        "completed_at": c.completed_at.isoformat() + "Z" if c.completed_at else None,
+        "result": c.result,
+        "error": c.error,
+        "timeout_seconds": c.timeout_seconds,
+    }
+
     if include_token:
         data["bearer_token"] = d.bearer_token
     return data
@@ -104,13 +152,25 @@ def _command_to_dict(c: CommandRequest) -> dict:
         "operation": c.operation,
         "params": c.params,
         "status": c.status,
-        "created_at": c.created_at.isoformat() if c.created_at else None,
-        "claimed_at": c.claimed_at.isoformat() if c.claimed_at else None,
-        "completed_at": c.completed_at.isoformat() if c.completed_at else None,
+        "created_at": c.created_at,
+        "claimed_at": c.claimed_at,
+        "completed_at": c.completed_at,
         "result": c.result,
         "error": c.error,
         "timeout_seconds": c.timeout_seconds,
     }
+
+
+def _token_to_dict(t: DeviceBootstrapToken) -> dict:
+    return {
+        "id": t.id,
+        "device_id": t.device_id,
+        "display_name": t.display_name,
+        "expires_at": t.expires_at.isoformat() + "Z" if t.expires_at else None,
+        "consumed_at": t.consumed_at.isoformat() + "Z" if t.consumed_at else None,
+        "created_at": t.created_at.isoformat() + "Z" if t.created_at else None,
+    }
+
 
 
 class RegisterDeviceBody(BaseModel):
@@ -156,6 +216,18 @@ class CommandBody(BaseModel):
     @field_validator("target_device_id")
     @classmethod
     def _v_target_id(cls, v: str) -> str:
+        validate_device_id(v)
+        return v
+
+
+class TokenIssueBody(BaseModel):
+    device_id: str
+    display_name: str
+    ttl_minutes: int = Field(default=15, ge=1, le=1440)
+
+    @field_validator("device_id")
+    @classmethod
+    def _v_device_id(cls, v: str) -> str:
         validate_device_id(v)
         return v
 
@@ -210,6 +282,52 @@ def delete_device(
     db.delete(target)
     db.commit()
     return {"status": "success", "deleted": device_id}
+
+
+@router.get("/tokens")
+def list_tokens(
+    device: Device = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    tokens = db.query(DeviceBootstrapToken).order_by(DeviceBootstrapToken.created_at.desc()).all()
+    return {"tokens": [_token_to_dict(t) for t in tokens]}
+
+
+@router.post("/tokens")
+def issue_token(
+    body: TokenIssueBody,
+    device: Device = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    if db.query(Device).filter_by(id=body.device_id).first():
+        raise HTTPException(status_code=409, detail=f"device {body.device_id!r} is already registered")
+
+    token_id = str(uuid.uuid4())
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=body.ttl_minutes)
+    tok = DeviceBootstrapToken(
+        id=token_id,
+        device_id=body.device_id,
+        display_name=body.display_name,
+        expires_at=expires_at.replace(tzinfo=None), # Store as naive UTC in DB
+    )
+    db.add(tok)
+    db.commit()
+    db.refresh(tok)
+    return _token_to_dict(tok)
+
+
+@router.delete("/tokens/{token_id}")
+def delete_token(
+    token_id: str,
+    device: Device = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    tok = db.query(DeviceBootstrapToken).filter_by(id=token_id).first()
+    if not tok:
+        raise HTTPException(status_code=404, detail="token not found")
+    db.delete(tok)
+    db.commit()
+    return {"status": "success", "deleted": token_id}
 
 
 @router.post("/devices/{device_id}/set-admin")

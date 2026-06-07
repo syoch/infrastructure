@@ -104,6 +104,15 @@ export interface CommandRequest {
   error: string | null;
 }
 
+export interface BootstrapToken {
+  id: string;
+  device_id: string;
+  display_name: string;
+  expires_at: string;
+  consumed_at: string | null;
+  created_at: string;
+}
+
 export interface CommandsResponse {
   commands: CommandRequest[];
   total: number;
@@ -223,6 +232,19 @@ export async function patchDevice(deviceId: string, patch: Partial<Device>): Pro
 
 export async function deleteDevice(deviceId: string): Promise<{ status: string }> {
   return _req('DELETE', `/devices/${deviceId}`);
+}
+
+export async function fetchTokens(): Promise<BootstrapToken[]> {
+  const data = await _req<{ tokens: BootstrapToken[] }>('GET', '/tokens');
+  return data.tokens || [];
+}
+
+export async function issueToken(body: { device_id: string; display_name: string; ttl_minutes?: number }): Promise<BootstrapToken> {
+  return _req('POST', '/tokens', body);
+}
+
+export async function deleteToken(tokenId: string): Promise<{ status: string }> {
+  return _req('DELETE', `/tokens/${tokenId}`);
 }
 
 type SSEHandler = (data: unknown) => void;
