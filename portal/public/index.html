@@ -33,9 +33,21 @@
       
       <!-- Navigation Links -->
       <nav class="header-nav">
-        <a href="#/" class="nav-btn active" id="nav-portal">ポータル</a>
+        <a href="#/" class="nav-btn" id="nav-portal">ポータル</a>
         <a href="#/dashboard" class="nav-btn" id="nav-dashboard">ダッシュボード</a>
-        <a href="#/control" class="nav-btn" id="nav-control">コントロール</a>
+        <div class="nav-dropdown" id="control-dropdown">
+          <button class="nav-btn nav-dropdown-toggle" id="nav-control" aria-haspopup="true" aria-expanded="false">
+            コントロール
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-dropdown-caret">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <div class="nav-dropdown-menu" role="menu">
+            <a href="#/control/devices" class="nav-dropdown-item" role="menuitem" data-requires-admin="false">Devices</a>
+            <a href="#/control/acl" class="nav-dropdown-item" role="menuitem" data-requires-admin="true">ACL</a>
+          </div>
+        </div>
+        <a href="#/operations" class="nav-btn" id="nav-operations">オペレーション</a>
       </nav>
       
       <div class="server-status">
@@ -483,6 +495,10 @@
 
     <!-- Control plane view -->
     <div id="control-view" class="view-section" style="display: none;">
+    </div>
+
+    <!-- Operations view (top-level: ops + commands) -->
+    <div id="operations-view" class="view-section" style="display: none;">
     </div>
   </main>
 

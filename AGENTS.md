@@ -18,7 +18,7 @@ Obtainium と連携し、APK の配信・更新管理を行う。
 | `nixos/` | NixOS モジュール (portal-service, web-infrastructure) |
 | `tailscale/` | Tailscale VPN 設定テンプレート |
 | `gamemcbe/` | Minecraft Bedrock Dedicated Server |
-| `.opencode/control-plane/` | Control plane 設計ドキュメント (Phase 1-10) |
+| `.opencode/control-plane/` | Control plane 設計ドキュメント (Phase 1-12) |
 
 ## 開発環境
 
@@ -92,10 +92,13 @@ make test-obtainium-smoke BACKUP=path/to/backup.tgz
 - Control plane bridge: `portal-control-bridge --server-url <...> --bootstrap-token <...>`
 - Device agent: `portal-device-agent --config /path/to/config.json` (generic shell-command-based)
 - Device dogfooding: `bridge.py` が `acl.*` / `device_admin.*` を advertise
-- WebUI: `#/control` ルート
+- WebUI: `#/control` ルート (Phase 12 で分割: `#/control/devices`, `#/control/acl`, `#/operations`)
+- Control JS モジュール: `portal/public/js/control_{router,bootstrap,devices,acl,operations,api}.js`
+- Operations クエリ: `#/operations?status=&from=&to=&op=&limit=&offset=`
+- 管理者昇格 CLI: `python3 manage.py --config <cfg> control set-admin --device-id <id>`
 - Schema renderer: `portal/public/js/schema_renderer.js` (JSON Schema → form, `ui_hint.widget: json|textarea|password`)
 - Schema editor: `portal/public/js/schema_editor.js` (visual JSON Schema editor)
-- 設計: `.opencode/control-plane/PHASE{1..10}.md` を参照
+- 設計: `.opencode/control-plane/PHASE{1..12}.md` を参照
 ## 注意事項
 
 - `nix develop` はリポジトリルートで実行してください (flake.nix の検索)

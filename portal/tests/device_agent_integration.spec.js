@@ -5,6 +5,7 @@ const path = require('path');
 const os = require('os');
 
 test.describe('Device Agent Integration', () => {
+  test.setTimeout(60000);
   let browser;
   let context;
   let page;
@@ -43,7 +44,7 @@ test.describe('Device Agent Integration', () => {
 
   test.afterEach(async () => {
     if (context) await context.close();
-    
+
     if (agentProcess) {
       agentProcess.kill('SIGTERM');
       agentProcess = null;
@@ -53,23 +54,35 @@ test.describe('Device Agent Integration', () => {
     }
   });
 
+  function issueToken(deviceId, displayName) {
+    const out = execSync(
+      `python3 manage.py --config tests/config.test.json control issue-bootstrap-token --device-id ${deviceId} --display-name "${displayName}"`,
+      { cwd: path.join(__dirname, '..') }
+    ).toString();
+    const m = out.match(/Bootstrap token: ([\w-]+)/);
+    if (!m) throw new Error(`bootstrap token not found in: ${out}`);
+    return m[1];
+  }
+
+  function promoteToAdmin(deviceId) {
+    return execSync(
+      `python3 manage.py --config tests/config.test.json control set-admin --device-id ${deviceId}`,
+      { cwd: path.join(__dirname, '..') }
+    ).toString();
+  }
+
   test('full flow: issue tokens, register agent, execute command via webui', async () => {
     // 1. Issue bootstrap token for WebUI
-    const webuiOut = execSync('python3 manage.py --config tests/config.test.json control issue-bootstrap-token --device-id webui --display-name "Playwright WebUI"', {
-      cwd: '..'
-    }).toString();
-    const webuiToken = webuiOut.match(/Bootstrap token: ([\w-]+)/)[1];
+    const uniq = Date.now() + '-' + Math.floor(Math.random() * 1e6);
+    const webuiToken = issueToken(`webui-${uniq}`, 'Playwright WebUI');
 
     // 2. Issue bootstrap token for Agent
-    const agentOut = execSync('python3 manage.py --config tests/config.test.json control issue-bootstrap-token --device-id test-agent --display-name "Test Agent"', {
-      cwd: '..'
-    }).toString();
-    const agentToken = agentOut.match(/Bootstrap token: ([\w-]+)/)[1];
+    const agentToken = issueToken(`test-agent-${uniq}`, 'Test Agent');
 
     // 3. Create Agent config
     const agentConfigPath = path.join(tempDir, 'config.json');
     const config = {
-      device_id: "test-agent",
+      device_id: `test-agent-${uniq}`,
       display_name: "Test Agent",
       server_url: "http://127.0.0.1:8000",
       bootstrap_token: agentToken,
@@ -89,9 +102,9 @@ test.describe('Device Agent Integration', () => {
     };
     fs.writeFileSync(agentConfigPath, JSON.stringify(config));
 
-    // 4. Start Agent
+    // 4. Start Agent (cwd = portal/ so the device_agent finds the right DB module path)
     agentProcess = spawn('python3', ['-m', 'agents.device_agent', '--config', agentConfigPath], {
-      cwd: '..',
+      cwd: path.join(__dirname, '..'),
       stdio: 'pipe',
       env: { ...process.env, PYTHONPATH: '.' }
     });
@@ -106,7 +119,7 @@ test.describe('Device Agent Integration', () => {
     await page.waitForLoadState('networkidle');
 
     await expect(page.locator('#bootstrap-form')).toBeVisible();
-    await page.fill('input[name="device_id"]', 'webui');
+    await page.fill('input[name="device_id"]', `webui-${uniq}`);
     await page.fill('input[name="display_name"]', 'Playwright WebUI');
     await page.fill('input[name="bootstrap_token"]', webuiToken);
     await page.click('#bootstrap-form button[type="submit"]');
@@ -116,25 +129,38 @@ test.describe('Device Agent Integration', () => {
 
     // 6. Verify Devices
     // WebUI should be there
-    await expect(page.locator('#devices-list')).toContainText('webui');
+    await expect(page.locator('#devices-list')).toContainText(`webui-${uniq}`);
     // test-agent should be there and online
-    await expect(page.locator('#devices-list')).toContainText('test-agent');
-    
+    await expect(page.locator('#devices-list')).toContainText(`test-agent-${uniq}`);
+
     // We should see "online" for test-agent
-    const testAgentRow = page.locator('#devices-list tbody tr').filter({ hasText: 'test-agent' });
+    const testAgentRow = page.locator('#devices-list tbody tr').filter({ hasText: `test-agent-${uniq}` });
     await expect(testAgentRow).toContainText('online');
 
-    // 7. Create ACL to allow webui to command test-agent
-    await page.fill('#acl-form input[name="source_device"]', 'device:webui');
-    await page.fill('#acl-form input[name="target_device"]', 'device:test-agent');
+    // 7. Promote webui to admin via CLI (does not require existing admin)
+    //    This makes the test self-sufficient regardless of test ordering.
+    promoteToAdmin(`webui-${uniq}`);
+    // Reload to refresh the admin UI state
+    await page.reload();
+    await expect(page.locator('h2', { hasText: 'Devices' })).toBeVisible();
+
+    // 8. Create ACL to allow webui to command test-agent
+    await page.goto('/#/control/acl');
+    await page.waitForTimeout(500);
+    await expect(page.locator('h2', { hasText: 'ACL' })).toBeVisible();
+    await expect(page.locator('#acl-form')).toBeVisible();
+    await page.fill('#acl-form input[name="source_device"]', `device:webui-${uniq}`);
+    await page.fill('#acl-form input[name="target_device"]', `device:test-agent-${uniq}`);
     await page.fill('#acl-form input[name="operation"]', '.*');
     await page.click('#acl-form button[type="submit"]');
 
     // Verify ACL is added
-    await expect(page.locator('#acl-tbody')).toContainText('device:webui');
+    await expect(page.locator('#acl-tbody')).toContainText(`device:webui-${uniq}`);
 
-    // 8. Execute Command
-    const opBtn = page.locator('#ops-list button', { hasText: 'Echo Test Button' });
+    // 9. Execute Command via Operations page
+    await page.goto('/#/operations');
+    await expect(page.locator('h2', { hasText: 'Operations' })).toBeVisible();
+    const opBtn = page.locator('.provider-card button', { hasText: 'Echo Test Button' });
     await expect(opBtn).toBeVisible();
     await expect(opBtn).toBeEnabled();
 
@@ -148,14 +174,15 @@ test.describe('Device Agent Integration', () => {
     // Submit form to execute the command
     await modal.locator('button[type="submit"]').click();
 
-    // 9. Verify Command Execution
-    // The command list should eventually show "succeeded" and our output
-    const cmdsListFirstRow = page.locator('#cmds-list tbody tr').first();
+    // 10. Verify Command Execution
+    // Should auto-switch to Commands tab
+    await expect(page.locator('.control-tab.active', { hasText: 'Commands' })).toBeVisible();
+    const cmdsListFirstRow = page.locator('#cmds-pane tbody tr').first();
     await expect(cmdsListFirstRow).toBeVisible();
-    
+
     // Wait until status changes to 'succeeded'
     await expect(cmdsListFirstRow.locator('td:nth-child(5)')).toHaveText('succeeded', { timeout: 10000 });
-    
+
     // Verify result contains our echo output
     await expect(cmdsListFirstRow.locator('td:nth-child(8)')).toContainText('hello from agent integration test');
   });

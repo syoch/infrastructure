@@ -71,9 +71,26 @@ export async function fetchOperations() {
   return data.operations || [];
 }
 
-export async function fetchCommands() {
-  const data = await _req("GET", "/commands");
-  return data.commands || [];
+export async function fetchCommands(opts = {}) {
+  const { status, from, to, op, limit, offset } = opts;
+  const params = {};
+  if (status) params.status = status;
+  if (from) params.from = from;
+  if (to) params.to = to;
+  if (op) params.op = op;
+  if (limit !== undefined && limit !== null) params.limit = String(limit);
+  if (offset !== undefined && offset !== null) params.offset = String(offset);
+  const qs = Object.entries(params)
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join('&');
+  const path = qs ? `/commands?${qs}` : '/commands';
+  const data = await _req("GET", path);
+  return {
+    commands: data.commands || [],
+    total: data.total || 0,
+    limit: data.limit,
+    offset: data.offset,
+  };
 }
 
 export async function fetchCommand(id) {

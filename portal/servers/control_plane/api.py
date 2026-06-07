@@ -2,7 +2,7 @@ import re
 import secrets
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 from backend.core.database import get_db
@@ -348,16 +348,45 @@ def create_command(
 def list_commands(
     device: Device = Depends(get_current_device),
     db: Session = Depends(get_db),
-    limit: int = 50,
+    status: Optional[str] = None,
+    from_: Optional[datetime] = Query(None, alias="from"),
+    to: Optional[datetime] = None,
+    op: Optional[str] = None,
+    limit: int = 25,
+    offset: int = 0,
 ):
+    valid_statuses = {"pending", "claimed", "succeeded", "failed", "timeout", "cancelled"}
+    if status is not None and status not in valid_statuses:
+        raise HTTPException(
+            status_code=400,
+            detail=f"invalid status {status!r}, must be one of {sorted(valid_statuses)}",
+        )
     limit = max(1, min(limit, 200))
+    offset = max(0, offset)
+
+    q = db.query(CommandRequest)
+    if status is not None:
+        q = q.filter(CommandRequest.status == status)
+    if from_ is not None:
+        q = q.filter(CommandRequest.created_at >= from_)
+    if to is not None:
+        q = q.filter(CommandRequest.created_at <= to)
+    if op:
+        q = q.filter(CommandRequest.operation.like(f"%{op}%"))
+
+    total = q.count()
     rows = (
-        db.query(CommandRequest)
-        .order_by(CommandRequest.created_at.desc())
+        q.order_by(CommandRequest.created_at.desc())
+        .offset(offset)
         .limit(limit)
         .all()
     )
-    return {"commands": [_command_to_dict(c) for c in rows]}
+    return {
+        "commands": [_command_to_dict(c) for c in rows],
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
 
 
 @router.get("/commands/{command_id}")

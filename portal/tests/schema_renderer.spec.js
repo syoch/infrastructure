@@ -53,7 +53,7 @@ test.describe('Schema Renderer E2E Tests', () => {
   });
 
   test('control plane form renders for ACL create (json widget for extra)', async () => {
-    await page.goto('/#/control');
+    await page.goto('/#/control/devices');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(500);
   });
@@ -61,13 +61,13 @@ test.describe('Schema Renderer E2E Tests', () => {
   test('control <-> dashboard navigation does not crash (no stack overflow)', async () => {
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message || String(e)));
-    await page.goto('/#/control');
+    await page.goto('/#/control/devices');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(300);
     await page.goto('/#/dashboard');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(300);
-    await page.goto('/#/control');
+    await page.goto('/#/control/devices');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(500);
     expect(errors).toEqual([]);
@@ -90,12 +90,12 @@ test.describe('Schema Renderer E2E Tests', () => {
     });
     await page.route('**/api/control/operations', async route => {
       await route.fulfill({ json: { operations: [
-        { 
-          id: "op1", 
-          name: "Test Op", 
-          group: "test", 
-          provider: "device:device1", 
-          params_schema: { type: "object", properties: { param1: { type: "string" } } } 
+        {
+          id: "op1",
+          name: "Test Op",
+          group: "test",
+          provider: "device:device1",
+          params_schema: { type: "object", properties: { param1: { type: "string" } } }
         },
         {
           id: "device.config.add_operation",
@@ -126,8 +126,8 @@ test.describe('Schema Renderer E2E Tests', () => {
     await page.route('**/api/control/acls', async route => {
       await route.fulfill({ json: { acls: [] } });
     });
-    await page.route('**/api/control/commands', async route => {
-      await route.fulfill({ json: { commands: [] } });
+    await page.route('**/api/control/commands*', async route => {
+      await route.fulfill({ json: { commands: [], total: 0, limit: 25, offset: 0 } });
     });
     // Mock SSE
     await page.route('**/api/control/events*', async route => {
@@ -139,15 +139,15 @@ test.describe('Schema Renderer E2E Tests', () => {
     await page.evaluate(() => {
       localStorage.setItem('syoch_control_token', 'dummy');
     });
-    // Now go to control view directly, APIs will be called
-    await page.goto('/#/control');
+    // Navigate to operations page (where the buttons now live)
+    await page.goto('/#/operations');
     await page.waitForLoadState('networkidle');
 
-    // Wait to see if #ops-list populates
+    // Wait to see if provider cards populate
     await page.waitForTimeout(1000);
 
     // Verify button exists
-    const btn = page.locator('#ops-list button', { hasText: 'Test Op' });
+    const btn = page.locator('.provider-card button', { hasText: 'Test Op' });
     await expect(btn).toBeVisible();
 
     // Click it
@@ -164,19 +164,19 @@ test.describe('Schema Renderer E2E Tests', () => {
     // Cancel
     await modal.locator('button', { hasText: 'キャンセル' }).click();
     await expect(modal).toBeHidden();
-    
+
     // Now test the Add Operation form with schema_editor
-    const addBtn = page.locator('#ops-list button', { hasText: 'Add Operation' });
+    const addBtn = page.locator('.provider-card button', { hasText: 'Add Operation' });
     await expect(addBtn).toBeVisible();
     await addBtn.click();
-    
+
     await expect(modal).toBeVisible();
     await expect(modal.locator('h2')).toHaveText('Add Operation');
-    
+
     // Verify the schema editor is rendered for params_schema
     const schemaEditor = modal.locator('.schema-editor-root');
     await expect(schemaEditor).toBeVisible();
-    
+
     // Verify ui_hint form is rendered
     const uiHintKind = modal.locator('select').filter({ hasText: 'button' });
     await expect(uiHintKind).toBeVisible();
