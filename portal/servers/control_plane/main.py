@@ -3,18 +3,15 @@ import asyncio
 from fastapi import APIRouter
 from backend.extensions.base import BaseExtension
 from .manager_cli import ControlPlaneManagerCLI
-from . import api as api_module
-from . import ws as ws_module
-from . import sse as sse_module
-from .dispatcher import set_main_loop
+from .api import router as api_router
+from .ws import router as ws_router
+from .core import set_main_loop
 
 
 class ControlPlaneExtension(BaseExtension):
     """
     Control Plane extension for the portal.
     Manages devices, ACLs, bootstrap tokens, and operation dispatch.
-    Phase 1: models + manager_cli
-    Phase 2: REST API + auth + dispatcher
     """
 
     def __init__(self, core_config, ext_config=None):
@@ -23,9 +20,8 @@ class ControlPlaneExtension(BaseExtension):
         self.tags = ["control-plane"]
         self.cli_manager = None
         merged = APIRouter()
-        merged.include_router(api_module.router)
-        merged.include_router(ws_module.router)
-        merged.include_router(sse_module.router)
+        merged.include_router(api_router)
+        merged.include_router(ws_router)
         self.router = merged
 
     def setup(self):

@@ -20,7 +20,7 @@ module.exports = defineConfig({
   webServer: {
     command: 'python3 ../manage.py --config config.test.json restore --in bootstrap/seed_backup.tar.gz && python3 ../backend/main.py --config config.test.json',
     url: 'http://localhost:8000',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     stdout: 'ignore',
     stderr: 'pipe',
   },

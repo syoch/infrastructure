@@ -1,4 +1,10 @@
-export function parseHash() {
+export interface ParsedHash {
+  route: string;
+  sub: string;
+  params: Record<string, string>;
+}
+
+export function parseHash(): ParsedHash {
   const hash = window.location.hash || '';
   let normalized = hash;
   if (normalized.startsWith('#')) {
@@ -20,7 +26,7 @@ export function parseHash() {
   const route = segments[0] || '';
   const sub = segments[1] || '';
 
-  const params = {};
+  const params: Record<string, string> = {};
   queryStr.split('&').forEach((pair) => {
     const [key, val] = pair.split('=');
     if (key) {
@@ -31,21 +37,23 @@ export function parseHash() {
   return { route, sub, params };
 }
 
-export function buildHash(route, sub, params) {
+export function buildHash(route: string, sub: string, params: Record<string, string | number | undefined | null> = {}): string {
   let h = '#';
   if (route) h += '/' + route;
   if (sub) h += '/' + sub;
   if (params && Object.keys(params).length > 0) {
     const qs = Object.entries(params)
       .filter(([, v]) => v !== undefined && v !== null && v !== '')
-      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
       .join('&');
     if (qs) h += '?' + qs;
   }
   return h;
 }
 
-export function initRouter(onRouteChanged) {
+export type RouteChangeHandler = (hash: ParsedHash) => void;
+
+export function initRouter(onRouteChanged: RouteChangeHandler): void {
   window.addEventListener('hashchange', () => {
     onRouteChanged(parseHash());
   });

@@ -1,4 +1,4 @@
-import { fetchObtainiumExport, fetchApps, fetchSettings } from './js/api.js';
+import { fetchObtainiumExport, fetchApps, fetchSettings, App, Settings } from './js/api.js';
 import { parseHash, initRouter } from './js/router.js';
 import { initPortal } from './js/portal.js';
 import {
@@ -9,22 +9,23 @@ import {
   openQuickAppModal,
   openCategoryModal,
   showDetailedEdit,
-  closeAllModals
+  closeAllModals,
 } from './js/dashboard.js';
 import { initControlSubroute, teardownControlSubroute } from './js/control_router.js';
 import {
-  initOperationsSection, teardownOperationsSection, applyOperationsFilterFromHash,
+  initOperationsSection,
+  teardownOperationsSection,
 } from './js/control_operations.js';
-import { getToken, fetchMe } from './js/control_api.js';
+import { getToken, fetchMe, Device } from './js/control_api.js';
 
-let allApps = [];
-let dashboardApps = [];
-let globalSettings = {};
+let allApps: App[] = [];
+let dashboardApps: App[] = [];
+let globalSettings: Partial<Settings> = {};
 let _currentSection = '';
-let _me = null;
-let _mePromise = null;
+let _me: Device | null = null;
+let _mePromise: Promise<Device | null> | null = null;
 
-async function getMe() {
+async function getMe(): Promise<Device | null> {
   if (_me) return _me;
   if (!_mePromise) {
     _mePromise = (async () => {
@@ -42,25 +43,25 @@ async function getMe() {
   return _mePromise;
 }
 
-async function loadAllData() {
+async function loadAllData(): Promise<void> {
   try {
     const [exportData, appsData, settingsData] = await Promise.all([
-      fetchObtainiumExport().catch(err => {
+      fetchObtainiumExport().catch((err: Error) => {
         console.error('Error fetching obtainium-export.json:', err);
-        return { apps: [] };
+        return { apps: [] as App[] };
       }),
-      fetchApps().catch(err => {
+      fetchApps().catch((err: Error) => {
         console.error('Error fetching dashboard apps:', err);
-        return { apps: [] };
+        return [] as App[];
       }),
-      fetchSettings().catch(err => {
+      fetchSettings().catch((err: Error) => {
         console.error('Error fetching global settings:', err);
-        return { categories: {} };
-      })
+        return { categories: {} } as Partial<Settings>;
+      }),
     ]);
 
     allApps = exportData.apps || [];
-    dashboardApps = appsData.apps || [];
+    dashboardApps = appsData || [];
     globalSettings = settingsData || {};
 
     updateDashboardState(dashboardApps, globalSettings);
@@ -69,8 +70,8 @@ async function loadAllData() {
   }
 }
 
-function showSection(sectionId) {
-  ['portal-view', 'dashboard-view', 'app-edit-view', 'control-view', 'operations-view'].forEach(id => {
+function showSection(sectionId: string): void {
+  ['portal-view', 'dashboard-view', 'app-edit-view', 'control-view', 'operations-view'].forEach((id) => {
     const el = document.getElementById(id);
     if (el) {
       if (id === sectionId) {
@@ -84,13 +85,13 @@ function showSection(sectionId) {
   });
 }
 
-function teardownCurrent() {
+function teardownCurrent(): void {
   if (_currentSection === 'control') teardownControlSubroute();
   else if (_currentSection === 'operations') teardownOperationsSection();
   _currentSection = '';
 }
 
-function updateNavForSection(route, sub) {
+function updateNavForSection(route: string, _sub: string): void {
   const navPortal = document.getElementById('nav-portal');
   const navDashboard = document.getElementById('nav-dashboard');
   const navControl = document.getElementById('nav-control');
@@ -116,15 +117,15 @@ function updateNavForSection(route, sub) {
   }
 }
 
-function applyAdminVisibility() {
+function applyAdminVisibility(): void {
   const me = _me;
   if (!me) return;
   document.querySelectorAll('[data-requires-admin="true"]').forEach((el) => {
-    el.classList.toggle('hidden', !me.is_first_webui_device);
+    el.classList.toggle('hidden', !me!.is_first_webui_device);
   });
 }
 
-async function handleRouting() {
+async function handleRouting(): Promise<void> {
   const { route, sub, params } = parseHash();
   teardownCurrent();
 
@@ -134,15 +135,15 @@ async function handleRouting() {
   if (route === 'control') {
     activeSectionId = 'control-view';
     _currentSection = 'control';
-    if (!getToken()) {
-      // no token, fall through to bootstrap render
-    } else {
+    if (getToken()) {
       try {
         await getMe();
-      } catch (e) { /* handled inside router */ }
+      } catch {
+        /* handled inside router */
+      }
     }
     applyAdminVisibility();
-    initControlSubroute(sub);
+    await initControlSubroute(sub);
   } else if (route === 'operations') {
     activeSectionId = 'operations-view';
     _currentSection = 'operations';
@@ -155,12 +156,13 @@ async function handleRouting() {
       applyAdminVisibility();
       await initOperationsSection(params);
     } catch (e) {
-      if (e.status === 401) {
+      const err = e as Error & { status?: number };
+      if (err.status === 401) {
         window.location.hash = '#/control';
         return;
       }
       const view = document.getElementById('operations-view');
-      if (view) view.innerHTML = `<div class="control-error">Error: ${e.message}</div>`;
+      if (view) view.innerHTML = `<div class="control-error">Error: ${err.message}</div>`;
     }
   } else if (isAdminRoute) {
     if (route === 'edit' && params.type === 'app') {
@@ -198,28 +200,28 @@ async function handleRouting() {
   }
 }
 
-async function handleDataChange() {
+async function handleDataChange(): Promise<void> {
   await loadAllData();
 
   initPortal(allApps, globalSettings.categories || {});
   renderDashboardAppsList(dashboardApps, globalSettings.categories || {});
   renderCategoriesBar(globalSettings.categories || {});
 
-  handleRouting();
+  await handleRouting();
 }
 
-function setupNavDropdown() {
+function setupNavDropdown(): void {
   const dropdown = document.getElementById('control-dropdown');
   const toggle = document.getElementById('nav-control');
   if (!dropdown || !toggle) return;
-  toggle.addEventListener('click', (e) => {
+  toggle.addEventListener('click', (e: Event) => {
     e.preventDefault();
     e.stopPropagation();
     const open = dropdown.classList.toggle('open');
     toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
   });
-  document.addEventListener('click', (e) => {
-    if (!dropdown.contains(e.target)) {
+  document.addEventListener('click', (e: Event) => {
+    if (!dropdown.contains(e.target as Node)) {
       dropdown.classList.remove('open');
       toggle.setAttribute('aria-expanded', 'false');
     }

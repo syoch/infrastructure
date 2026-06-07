@@ -2,6 +2,7 @@ import os
 import json
 import urllib.parse
 import time
+import logging
 from fastapi import APIRouter, Request, HTTPException, Query, Depends, File, UploadFile, Form
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
 from pydantic import BaseModel
@@ -13,6 +14,8 @@ from .models import App, Category, Setting, LocalAppAPK
 from .compiler import ObtainiumConfigCompiler
 from .manager_cli import ObtainiumRepoManagerCLI
 from .utils import get_base_url
+
+logger = logging.getLogger(__name__)
 
 class AppSaveModel(BaseModel):
     id: str
@@ -116,7 +119,7 @@ class ObtainiumRepoExtension(BaseExtension):
     def restore_data(self, session, data: dict, strategy: str):
         """Deserializes App, Category, Setting, and LocalAppAPK records."""
         # 1. Restore Categories
-        print("Restoring Category records...")
+        logger.info("Restoring Category records...")
         for cat_data in data.get("categories", []):
             cat = session.query(Category).filter_by(name=cat_data["name"]).first()
             if not cat:
@@ -127,14 +130,14 @@ class ObtainiumRepoExtension(BaseExtension):
         session.flush()
 
         # 2. Restore Apps
-        print("Restoring App records...")
+        logger.info("Restoring App records...")
         for app_data in data.get("apps", []):
             # Extract categories array
             categories_list = app_data.pop("categories", [])
             
             # Rewrite Self-Hosted app source URL containing scrape-index.html to avoid hardcoded IP/port
             if app_data.get("override_source") == "HTML" and "scrape-index.html" in app_data.get("url", ""):
-                print(f"Sanitizing Self-Hosted APK source URL for app {app_data.get('id')}: {app_data['url']} -> /scrape-index.html")
+                logger.info(f"Sanitizing Self-Hosted APK source URL for app {app_data.get('id')}: {app_data['url']} -> /scrape-index.html")
                 app_data["url"] = "/scrape-index.html"
 
             app = session.query(App).filter_by(id=app_data["id"]).first()
@@ -159,7 +162,7 @@ class ObtainiumRepoExtension(BaseExtension):
         session.flush()
 
         # 3. Restore LocalAppAPKs
-        print("Restoring LocalAppAPK records...")
+        logger.info("Restoring LocalAppAPK records...")
         for apk_data in data.get("local_app_apks", []):
             existing = session.query(LocalAppAPK).filter_by(
                 app_id=apk_data["app_id"],
@@ -180,7 +183,7 @@ class ObtainiumRepoExtension(BaseExtension):
         session.flush()
 
         # 4. Restore Settings
-        print("Restoring Setting records...")
+        logger.info("Restoring Setting records...")
         for setting_data in data.get("settings", []):
             setting = session.query(Setting).filter_by(key=setting_data["key"]).first()
             if not setting:
@@ -220,6 +223,7 @@ class ObtainiumRepoExtension(BaseExtension):
                 _export_cache[base_url] = (export_data, now + CACHE_TTL)
                 return export_data
             except Exception as e:
+                logger.exception("Error compiling export JSON")
                 raise HTTPException(status_code=500, detail=f"Error compiling export JSON: {str(e)}")
 
         @self.router.get("/scrape-index.html", response_class=HTMLResponse)
@@ -273,6 +277,7 @@ class ObtainiumRepoExtension(BaseExtension):
                 
                 return "\n".join(html_lines)
             except Exception as e:
+                logger.exception("Error generating scraping HTML")
                 raise HTTPException(status_code=500, detail=f"Error generating scraping HTML: {str(e)}")
 
         def _serve_download_impl(apk_id: int, db: Session):
@@ -316,6 +321,7 @@ class ObtainiumRepoExtension(BaseExtension):
             except HTTPException:
                 raise
             except Exception as e:
+                logger.exception("Error serving download with filename")
                 raise HTTPException(status_code=500, detail=f"Error serving download: {str(e)}")
 
         @self.router.get("/api/apps/download/{apk_id}")
@@ -326,6 +332,7 @@ class ObtainiumRepoExtension(BaseExtension):
             except HTTPException:
                 raise
             except Exception as e:
+                logger.exception("Error serving download")
                 raise HTTPException(status_code=500, detail=f"Error serving download: {str(e)}")
 
         @self.router.get("/api/apps")
@@ -360,6 +367,7 @@ class ObtainiumRepoExtension(BaseExtension):
                     })
                 return {"apps": apps}
             except Exception as e:
+                logger.exception("Error reading app configurations")
                 raise HTTPException(status_code=500, detail=f"Error reading app configurations: {str(e)}")
 
         @self.router.get("/api/settings")
@@ -376,6 +384,7 @@ class ObtainiumRepoExtension(BaseExtension):
                 
                 return settings
             except Exception as e:
+                logger.exception("Error reading global settings")
                 raise HTTPException(status_code=500, detail=f"Error reading global settings: {str(e)}")
 
         @self.router.post("/api/apps/save")
@@ -409,6 +418,7 @@ class ObtainiumRepoExtension(BaseExtension):
                 return {"status": "success", "message": f"App '{body.id}' saved successfully."}
             except Exception as e:
                 db.rollback()
+                logger.exception(f"Error saving app configuration: {body.id}")
                 raise HTTPException(status_code=500, detail=f"Error saving app configuration: {str(e)}")
 
         @self.router.post("/api/apps/delete")
@@ -429,7 +439,7 @@ class ObtainiumRepoExtension(BaseExtension):
                             try:
                                 storage_ext.delete_file(fh)
                             except Exception as e:
-                                print(f"Error triggering storage cleanup for {fh}: {e}")
+                                logger.error(f"Error triggering storage cleanup for {fh}: {e}")
                                     
                     return {"status": "success", "message": f"App '{body.id}' deleted."}
                 else:
@@ -438,6 +448,7 @@ class ObtainiumRepoExtension(BaseExtension):
                 raise
             except Exception as e:
                 db.rollback()
+                logger.exception(f"Error deleting app configuration: {body.id}")
                 raise HTTPException(status_code=500, detail=f"Error deleting app configuration: {str(e)}")
 
         @self.router.post("/api/apps/compile")
@@ -456,6 +467,7 @@ class ObtainiumRepoExtension(BaseExtension):
                     "count": len(compiled_data.get("apps", []))
                 }
             except Exception as e:
+                logger.exception("Error during configuration compile")
                 raise HTTPException(status_code=500, detail=f"Error during configuration compile: {str(e)}")
 
         @self.router.post("/api/settings/save")
@@ -493,6 +505,7 @@ class ObtainiumRepoExtension(BaseExtension):
                 return {"status": "success", "message": "Global settings saved."}
             except Exception as e:
                 db.rollback()
+                logger.exception("Error saving global settings")
                 raise HTTPException(status_code=500, detail=f"Error saving global settings: {str(e)}")
 
         @self.router.post("/api/apps/local-apks")
@@ -506,7 +519,8 @@ class ObtainiumRepoExtension(BaseExtension):
             """POST /api/apps/local-apks - Atomic file upload and metadata registration."""
             try:
                 file_content = file.file.read()
-            except Exception as e:
+            except IOError as e:
+                logger.exception("Failed to read uploaded file")
                 raise HTTPException(status_code=400, detail=f"Failed to read uploaded file: {str(e)}")
             
             if not file_content:
@@ -527,6 +541,7 @@ class ObtainiumRepoExtension(BaseExtension):
             try:
                 file_hash = storage_ext.save_file(file_content)
             except Exception as e:
+                logger.exception("Failed to save file to storage")
                 raise HTTPException(status_code=500, detail=f"Failed to save file to storage: {str(e)}")
 
             try:
@@ -567,7 +582,8 @@ class ObtainiumRepoExtension(BaseExtension):
                 try:
                     storage_ext.delete_file(file_hash)
                 except Exception as ex:
-                    print(f"Error rolling back physical file write: {ex}")
+                    logger.error(f"Error rolling back physical file write: {ex}")
+                logger.exception("Database error during registration")
                 raise HTTPException(status_code=500, detail=f"Database error during registration: {str(e)}")
 
         @self.router.delete("/api/apps/local-apks/{apk_id}")
@@ -593,6 +609,7 @@ class ObtainiumRepoExtension(BaseExtension):
                 raise
             except Exception as e:
                 db.rollback()
+                logger.exception(f"Error deleting APK metadata: {apk_id}")
                 raise HTTPException(status_code=500, detail=f"Error deleting APK metadata: {str(e)}")
 
         @self.router.post("/api/apps/import")
@@ -617,7 +634,8 @@ class ObtainiumRepoExtension(BaseExtension):
                             if isinstance(v, str):
                                 try:
                                     parsed_cats = json.loads(v)
-                                except Exception:
+                                except json.JSONDecodeError:
+                                    logger.warning(f"Failed to parse categories string as JSON: {v}")
                                     parsed_cats = {}
                             
                             for cat_name, cat_color in parsed_cats.items():
@@ -645,4 +663,5 @@ class ObtainiumRepoExtension(BaseExtension):
                 }
             except Exception as e:
                 db.rollback()
+                logger.exception("Error importing configurations")
                 raise HTTPException(status_code=500, detail=f"Error importing configurations: {str(e)}")

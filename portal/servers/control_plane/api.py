@@ -2,21 +2,22 @@ import re
 import secrets
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 from backend.core.database import get_db
-from .auth import (
+from .core import (
     get_current_device,
     get_current_device_with_promotion,
     require_admin,
-)
-from .dispatcher import (
     can_issue,
     resolve_provider,
     provider_device_id,
     filter_operations_for_device,
     enqueue_command,
+    event_bus,
+    _sse_generator,
 )
 from .models import (
     Device, DeviceACL, DeviceBootstrapToken, OperationSpec, CommandRequest,
@@ -25,8 +26,34 @@ from .manager_cli import (
     validate_acl_field, validate_device_id, generate_bearer_token, _strip_type_prefix, KNOWN_TYPES,
 )
 
-
 router = APIRouter(prefix="/api/control", tags=["control-plane"])
+
+
+@router.get("/events")
+async def sse_events(
+    request: Request,
+    device: Device = Depends(get_current_device),
+):
+    queue = await event_bus.subscribe()
+
+    async def gen():
+        try:
+            async for chunk in _sse_generator(device, queue):
+                if await request.is_disconnected():
+                    break
+                yield chunk
+        finally:
+            await event_bus.unsubscribe(queue)
+
+    return StreamingResponse(
+        gen(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
 
 
 def _device_to_dict(d: Device, include_token: bool = False) -> dict:

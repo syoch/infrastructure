@@ -19,6 +19,7 @@ import sys
 import time
 import urllib.request
 import urllib.error
+import logging
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -27,6 +28,10 @@ from websockets.exceptions import (
     ConnectionClosedError, ConnectionClosedOK, InvalidStatus, WebSocketException,
 )
 
+logger = logging.getLogger("portal-bridge")
+
+BRIDGE_DEVICE_ID = "bridge"
+BRIDGE_DISPLAY_NAME = "Portal Bridge"
 
 BRIDGE_DEVICE_ID = "bridge"
 BRIDGE_DISPLAY_NAME = "Portal Bridge"
@@ -251,13 +256,13 @@ async def _run(server_url: str, ws_url: str, bearer_token: str, manage_bin: str,
     while True:
         try:
             async with websockets.connect(ws_url) as ws:
-                print(f"[bridge] connected to {ws_url}", file=sys.stderr)
+                logger.info(f"connected to {ws_url}")
                 backoff = 1.0
                 await _serve(ws, bearer_token, manage_bin, config_path)
         except (ConnectionClosedError, ConnectionClosedOK):
-            print("[bridge] connection closed, reconnecting...", file=sys.stderr)
+            logger.info("connection closed, reconnecting...")
         except (InvalidStatus, WebSocketException, OSError) as e:
-            print(f"[bridge] connection error: {e}, retrying in {backoff:.1f}s", file=sys.stderr)
+            logger.warning(f"connection error: {e}, retrying in {backoff:.1f}s")
         await asyncio.sleep(backoff)
         backoff = min(backoff * 2, 30.0)
 
@@ -266,9 +271,9 @@ async def _serve(ws, bearer_token: str, manage_bin: str, config_path: Optional[s
     await ws.send(json.dumps({"type": "operations_register", "operations": BRIDGE_OPERATIONS}))
     ack = json.loads(await ws.recv())
     if ack.get("type") != "operations_registered":
-        print(f"[bridge] unexpected ack: {ack}", file=sys.stderr)
+        logger.error(f"unexpected ack: {ack}")
         return
-    print(f"[bridge] registered {ack.get('count', 0)} operations", file=sys.stderr)
+    logger.info(f"registered {ack.get('count', 0)} operations")
 
     async for raw in ws:
         try:
@@ -287,13 +292,13 @@ async def _serve(ws, bearer_token: str, manage_bin: str, config_path: Optional[s
             try:
                 ack = json.loads(await asyncio.wait_for(ws.recv(), timeout=5.0))
                 if ack.get("type") != "claimed_ack":
-                    print(f"[bridge] claim failed: {ack}", file=sys.stderr)
+                    logger.error(f"claim failed: {ack}")
                     continue
             except asyncio.TimeoutError:
-                print(f"[bridge] claim ack timeout for {cid}", file=sys.stderr)
+                logger.error(f"claim ack timeout for {cid}")
                 continue
 
-            print(f"[bridge] executing {op} (id={cid[:8]})", file=sys.stderr)
+            logger.info(f"executing {op} (id={cid[:8]})")
             loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(
                 None, _execute_operation, op, params, manage_bin, config_path,
@@ -319,10 +324,10 @@ def main() -> int:
     args = parser.parse_args()
 
     ws_base = args.server_url.rstrip("/").replace("http://", "ws://").replace("https://", "wss://")
-    print(f"[bridge] registering device {args.device_id!r} via bootstrap token", file=sys.stderr)
+    logger.info(f"registering device {args.device_id!r} via bootstrap token")
     info = _http_register(args.server_url, args.device_id, args.display_name, args.bootstrap_token)
     bearer_token = info["bearer_token"]
-    print(f"[bridge] registered; id={info['id']} admin={info.get('is_first_webui_device', False)}", file=sys.stderr)
+    logger.info(f"registered; id={info['id']} admin={info.get('is_first_webui_device', False)}")
 
     ws_url = f"{ws_base}/api/control/devices/{info['id']}/ws?token={bearer_token}"
 
@@ -331,7 +336,7 @@ def main() -> int:
     asyncio.set_event_loop(loop)
 
     def _on_signal(*_):
-        print("[bridge] received signal, shutting down", file=sys.stderr)
+        logger.info("received signal, shutting down")
         stop.set()
         loop.stop()
     for sig in (signal.SIGTERM, signal.SIGINT):

@@ -1,7 +1,7 @@
-import { registerDevice, setToken, getToken } from "./control_api.js";
+import { registerDevice, setToken } from './control_api.js';
 
-export async function initBootstrap() {
-  const view = document.getElementById("control-view");
+export async function initBootstrap(): Promise<void> {
+  const view = document.getElementById('control-view');
   if (!view) return;
   view.innerHTML = `
     <section class="bootstrap-section">
@@ -19,26 +19,27 @@ export async function initBootstrap() {
       </form>
     </section>
   `;
-  document.getElementById("bootstrap-form").addEventListener("submit", async (e) => {
+  const form = document.getElementById('bootstrap-form') as HTMLFormElement;
+  form.addEventListener('submit', async (e: SubmitEvent) => {
     e.preventDefault();
-    const fd = new FormData(e.target);
-    const errEl = document.getElementById("bootstrap-error");
-    errEl.textContent = "";
+    const fd = new FormData(form);
+    const errEl = document.getElementById('bootstrap-error') as HTMLElement;
+    errEl.textContent = '';
     try {
       const result = await registerDevice({
-        device_id: fd.get("device_id"),
-        display_name: fd.get("display_name"),
-        bootstrap_token: fd.get("bootstrap_token"),
+        device_id: fd.get('device_id') as string,
+        display_name: fd.get('display_name') as string,
+        bootstrap_token: fd.get('bootstrap_token') as string,
       });
       setToken(result.bearer_token, result.id);
-      window.location.hash = "#/control/devices";
+      window.location.hash = '#/control/devices';
     } catch (err) {
-      errEl.textContent = err.message;
+      errEl.textContent = err instanceof Error ? err.message : String(err);
     }
   });
 }
 
-export function teardownBootstrap() {
-  const view = document.getElementById("control-view");
-  if (view) view.innerHTML = "";
+export function teardownBootstrap(): void {
+  const view = document.getElementById('control-view');
+  if (view) view.innerHTML = '';
 }

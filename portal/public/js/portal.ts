@@ -1,11 +1,24 @@
 import { getCategoryColorStyle, escapeHTML, safeURL } from './ui.js';
 
-let portalSortDirection = null; // null, 'asc', 'desc'
+interface PortalApp {
+  id: string;
+  name: string;
+  url?: string;
+  overrideSource?: string | null;
+  categories?: string[];
+  _version?: string;
+  _latest_apk_id?: string;
+  _filename?: string;
+}
 
-export function renderPortalApps(apps, categories = {}) {
+type SortDirection = 'asc' | 'desc' | null;
+
+let portalSortDirection: SortDirection = null;
+
+export function renderPortalApps(apps: PortalApp[], categories: Record<string, number> = {}): void {
   const appsTableBody = document.getElementById('apps-table-body');
   if (!appsTableBody) return;
-  
+
   if (apps.length === 0) {
     appsTableBody.innerHTML = `
       <tr class="empty-row">
@@ -20,24 +33,26 @@ export function renderPortalApps(apps, categories = {}) {
   }
 
   appsTableBody.innerHTML = '';
-  
-  apps.forEach(app => {
-    const isSelfHosted = app.overrideSource === 'HTML' && app.url.includes('/scrape-index.html');
+
+  apps.forEach((app) => {
+    const isSelfHosted = app.overrideSource === 'HTML' && !!app.url && app.url.includes('/scrape-index.html');
     const badgeClass = isSelfHosted ? 'badge-self-hosted' : 'badge-official';
     const badgeText = isSelfHosted ? 'Self-Hosted' : 'Official';
-    
-    let resolvedUrl = app.url;
+
+    let resolvedUrl = app.url || '';
     if (resolvedUrl && resolvedUrl.startsWith('/')) {
       resolvedUrl = window.location.origin + resolvedUrl;
     }
     const appUrlEncoded = encodeURIComponent(resolvedUrl);
     const obtainiumDeepLink = `obtainium://${appUrlEncoded}`;
-    
+
     const versionStr = isSelfHosted && app._version ? escapeHTML(app._version) : 'Tracked on source';
-      
+
     let actionButtons = '';
     if (isSelfHosted) {
-      const downloadUrl = app._latest_apk_id ? `/api/apps/download/${app._latest_apk_id}/${encodeURIComponent(app._filename || 'download.apk')}` : `/scrape-index.html`;
+      const downloadUrl = app._latest_apk_id
+        ? `/api/apps/download/${app._latest_apk_id}/${encodeURIComponent(app._filename || 'download.apk')}`
+        : `/scrape-index.html`;
       actionButtons = `
         <div class="table-actions">
           <a href="${safeURL(obtainiumDeepLink)}" class="btn btn-primary btn-sm">
@@ -64,11 +79,13 @@ export function renderPortalApps(apps, categories = {}) {
 
     let categoriesHtml = '';
     if (app.categories && app.categories.length > 0) {
-      categoriesHtml = app.categories.map(cat => {
-        const colorCode = categories[cat];
-        const colorStyle = getCategoryColorStyle(colorCode);
-        return `<span class="category-tag" style="${colorStyle}">${escapeHTML(cat)}</span>`;
-      }).join(' ');
+      categoriesHtml = app.categories
+        .map((cat) => {
+          const colorCode = categories[cat];
+          const colorStyle = getCategoryColorStyle(colorCode);
+          return `<span class="category-tag" style="${colorStyle}">${escapeHTML(cat)}</span>`;
+        })
+        .join(' ');
     } else {
       categoriesHtml = '<span class="category-tag tag-none">未設定</span>';
     }
@@ -94,37 +111,37 @@ export function renderPortalApps(apps, categories = {}) {
       <td class="col-version"><span class="version-text">${versionStr}</span></td>
       <td class="col-actions">${actionButtons}</td>
     `;
-    
+
     appsTableBody.appendChild(row);
   });
 }
 
-function applyFilterAndSort(allApps, categories) {
-  const searchInput = document.getElementById('app-search-input');
-  const categoryFilter = document.getElementById('portal-category-filter');
-  
-  let filtered = [...allApps];
-  
+function applyFilterAndSort(allApps: PortalApp[], categories: Record<string, number>): void {
+  const searchInput = document.getElementById('app-search-input') as HTMLInputElement | null;
+  const categoryFilter = document.getElementById('portal-category-filter') as HTMLSelectElement | null;
+
+  let filtered: PortalApp[] = [...allApps];
+
   // 1. Search Filter
   if (searchInput) {
     const query = searchInput.value.toLowerCase().trim();
     if (query) {
-      filtered = filtered.filter(app => {
+      filtered = filtered.filter((app) => {
         const name = (app.name || '').toLowerCase();
         const id = (app.id || '').toLowerCase();
         return name.includes(query) || id.includes(query);
       });
     }
   }
-  
+
   // 2. Category Filter
   if (categoryFilter) {
     const selectedCategory = categoryFilter.value;
     if (selectedCategory) {
-      filtered = filtered.filter(app => (app.categories || []).includes(selectedCategory));
+      filtered = filtered.filter((app) => (app.categories || []).includes(selectedCategory));
     }
   }
-  
+
   // 3. Sorting by Category
   if (portalSortDirection === 'asc') {
     filtered.sort((a, b) => {
@@ -139,11 +156,11 @@ function applyFilterAndSort(allApps, categories) {
       return catB.localeCompare(catA, 'ja');
     });
   }
-  
+
   renderPortalApps(filtered, categories);
 }
 
-function updateSortIndicator() {
+function updateSortIndicator(): void {
   const sortIcon = document.getElementById('portal-sort-icon');
   if (!sortIcon) return;
   if (portalSortDirection === 'asc') {
@@ -155,27 +172,29 @@ function updateSortIndicator() {
   }
 }
 
-function populateCategoryFilter(allApps) {
+function populateCategoryFilter(allApps: PortalApp[]): void {
   const categoryFilter = document.getElementById('portal-category-filter');
   if (!categoryFilter) return;
-  
-  const uniqueCategories = new Set();
-  allApps.forEach(app => {
-    (app.categories || []).forEach(cat => {
+
+  const uniqueCategories = new Set<string>();
+  allApps.forEach((app) => {
+    (app.categories || []).forEach((cat) => {
       uniqueCategories.add(cat);
     });
   });
-  
+
   categoryFilter.innerHTML = '<option value="">すべてのカテゴリ</option>';
-  Array.from(uniqueCategories).sort().forEach(cat => {
-    const opt = document.createElement('option');
-    opt.value = cat;
-    opt.textContent = cat;
-    categoryFilter.appendChild(opt);
-  });
+  Array.from(uniqueCategories)
+    .sort()
+    .forEach((cat) => {
+      const opt = document.createElement('option');
+      opt.value = cat;
+      opt.textContent = cat;
+      categoryFilter.appendChild(opt);
+    });
 }
 
-export function initPortal(allApps, categories = {}) {
+export function initPortal(allApps: PortalApp[], categories: Record<string, number> = {}): void {
   const searchInput = document.getElementById('app-search-input');
   const categoryFilter = document.getElementById('portal-category-filter');
   const sortCategoryHeader = document.getElementById('portal-sort-category');
@@ -189,7 +208,7 @@ export function initPortal(allApps, categories = {}) {
 
   if (searchInput) {
     if (!searchInput.dataset.hasListener) {
-      searchInput.value = '';
+      (searchInput as HTMLInputElement).value = '';
       searchInput.addEventListener('input', () => {
         applyFilterAndSort(allApps, categories);
       });

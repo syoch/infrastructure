@@ -2,10 +2,13 @@ import os
 import hashlib
 import time
 import shutil
+import logging
 from fastapi import APIRouter, File, UploadFile, Query, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 from backend.extensions.base import BaseExtension
 from backend.core.database import session_scope
+
+logger = logging.getLogger(__name__)
 
 class StorageManagerExtension(BaseExtension):
     """
@@ -24,7 +27,7 @@ class StorageManagerExtension(BaseExtension):
         else:
             self.uploads_dir = os.path.join(self.config.PORTAL_DIR, "uploads")
             
-        print(f"StorageManager initialized with uploads_dir: {self.uploads_dir}")
+        logger.info(f"StorageManager initialized with uploads_dir: {self.uploads_dir}")
         self.router = APIRouter()
         self.setup_routes()
 
@@ -63,7 +66,7 @@ class StorageManagerExtension(BaseExtension):
                     if ref_set:
                         referenced.update(ref_set)
                 except Exception as e:
-                    print(f"Warning: Failed to gather referenced hashes from '{ext.__class__.__name__}': {e}")
+                    logger.warning(f"Failed to gather referenced hashes from '{ext.__class__.__name__}': {e}")
         return referenced
 
     def delete_file(self, file_hash: str) -> bool:
@@ -75,11 +78,11 @@ class StorageManagerExtension(BaseExtension):
                     filepath = self.get_file_path(file_hash)
                     if os.path.exists(filepath):
                         os.remove(filepath)
-                        print(f"Physically deleted orphan CAS file: {filepath}")
+                        logger.info(f"Physically deleted orphan CAS file: {filepath}")
                         return True
             return False
         except Exception as e:
-            print(f"Error during physical CAS deletion check: {e}")
+            logger.error(f"Error during physical CAS deletion check: {e}")
             return False
 
     def garbage_collect(self) -> list:
@@ -100,15 +103,15 @@ class StorageManagerExtension(BaseExtension):
                                     mtime = os.path.getmtime(filepath)
                                     if time.time() - mtime > 3600:
                                         os.remove(filepath)
-                                        print(f"GC deleted orphan CAS file: {filepath}")
+                                        logger.info(f"GC deleted orphan CAS file: {filepath}")
                                         deleted_hashes.append(file_hash)
                                     else:
-                                        print(f"GC skipped young orphan file: {filepath}")
-                                except Exception as e:
-                                    print(f"Error deleting file {filepath} during GC: {e}")
+                                        logger.debug(f"GC skipped young orphan file: {filepath}")
+                                except OSError as e:
+                                    logger.error(f"Error deleting file {filepath} during GC: {e}")
             return deleted_hashes
         except Exception as e:
-            print(f"Error executing garbage collection: {e}")
+            logger.error(f"Error executing garbage collection: {e}")
             return []
 
 
@@ -129,7 +132,7 @@ class StorageManagerExtension(BaseExtension):
                         try:
                             size = os.path.getsize(filepath)
                             files.append({"id": file_hash, "size": size})
-                        except Exception:
+                        except OSError:
                             pass
             return files
 
@@ -147,7 +150,10 @@ class StorageManagerExtension(BaseExtension):
                     "message": "File uploaded and saved in storage.",
                     "file_hash": file_hash
                 }
+            except HTTPException:
+                raise
             except Exception as e:
+                logger.exception("Internal error during file upload")
                 raise HTTPException(status_code=500, detail=f"Upload error: {str(e)}")
 
         @self.router.get("/api/storage/files/{file_hash}")
@@ -196,5 +202,5 @@ class StorageManagerExtension(BaseExtension):
                     # Content-addressable storage: copy only if it doesn't already exist
                     if not os.path.exists(dest_file):
                         shutil.copy2(src_file, dest_file)
-                        print(f"Restored asset file: {filename}")
+                        logger.info(f"Restored asset file: {filename}")
 

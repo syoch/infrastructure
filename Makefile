@@ -28,6 +28,7 @@ test-backend:
 	python3 portal/tests/backend/test_backup_restore.py
 	python3 portal/tests/backend/verify_roundtrip.py
 	python3 portal/tests/backend/test_control_plane.py
+	python3 portal/tests/backend/test_control_plane_core.py
 	python3 portal/tests/backend/test_control_plane_backup.py
 	python3 portal/tests/backend/test_control_plane_ws.py
 	python3 portal/tests/backend/test_device_agent.py

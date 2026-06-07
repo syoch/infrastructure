@@ -7,7 +7,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from sqlalchemy.orm import Session
 from backend.core.database import get_session
 from .models import Device, CommandRequest, OperationSpec
-from .dispatcher import provider_device_id
+from .core import provider_device_id, publish_command_status
 
 
 router = APIRouter(prefix="/api/control", tags=["control-plane-ws"])
@@ -172,7 +172,6 @@ async def _handle_claim(conn: WebSocketConnection, payload: dict) -> None:
         session.commit()
         session.refresh(cmd)
         await conn.send({"type": "claimed_ack", "command_id": cmd.id})
-        from .sse import publish_command_status
         publish_command_status(cmd)
     finally:
         session.close()
@@ -208,7 +207,6 @@ async def _handle_result(conn: WebSocketConnection, payload: dict) -> None:
         session.commit()
         session.refresh(cmd)
         await conn.send({"type": "result_ack", "command_id": cmd.id, "status": status})
-        from .sse import publish_command_status
         publish_command_status(cmd)
     finally:
         session.close()

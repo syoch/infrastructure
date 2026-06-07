@@ -1,4 +1,4 @@
-export function showToast(toastElement) {
+export function showToast(toastElement: HTMLElement | null): void {
   if (!toastElement) return;
   toastElement.classList.remove('hidden');
   setTimeout(() => {
@@ -6,15 +6,15 @@ export function showToast(toastElement) {
   }, 2000);
 }
 
-export function getCategoryColorStyle(colorCode) {
+export function getCategoryColorStyle(colorCode: number | null | undefined): string {
   if (!colorCode) return '';
   const r = (colorCode >>> 16) & 0xFF;
   const g = (colorCode >>> 8) & 0xFF;
   const b = colorCode & 0xFF;
-  return `background: rgba(${r}, ${g}, ${b}, 0.15); border-color: rgba(${r}, ${g}, ${b}, 0.4); color: rgb(${Math.min(r+60, 255)}, ${Math.min(g+60, 255)}, ${Math.min(b+60, 255)});`;
+  return `background: rgba(${r}, ${g}, ${b}, 0.15); border-color: rgba(${r}, ${g}, ${b}, 0.4); color: rgb(${Math.min(r + 60, 255)}, ${Math.min(g + 60, 255)}, ${Math.min(b + 60, 255)});`;
 }
 
-export function applyCategoryStyleToElement(element, colorCode) {
+export function applyCategoryStyleToElement(element: HTMLElement, colorCode: number | null | undefined): void {
   if (!colorCode) {
     element.style.backgroundColor = '';
     element.style.borderColor = '';
@@ -26,10 +26,10 @@ export function applyCategoryStyleToElement(element, colorCode) {
   const b = colorCode & 0xFF;
   element.style.backgroundColor = `rgba(${r}, ${g}, ${b}, 0.15)`;
   element.style.borderColor = `rgba(${r}, ${g}, ${b}, 0.4)`;
-  element.style.color = `rgb(${Math.min(r+60, 255)}, ${Math.min(g+60, 255)}, ${Math.min(b+60, 255)})`;
+  element.style.color = `rgb(${Math.min(r + 60, 255)}, ${Math.min(g + 60, 255)}, ${Math.min(b + 60, 255)})`;
 }
 
-export function getCategoryModalColorPreview(colorInt) {
+export function getCategoryModalColorPreview(colorInt: number | null | undefined): string {
   if (!colorInt) {
     return 'transparent';
   }
@@ -40,7 +40,7 @@ export function getCategoryModalColorPreview(colorInt) {
   return `rgba(${r}, ${g}, ${b}, ${a})`;
 }
 
-export function colorIntToHex(colorInt) {
+export function colorIntToHex(colorInt: number | null | undefined): string {
   if (colorInt === undefined || colorInt === null || isNaN(colorInt)) {
     return '';
   }
@@ -48,10 +48,10 @@ export function colorIntToHex(colorInt) {
   return `#${hex}`;
 }
 
-export function parseHexToColorInt(hexStr) {
+export function parseHexToColorInt(hexStr: string | null | undefined): number {
   if (!hexStr) return NaN;
   let clean = hexStr.trim();
-  
+
   // Backwards compatibility for 10-decimal ARGB strings
   if (/^\d+$/.test(clean)) {
     const parsed = parseInt(clean, 10) >>> 0;
@@ -69,7 +69,7 @@ export function parseHexToColorInt(hexStr) {
   return NaN;
 }
 
-export function escapeHTML(str) {
+export function escapeHTML(str: string | null | undefined): string {
   if (str === undefined || str === null) return '';
   return str.toString()
     .replace(/&/g, '&amp;')
@@ -79,7 +79,7 @@ export function escapeHTML(str) {
     .replace(/'/g, '&#039;');
 }
 
-export function safeURL(url) {
+export function safeURL(url: string | null | undefined): string {
   if (!url) return '#';
   const lower = url.trim().toLowerCase();
   if (
@@ -95,15 +95,20 @@ export function safeURL(url) {
 
 // URL ↔ Source validation
 
-const URL_SOURCE_MAP = [
-  { source: 'GitHub',  pattern: /^https?:\/\/github\.com\/[^/]+\/[^/]+/ },
-  { source: 'GitLab',  pattern: /^https?:\/\/gitlab\.com\/[^/]+\/[^/]+/ },
+interface SourcePattern {
+  source: string;
+  pattern: RegExp;
+}
+
+const URL_SOURCE_MAP: SourcePattern[] = [
+  { source: 'GitHub', pattern: /^https?:\/\/github\.com\/[^/]+\/[^/]+/ },
+  { source: 'GitLab', pattern: /^https?:\/\/gitlab\.com\/[^/]+\/[^/]+/ },
   { source: 'F-Droid', pattern: /^https?:\/\/(f-droid\.org|fdroid\.github\.io)/ },
   { source: 'APKPure', pattern: /^https?:\/\/([^/]+\.)?apkpure\.(com|net)/ },
-  { source: 'HTML',    pattern: /^\// },
+  { source: 'HTML', pattern: /^\// },
 ];
 
-export function detectSourceFromUrl(url) {
+export function detectSourceFromUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   const trimmed = url.trim();
   for (const { source, pattern } of URL_SOURCE_MAP) {
@@ -112,13 +117,18 @@ export function detectSourceFromUrl(url) {
   return null;
 }
 
-export function validateUrlSourceMatch(url, source) {
+export interface ValidationResult {
+  valid: boolean;
+  warning: string | null;
+}
+
+export function validateUrlSourceMatch(url: string | null | undefined, source: string | null | undefined): ValidationResult {
   if (!source) return { valid: true, warning: null };
   const detected = detectSourceFromUrl(url);
   if (!detected) return { valid: true, warning: null };
   if (detected === source) return { valid: true, warning: null };
   return {
     valid: false,
-    warning: `この URL は ${detected} として自動検出されます。手動で「${source}」に設定されています。Auto-detect に変更することを推奨します。`
+    warning: `この URL は ${detected} として自動検出されます。手動で「${source}」に設定されています。Auto-detect に変更することを推奨します。`,
   };
 }
