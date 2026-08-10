@@ -52,6 +52,67 @@ in
         description = "Base URL of the portal server that the bridge connects to.";
       };
     };
+
+    nginx = {
+      enable = mkEnableOption "nginx virtual host for the portal";
+
+      hostName = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = "server_name for the portal nginx virtual host. Required when nginx.enable.";
+      };
+
+      listenAddresses = mkOption {
+        type = types.listOf types.str;
+        default = [ "0.0.0.0" "[::0]" ];
+        description = "Listen addresses for the portal virtual host.";
+      };
+
+      extraConfig = mkOption {
+        type = types.lines;
+        default = ''
+          add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+          add_header X-Frame-Options "DENY" always;
+          add_header X-Content-Type-Options "nosniff" always;
+          add_header Referrer-Policy "no-referrer" always;
+          add_header Permissions-Policy "interest-cohort=()" always;
+          add_header Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'" always;
+        '';
+        description = "Extra nginx config for the portal virtual host.";
+      };
+
+      proxyPass = mkOption {
+        type = types.str;
+        default = "http://127.0.0.1:8000";
+        description = "Upstream proxy target for the portal virtual host.";
+      };
+    };
+
+    basicAuth = {
+      enable = mkEnableOption "HTTP Basic Auth for Obtainium bypass paths";
+
+      htpasswdFile = mkOption {
+        type = types.nullOr types.path;
+        default = null;
+        description = "Path to an htpasswd file with Obtainium credentials. The consumer (e.g. dotfiles via sops) supplies the path; this module does not manage secrets.";
+      };
+
+      protectedPaths = mkOption {
+        type = types.listOf types.str;
+        default = [
+          "= /scrape-index.html"
+          "/api/apps/download/"
+          "= /obtainium-export.json"
+        ];
+        description = "Nginx location keys (exact match '= <path>' or prefix '<path>/') to protect with HTTP Basic Auth.";
+      };
+
+      realm = mkOption {
+        type = types.str;
+        default = "Obtainium";
+        description = "Basic Auth realm string.";
+      };
+    };
   };
 
   config = mkIf cfg.enable {
@@ -129,6 +190,38 @@ in
         RemoveIPC = true;
         UMask = "0077";
       };
+    };
+
+    assertions = [
+      {
+        assertion = !cfg.nginx.enable || cfg.nginx.hostName != null;
+        message = "services.syoch-portal.nginx.enable requires services.syoch-portal.nginx.hostName to be set";
+      }
+      {
+        assertion = !cfg.basicAuth.enable || cfg.basicAuth.htpasswdFile != null;
+        message = "services.syoch-portal.basicAuth.enable requires services.syoch-portal.basicAuth.htpasswdFile to be set";
+      }
+    ];
+
+    services.nginx.virtualHosts."${cfg.nginx.hostName}" = mkIf (cfg.nginx.enable && cfg.nginx.hostName != null) {
+      listenAddresses = cfg.nginx.listenAddresses;
+      extraConfig = cfg.nginx.extraConfig;
+      locations =
+        {
+          "/" = {
+            proxyPass = cfg.nginx.proxyPass;
+            proxyWebsockets = true;
+          };
+        }
+        // lib.optionalAttrs (cfg.basicAuth.enable && cfg.basicAuth.htpasswdFile != null) (
+          lib.genAttrs cfg.basicAuth.protectedPaths (path: {
+            proxyPass = cfg.nginx.proxyPass;
+            extraConfig = ''
+              auth_basic "${cfg.basicAuth.realm}";
+              auth_basic_user_file ${cfg.basicAuth.htpasswdFile};
+            '';
+          })
+        );
     };
   };
 }

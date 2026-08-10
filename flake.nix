@@ -207,6 +207,16 @@
                 "/var/uploads"
               ];
 
+              # Portal nginx vhost + Basic Auth (Obtainium bypass protection)
+              services.syoch-portal.nginx = {
+                enable = true;
+                hostName = "portal.test.local";
+              };
+              services.syoch-portal.basicAuth = {
+                enable = true;
+                htpasswdFile = pkgs.writeText "obtainium.htpasswd" "obtainium:{SHA}IGyAQTualsExLMNGt9JRe4RGPt0=";
+              };
+
               # Override domains and ACME settings for the local virtual test execution
               services.nginx.virtualHosts."test.local" = {
                 locations."/" = {
@@ -226,6 +236,19 @@
               machine.wait_for_open_port(80)
               response = machine.succeed("curl -f -H 'Host: test.local' http://127.0.0.1/obtainium-export.json")
               print("Response:", response)
+
+              # Basic Auth: unauthenticated requests to protected paths must return 401
+              machine.succeed("curl -s -o /dev/null -w '%{http_code}\\n' -H 'Host: portal.test.local' http://127.0.0.1/scrape-index.html | grep -q '^401$'")
+              machine.succeed("curl -s -o /dev/null -w '%{http_code}\\n' -H 'Host: portal.test.local' http://127.0.0.1/api/apps/download/1/test.apk | grep -q '^401$'")
+              machine.succeed("curl -s -o /dev/null -w '%{http_code}\\n' -H 'Host: portal.test.local' http://127.0.0.1/obtainium-export.json | grep -q '^401$'")
+
+              # Basic Auth: authenticated requests must reach the app (200; download returns 404 for missing APK but passes auth)
+              machine.succeed("curl -s -o /dev/null -w '%{http_code}\\n' -u obtainium:testpass -H 'Host: portal.test.local' http://127.0.0.1/scrape-index.html | grep -q '^200$'")
+              machine.succeed("curl -s -o /dev/null -w '%{http_code}\\n' -u obtainium:testpass -H 'Host: portal.test.local' http://127.0.0.1/obtainium-export.json | grep -q '^200$'")
+              machine.succeed("curl -s -o /dev/null -w '%{http_code}\\n' -u obtainium:testpass -H 'Host: portal.test.local' http://127.0.0.1/api/apps/download/1/test.apk | grep -q '^404$'")
+
+              # Basic Auth: default / (dashboard) remains reachable
+              machine.succeed("curl -s -o /dev/null -w '%{http_code}\\n' -H 'Host: portal.test.local' http://127.0.0.1/ | grep -q '^200$'")
             '';
           };
         };
