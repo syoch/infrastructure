@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 from backend.core.database import get_db
 from .core import (
     get_current_device,
-    get_current_device_with_promotion,
     require_admin,
     can_issue,
     resolve_provider,
@@ -243,7 +242,7 @@ def list_devices(
 
 @router.get("/devices/me")
 def get_me(
-    device: Device = Depends(get_current_device_with_promotion),
+    device: Device = Depends(get_current_device),
     db: Session = Depends(get_db),
 ):
     return _device_to_dict(device, include_token=True)

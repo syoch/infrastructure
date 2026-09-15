@@ -50,18 +50,6 @@ def get_current_device(
         )
     return device
 
-def get_current_device_with_promotion(
-    device: Device = Depends(get_current_device),
-    db: Session = Depends(get_db),
-) -> Device:
-    has_admin = db.query(Device).filter(Device.is_first_webui_device == True).first()
-    device.last_seen = datetime.utcnow()
-    if has_admin is None:
-        device.is_first_webui_device = True
-    db.commit()
-    db.refresh(device)
-    return device
-
 def require_admin(device: Device = Depends(get_current_device)) -> Device:
     if not device.is_first_webui_device:
         raise HTTPException(

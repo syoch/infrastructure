@@ -1165,6 +1165,35 @@ export function initDashboard(onDataChanged: () => Promise<void>): void {
   const restoreFileInput = document.getElementById('restore-file-input') as HTMLInputElement | null;
   const restoreStrategy = document.getElementById('restore-strategy') as HTMLSelectElement | null;
 
+  const downloadBackupBtn = document.getElementById('download-backup-btn') as HTMLAnchorElement | null;
+  if (downloadBackupBtn) {
+    downloadBackupBtn.addEventListener('click', async (e: Event) => {
+      e.preventDefault();
+      try {
+        const { getToken } = await import('./control_api.js');
+        const token = getToken();
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const res = await fetch('/api/backup', { headers });
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(errText || `Backup download failed: ${res.status}`);
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `portal_backup_${Date.now()}.tar.gz`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert(err instanceof Error ? err.message : String(err));
+      }
+    });
+  }
+
   if (restoreBtn && restoreFileInput && restoreStrategy) {
     restoreBtn.onclick = () => {
       restoreFileInput.click();

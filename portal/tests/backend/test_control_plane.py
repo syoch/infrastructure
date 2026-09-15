@@ -177,6 +177,23 @@ def _seed_device(db_path: str, device_id: str, display_name: str,
         ))
 
 
+def _run_cli_control(args: list[str]):
+    """Runs `python3 manage.py --config <cfg> control <args>` and returns stdout."""
+    env = os.environ.copy()
+    env["PYTHONPATH"] = PORTAL_DIR
+    proc = subprocess.run(
+        ["python3", os.path.join(PORTAL_DIR, "manage.py"),
+         "--config", CONFIG_PATH, "control", *args],
+        cwd=PORTAL_DIR, env=env,
+        capture_output=True, text=True, timeout=30,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"manage.py control {' '.join(args)} failed: "
+                           f"rc={proc.returncode} stderr={proc.stderr}")
+    return proc.stdout
+
+
+
 def _seed_acl(source: str, target: str, operation: str):
     from backend.core import config
     config.load_config_from_file(CONFIG_PATH)
@@ -244,24 +261,32 @@ def run_all():
         _assert(code == 401, f"expected 401, got {code}: {body}")
         print("  -> 401 OK")
 
-        # ==== first-webui-device auto promotion ====
-        print("\n[promotion] seed 1 device, GET /me should promote to admin")
+        # ==== first-webui-device explicit admin (no auto promotion) ====
+        print("\n[promotion] seed device; GET /me must NOT auto-promote to admin")
         _seed_device(TEST_DB_PATH, "laptop-1", "Laptop One", "tk_laptop1")
         c1 = Client(base, token="tk_laptop1")
         code, body = c1.get(API_PREFIX + "/devices/me")
         _assert(code == 200, f"expected 200, got {code}: {body}")
-        _assert(body.get("is_first_webui_device") is True, f"expected admin True, got {body}")
+        _assert(body.get("is_first_webui_device") is False,
+                f"expected admin False (no auto promotion), got {body}")
         _assert("bearer_token" in body and body["bearer_token"].startswith("tk_"),
                 f"expected bearer_token in response, got {body}")
-        print(f"  -> 200 OK, admin promoted, token: {body['bearer_token'][:12]}...")
+        print(f"  -> 200 OK, admin NOT auto-promoted, token: {body['bearer_token'][:12]}...")
 
-        print("\n[promotion] second /me should NOT steal admin (last-writer-wins: no-op)")
+        print("\n[promotion] set laptop-1 as admin via CLI set-admin")
+        _run_cli_control(["set-admin", "--device-id", "laptop-1"])
+        code, body = c1.get(API_PREFIX + "/devices/me")
+        _assert(code == 200, f"expected 200, got {code}: {body}")
+        _assert(body.get("is_first_webui_device") is True, f"expected admin True, got {body}")
+        print("  -> 200 OK, laptop-1 is admin (explicit CLI)")
+
+        print("\n[promotion] seed laptop-2; GET /me must remain non-admin")
         _seed_device(TEST_DB_PATH, "laptop-2", "Laptop Two", "tk_laptop2")
         c2 = Client(base, token="tk_laptop2")
         code, body = c2.get(API_PREFIX + "/devices/me")
         _assert(code == 200, f"expected 200, got {code}: {body}")
         _assert(body.get("is_first_webui_device") is False, f"expected admin False, got {body}")
-        print("  -> 200 OK, admin flag preserved on laptop-1")
+        print("  -> 200 OK, laptop-2 not auto-promoted")
 
         # ==== devices list ====
         print("\n[devices] list devices (admin can see all)")

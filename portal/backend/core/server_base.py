@@ -1,11 +1,29 @@
 import os
 import uvicorn
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks, Depends
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks, Depends, Header, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 from backend.core import config
 from backend.core.database import get_db
+
+def require_admin_device(
+    authorization: str = Header(default=""),
+    token: str = Query(default=""),
+    db: Session = Depends(get_db),
+):
+    """Requires a control-plane admin device (Bearer token + is_first_webui_device).
+
+    Used to protect non-control-plane routes (e.g. /api/backup, /api/restore).
+    Imported lazily to avoid a hard dependency on the control-plane extension
+    when it is not loaded.
+    """
+    from servers.control_plane.core import get_current_device
+
+    device = get_current_device(authorization=authorization, token=token, db=db)
+    if not device.is_first_webui_device:
+        raise HTTPException(status_code=403, detail="admin privilege required")
+    return device
 
 class PortalServer:
     """
@@ -49,7 +67,11 @@ class PortalServer:
         import time
 
         @self.app.get("/api/backup")
-        def handle_backup(include_apks: bool = True, db: Session = Depends(get_db)):
+        def handle_backup(
+            include_apks: bool = True,
+            db: Session = Depends(get_db),
+            _admin = Depends(require_admin_device),
+        ):
             try:
                 storage_ext = getattr(config, "EXTENSION_HOST", None).get_extension(tags=["storage-provider"])
                 
@@ -87,7 +109,8 @@ class PortalServer:
         async def handle_restore(
             file: UploadFile = File(...),
             strategy: str = Form("overwrite"),
-            db: Session = Depends(get_db)
+            db: Session = Depends(get_db),
+            _admin = Depends(require_admin_device),
         ):
             if strategy not in ("overwrite", "merge"):
                 raise HTTPException(status_code=400, detail="Invalid restore strategy. Must be 'overwrite' or 'merge'.")

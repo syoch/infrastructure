@@ -16,6 +16,7 @@ import {
   initOperationsSection,
   teardownOperationsSection,
 } from './js/control_operations.js';
+import { initAppsSection, initAppDetailSection, teardownAppsSection } from './js/apps_portal.js';
 import { getToken, fetchMe, Device } from './js/control_api.js';
 
 let allApps: App[] = [];
@@ -71,7 +72,7 @@ async function loadAllData(): Promise<void> {
 }
 
 function showSection(sectionId: string): void {
-  ['portal-view', 'dashboard-view', 'app-edit-view', 'control-view', 'operations-view'].forEach((id) => {
+  ['portal-view', 'dashboard-view', 'app-edit-view', 'control-view', 'operations-view', 'apps-view'].forEach((id) => {
     const el = document.getElementById(id);
     if (el) {
       if (id === sectionId) {
@@ -88,6 +89,7 @@ function showSection(sectionId: string): void {
 function teardownCurrent(): void {
   if (_currentSection === 'control') teardownControlSubroute();
   else if (_currentSection === 'operations') teardownOperationsSection();
+  else if (_currentSection === 'apps') teardownAppsSection();
   _currentSection = '';
 }
 
@@ -96,14 +98,16 @@ function updateNavForSection(route: string, _sub: string): void {
   const navDashboard = document.getElementById('nav-dashboard');
   const navControl = document.getElementById('nav-control');
   const navOperations = document.getElementById('nav-operations');
+  const navApps = document.getElementById('nav-apps');
   const dropdown = document.getElementById('control-dropdown');
-  const allNavBtns = [navPortal, navDashboard, navControl, navOperations].filter(Boolean);
+  const allNavBtns = [navPortal, navDashboard, navControl, navOperations, navApps].filter(Boolean);
 
   allNavBtns.forEach((b) => b && b.classList.remove('active'));
 
   const isControlFamily = route === 'control';
   const isDashboardFamily = ['dashboard', 'list', 'new', 'edit'].includes(route);
   const isOperations = route === 'operations';
+  const isApps = route === 'apps';
 
   if (isControlFamily) {
     if (dropdown) dropdown.classList.add('active');
@@ -112,6 +116,8 @@ function updateNavForSection(route: string, _sub: string): void {
     if (navDashboard) navDashboard.classList.add('active');
   } else if (isOperations) {
     if (navOperations) navOperations.classList.add('active');
+  } else if (isApps) {
+    if (navApps) navApps.classList.add('active');
   } else {
     if (navPortal) navPortal.classList.add('active');
   }
@@ -163,6 +169,14 @@ async function handleRouting(): Promise<void> {
       }
       const view = document.getElementById('operations-view');
       if (view) view.innerHTML = `<div class="control-error">Error: ${err.message}</div>`;
+    }
+  } else if (route === 'apps') {
+    activeSectionId = 'apps-view';
+    _currentSection = 'apps';
+    if (sub) {
+      await initAppDetailSection(decodeURIComponent(sub));
+    } else {
+      await initAppsSection();
     }
   } else if (isAdminRoute) {
     if (route === 'edit' && params.type === 'app') {

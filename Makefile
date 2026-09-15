@@ -31,6 +31,9 @@ test-backend:
 	python3 portal/tests/backend/test_control_plane_core.py
 	python3 portal/tests/backend/test_control_plane_backup.py
 	python3 portal/tests/backend/test_control_plane_ws.py
+	python3 portal/tests/backend/test_app_portal.py
+	python3 portal/tests/backend/test_app_portal_bridge.py
+	python3 portal/tests/backend/test_app_portal_bridge_e2e.py
 	python3 portal/tests/backend/test_device_agent.py
 
 test-e2e: portal/tests/node_modules

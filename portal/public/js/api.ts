@@ -102,6 +102,19 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
+async function adminRequest<T>(url: string, init: RequestInit = {}): Promise<T> {
+  const { getToken } = await import('./control_api.js');
+  const token = getToken();
+  const headers: Record<string, string> = { ...(init.headers as Record<string, string>) };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(url, { ...init, headers });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(errorText || `Request failed: ${res.status}`);
+  }
+  return res.json();
+}
+
 export async function fetchObtainiumExport(): Promise<ObtainiumExport> {
   return request('/obtainium-export.json');
 }
@@ -179,7 +192,7 @@ export async function restoreBackup(file: File, strategy: string): Promise<Resto
   formData.append('file', file);
   formData.append('strategy', strategy);
 
-  return request('/api/restore', {
+  return adminRequest('/api/restore', {
     method: 'POST',
     body: formData,
   });

@@ -222,11 +222,11 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
   });
 
   test('nav dropdown: control dropdown opens, lists Devices and ACL (admin)', async () => {
-    // Ensure this user becomes admin by registering first
+    // Promote this user to admin explicitly via CLI (no auto promotion anymore)
     const devId = uniqueId('nav-admin');
     const bootstrapToken = issueToken(devId, 'Nav Admin');
     const regResult = await registerDevice(bootstrapToken, devId, 'Nav Admin');
-    // First registered webui device is auto-promoted to admin via getMe on first /devices/me
+    promoteToAdmin(devId);
     await page.goto('/');
     await page.evaluate((tok) => {
       localStorage.setItem('syoch_control_token', tok);

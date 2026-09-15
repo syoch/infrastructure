@@ -22,6 +22,7 @@ tailscale/*
 
 .antigravitycli
 __pycache__
+.playwright-mcp/
 
 # Legacy f5.si / DDNS scripts (deleted, kept here so they never return)
 update-ip.sh
