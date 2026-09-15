@@ -114,8 +114,8 @@ Exit code: `0` if all imports and downloads succeeded, `1` otherwise.
 
 - **Confirmation dialog UI driving**: the script uses `uiautomator dump` +
   `input tap` to click "Continue". If Obtainium's UI changes (new button
-  text, different layout), the matcher in `lib/ui.sh:ui_confirm_button` may
-  need updating.
+  text, different layout), the matcher in `lib/fast_runner.py:dismiss_dialogs`
+  may need updating.
 - **First-run dialogs**: the welcome dialog, 2026 Google Verification
   warning, and the Android "Install unknown apps" permission dialog are
   dismissed best-effort. If the device has a clean slate, the script taps
@@ -154,7 +154,9 @@ obtainium-integration/
 │   ├── ui.sh                 uiautomator dump + tap helpers
 │   ├── verify.sh             DB / package / APK presence checks
 │   ├── report.sh             JSON + text report generation
-│   └── filter_apps.py        app filter helper (--apps, --filter, --skip-source-html)
+│   ├── filter_apps.py        app filter helper (--apps, --filter, --skip-source-html)
+│   ├── individual_download.py per-app deep-link import + download driver
+│   └── fast_runner.py        fast bulk import driver
 ├── fixtures/                 reserved for sample data
 └── results/                  output directory (gitignored)
 ```
@@ -167,8 +169,8 @@ obtainium-integration/
   `~/.cache/obtainium-integration/`. Delete and re-run.
 - **Confirmation dialog not detected** — Obtainium's UI may have changed.
   Manually inspect: `adb shell uiautomator dump /sdcard/ui.xml && adb pull
-  /sdcard/ui.xml`. Update `lib/ui.sh:ui_confirm_button` to match the actual
-  button text.
+  /sdcard/ui.xml`. Update `lib/fast_runner.py:dismiss_dialogs` to match the
+  actual button text.
 - **DB query returns empty** — the script falls back from `run-as` to `su 0`
   for rooted emulators. If neither works, check
   `adb shell getprop ro.build.type` (should be `userdebug` for rooted).

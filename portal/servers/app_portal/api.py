@@ -1,5 +1,4 @@
 import json
-import time
 from datetime import datetime
 from typing import Optional
 
@@ -101,8 +100,7 @@ def _opencode_meta(db: Session, source_device, device_id: str, timeout: float = 
     if not _device_online(db, device_id):
         return {}
     try:
-        from servers.control_plane.core import enqueue_command
-        from servers.control_plane.models import CommandRequest
+        from servers.control_plane.core import enqueue_command, wait_for_command_result
 
         cmd = enqueue_command(
             db,
@@ -112,14 +110,7 @@ def _opencode_meta(db: Session, source_device, device_id: str, timeout: float = 
             params={},
             timeout_seconds=max(1, int(timeout)),
         )
-        cur = None
-        deadline = time.time() + timeout
-        while time.time() < deadline:
-            db.expire_all()
-            cur = db.query(CommandRequest).filter_by(id=cmd.id).first()
-            if cur and cur.status in ("succeeded", "failed", "timeout", "cancelled"):
-                break
-            time.sleep(0.2)
+        cur = wait_for_command_result(db, cmd.id, timeout)
         payload = _parse_op_result(cur.result if cur else None)
         if not payload:
             return {}

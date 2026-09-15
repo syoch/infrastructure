@@ -2,6 +2,8 @@ import asyncio
 import json
 import logging
 import re
+import threading
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import AsyncIterator, Optional, Any
@@ -189,7 +191,61 @@ event_bus = EventBus()
 def get_event_bus() -> EventBus:
     return event_bus
 
+# --- COMMAND WAITERS ---
+
+TERMINAL_COMMAND_STATUSES = ("succeeded", "failed", "timeout", "cancelled")
+
+_command_waiters: dict[str, threading.Event] = {}
+_command_waiters_lock = threading.Lock()
+
+
+def _command_waiter(command_id: str) -> threading.Event:
+    with _command_waiters_lock:
+        waiter = _command_waiters.get(command_id)
+        if waiter is None:
+            waiter = threading.Event()
+            _command_waiters[command_id] = waiter
+        return waiter
+
+
+def _notify_command_waiters(command_id: str) -> None:
+    with _command_waiters_lock:
+        waiter = _command_waiters.get(command_id)
+    if waiter is not None:
+        waiter.set()
+
+
+def wait_for_command_result(
+    db: Session,
+    command_id: str,
+    timeout: float,
+    poll_interval: float = 0.5,
+) -> Optional[CommandRequest]:
+    """Block until a command reaches a terminal status or the timeout elapses.
+
+    Intended for worker threads: it wakes immediately when the WebSocket
+    handler publishes a status change and otherwise re-checks the row at most
+    every `poll_interval` seconds.
+    """
+    waiter = _command_waiter(command_id)
+    deadline = time.monotonic() + max(0.0, timeout)
+    try:
+        while True:
+            db.expire_all()
+            cmd = db.query(CommandRequest).filter_by(id=command_id).first()
+            if cmd is None or cmd.status in TERMINAL_COMMAND_STATUSES:
+                return cmd
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return cmd
+            waiter.wait(min(remaining, poll_interval))
+            waiter.clear()
+    finally:
+        with _command_waiters_lock:
+            _command_waiters.pop(command_id, None)
+
 def publish_command_status(cmd: CommandRequest) -> None:
+    _notify_command_waiters(cmd.id)
     event = {
         "type": "command_status",
         "command_id": cmd.id,

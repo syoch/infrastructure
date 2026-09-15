@@ -71,6 +71,13 @@ test.describe('Device Agent Integration', () => {
     ).toString();
   }
 
+  function listDevicesOutput() {
+    return execSync(
+      `python3 manage.py --config tests/config.test.json control list-devices`,
+      { cwd: path.join(__dirname, '..') }
+    ).toString();
+  }
+
   test('full flow: issue tokens, register agent, execute command via webui', async () => {
     // 1. Issue bootstrap token for WebUI
     const uniq = Date.now() + '-' + Math.floor(Math.random() * 1e6);
@@ -111,8 +118,10 @@ test.describe('Device Agent Integration', () => {
     agentProcess.stdout.on('data', d => console.log(`[AGENT] ${d.toString().trim()}`));
     agentProcess.stderr.on('data', d => console.log(`[AGENT] ${d.toString().trim()}`));
 
-    // Allow the agent some time to connect and register
-    await page.waitForTimeout(2000);
+    // Wait for the agent to register and come online
+    await expect.poll(() => listDevicesOutput().split('\n').some(
+      (line) => line.includes(`test-agent-${uniq}`) && line.includes('online')
+    ), { timeout: 20000 }).toBe(true);
 
     // 5. Navigate to WebUI and Bootstrap it
     await page.goto('/#/control');
@@ -146,7 +155,6 @@ test.describe('Device Agent Integration', () => {
 
     // 8. Create ACL to allow webui to command test-agent
     await page.goto('/#/control/acl');
-    await page.waitForTimeout(500);
     await expect(page.locator('h2', { hasText: 'ACL' })).toBeVisible();
     await expect(page.locator('#acl-form')).toBeVisible();
     await page.fill('#acl-form input[name="source_device"]', `device:webui-${uniq}`);

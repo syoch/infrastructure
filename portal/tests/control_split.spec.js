@@ -214,11 +214,10 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
     await page.selectOption('#cmds-filter-status', 'succeeded');
     await page.selectOption('#cmds-filter-limit', '10');
     await page.click('#cmds-filter-apply');
-    await page.waitForTimeout(500);
-    expect(page.url()).toMatch(/status=succeeded/);
-    expect(page.url()).toMatch(/limit=10/);
-    expect(lastCommandFilterUrl).toMatch(/status=succeeded/);
-    expect(lastCommandFilterUrl).toMatch(/limit=10/);
+    await expect(page).toHaveURL(/status=succeeded/);
+    await expect(page).toHaveURL(/limit=10/);
+    await expect.poll(() => lastCommandFilterUrl).toMatch(/status=succeeded/);
+    await expect.poll(() => lastCommandFilterUrl).toMatch(/limit=10/);
   });
 
   test('nav dropdown: control dropdown opens, lists Devices and ACL (admin)', async () => {
@@ -253,8 +252,7 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
     // We accept either: ACL is visible (admin) or ACL is hidden (non-admin)
     expect(typeof aclVisible).toBe('boolean');
     await page.locator('h1, h2, body').first().click();
-    await page.waitForTimeout(200);
-    expect(await dropdown.evaluate((el) => el.classList.contains('open'))).toBe(false);
+    await expect(dropdown).not.toHaveClass(/\bopen\b/);
   });
 
   test('backend: GET /api/control/commands supports filter and pagination', async () => {

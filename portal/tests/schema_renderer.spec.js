@@ -55,7 +55,7 @@ test.describe('Schema Renderer E2E Tests', () => {
   test('control plane form renders for ACL create (json widget for extra)', async () => {
     await page.goto('/#/control/devices');
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(500);
+    await expect(page.locator('#control-view')).toBeVisible();
   });
 
   test('control <-> dashboard navigation does not crash (no stack overflow)', async () => {
@@ -63,13 +63,11 @@ test.describe('Schema Renderer E2E Tests', () => {
     page.on('pageerror', (e) => errors.push(e.message || String(e)));
     await page.goto('/#/control/devices');
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(300);
     await page.goto('/#/dashboard');
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(300);
     await page.goto('/#/control/devices');
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(500);
+    await expect(page.locator('#control-view h2')).toBeVisible();
     expect(errors).toEqual([]);
     const stillAlive = await page.evaluate(() => {
       const el = document.getElementById('control-view');
@@ -143,10 +141,7 @@ test.describe('Schema Renderer E2E Tests', () => {
     await page.goto('/#/operations');
     await page.waitForLoadState('networkidle');
 
-    // Wait to see if provider cards populate
-    await page.waitForTimeout(1000);
-
-    // Verify button exists
+    // Verify button exists (provider cards populate asynchronously)
     const btn = page.locator('.provider-card button', { hasText: 'Test Op' });
     await expect(btn).toBeVisible();
 

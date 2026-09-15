@@ -800,7 +800,6 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
 
     // Reload page to verify persistence
     await page.reload();
-    await page.waitForTimeout(1000); // Give UI a brief moment to load settings
 
     // Verify fields persisted correctly
     await expect(themeSelect).toHaveValue('dark');
