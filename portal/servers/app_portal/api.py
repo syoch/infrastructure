@@ -1,5 +1,6 @@
-import base64
+import json
 import re
+import time
 import uuid
 from datetime import datetime
 from typing import Optional
@@ -11,12 +12,17 @@ from sqlalchemy.orm import Session
 from backend.core.database import get_db
 from backend.core.server_base import require_admin_device
 from .models import WebApp, Feedback, Bridge
+from .opencode_ops import ROLE_KEYS, TRAITS_OPERATION_ID, server_key_for
 
 
 router = APIRouter(prefix="/api/app-portal", tags=["app-portal"])
 
 # Runtime configuration injected by the extension's setup()
 _settings = {"bridge_device_id": "opencode-bridge"}
+
+# In-process cache of per-device opencode-bridge metadata discovered through the
+# `traits.opencode-bridge` operation: {"roles": {role: op_id}, "webui_base_url", "server_key"}
+_meta_cache: dict[str, dict] = {}
 
 
 def configure(bridge_device_id: str) -> None:
@@ -43,9 +49,25 @@ def _slugify(value: str) -> str:
     return slug or uuid.uuid4().hex[:12]
 
 
-def server_key_for(base_url: str) -> str:
-    """Mirrors the OpenCode WebUI server key: base64url(origin) without padding."""
-    return base64.urlsafe_b64encode(base_url.encode("utf-8")).decode("ascii").rstrip("=")
+def _parse_op_result(result) -> dict:
+    """Normalizes a control-plane command result.
+
+    The generic device agent reports `{"stdout", "stderr", "exit_code"}` and the
+    opencode helper CLI prints a JSON object on stdout; older shapes may already
+    carry the payload at the top level.
+    """
+    if not isinstance(result, dict):
+        return {}
+    if "stdout" in result:
+        raw = (result.get("stdout") or "").strip()
+        if not raw:
+            return {}
+        try:
+            parsed = json.loads(raw)
+            return parsed if isinstance(parsed, dict) else {}
+        except json.JSONDecodeError:
+            return {}
+    return result
 
 
 def _bridge(db: Session, device_id: str) -> Optional[Bridge]:
@@ -54,9 +76,81 @@ def _bridge(db: Session, device_id: str) -> Optional[Bridge]:
 
 def webui_url_for(db: Session, app: WebApp) -> Optional[str]:
     br = _bridge(db, app.bridge_device_id)
-    if not br or not br.webui_base_url or not br.server_key:
-        return None
-    return f"{br.webui_base_url.rstrip('/')}/server/{br.server_key}/session/{app.opencode_session_id}"
+    if br and br.webui_base_url and br.server_key:
+        return f"{br.webui_base_url.rstrip('/')}/server/{br.server_key}/session/{app.opencode_session_id}"
+    # Fall back to the most recent delivered feedback's deep link.
+    last = (
+        db.query(Feedback)
+        .filter(Feedback.app_id == app.id, Feedback.webui_url.isnot(None))
+        .order_by(Feedback.created_at.desc())
+        .first()
+    )
+    return last.webui_url if last else None
+
+
+def _device_online(db: Session, device_id: str) -> bool:
+    from servers.control_plane.models import Device
+
+    d = db.query(Device).filter_by(id=device_id).first()
+    return bool(d and d.ws_state == "online")
+
+
+def _opencode_meta(db: Session, source_device, device_id: str, timeout: float = 8.0) -> dict:
+    """Discovers the target device's `opencode-bridge` trait.
+
+    Returns {"roles": {role: op_id}, "webui_base_url", "server_key"} (possibly
+    empty). Result is cached in-process and the WebUI info is persisted.
+    """
+    cached = _meta_cache.get(device_id)
+    if cached:
+        return cached
+    if not _device_online(db, device_id):
+        return {}
+    try:
+        from servers.control_plane.core import enqueue_command
+        from servers.control_plane.models import CommandRequest
+
+        cmd = enqueue_command(
+            db,
+            source_device=source_device,
+            target_device_id=device_id,
+            operation=TRAITS_OPERATION_ID,
+            params={},
+            timeout_seconds=max(1, int(timeout)),
+        )
+        cur = None
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            db.expire_all()
+            cur = db.query(CommandRequest).filter_by(id=cmd.id).first()
+            if cur and cur.status in ("succeeded", "failed", "timeout", "cancelled"):
+                break
+            time.sleep(0.2)
+        payload = _parse_op_result(cur.result if cur else None)
+        if not payload:
+            return {}
+        webui_base_url = payload.get("webui_base_url")
+        server_key = payload.get("server_key") or (
+            server_key_for(webui_base_url) if webui_base_url else None
+        )
+        meta = {
+            "roles": payload.get("operations") or {},
+            "webui_base_url": webui_base_url,
+            "server_key": server_key,
+        }
+        _meta_cache[device_id] = meta
+        if webui_base_url and server_key:
+            br = _bridge(db, device_id)
+            if not br:
+                br = Bridge(device_id=device_id)
+                db.add(br)
+            br.webui_base_url = webui_base_url
+            br.server_key = server_key
+            br.last_seen = datetime.utcnow()
+            db.commit()
+        return meta
+    except Exception:  # noqa: BLE001 - discovery is best-effort
+        return {}
 
 
 def _reconcile(db: Session, fb: Feedback) -> Feedback:
@@ -71,10 +165,9 @@ def _reconcile(db: Session, fb: Feedback) -> Feedback:
     if cmd.status == "succeeded":
         fb.status = "delivered"
         fb.delivered_at = cmd.completed_at or datetime.utcnow()
-        result = cmd.result or {}
-        if isinstance(result, dict):
-            fb.webui_url = result.get("webui_url") or fb.webui_url
-            fb.target_session_id = result.get("session_id") or fb.target_session_id
+        payload = _parse_op_result(cmd.result)
+        fb.webui_url = payload.get("webui_url") or fb.webui_url
+        fb.target_session_id = payload.get("session_id") or fb.target_session_id
     elif cmd.status in ("failed", "timeout", "cancelled"):
         fb.status = "failed"
         fb.error = cmd.error or f"command {cmd.status}"
@@ -230,6 +323,10 @@ def get_app(
     db: Session = Depends(get_db),
 ):
     app = _get_app_or_404(db, slug)
+    # Warm the opencode-bridge metadata cache so the session deep link can be
+    # shown even before the first feedback is delivered.
+    if _bridge(db, app.bridge_device_id) is None:
+        _opencode_meta(db, device, app.bridge_device_id, timeout=4.0)
     return _app_to_dict(db, app, include_feedback=True)
 
 
@@ -300,11 +397,14 @@ def submit_feedback(
             db.refresh(fb)
             return _feedback_to_dict(fb)
 
+        meta = _opencode_meta(db, device, app.bridge_device_id)
+        feedback_op = (meta.get("roles") or {}).get("feedback", ROLE_KEYS["feedback"])
+
         cmd = enqueue_command(
             db,
             source_device=device,
             target_device_id=app.bridge_device_id,
-            operation="opencode.feedback",
+            operation=feedback_op,
             params={
                 "session_id": app.opencode_session_id,
                 "prompt": _prompt_for(app, fb),

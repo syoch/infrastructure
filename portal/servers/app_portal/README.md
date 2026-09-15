@@ -15,14 +15,18 @@ OpenCode が作成した Web アプリ（および手動登録した任意のア
                       [control-plane コマンド基盤 (既存)]
                                     ▲  WS(outbound) claim / result
                                     │
-                     [portal-opencode-bridge]  (OpenCode ホストで常駐)
-                                    │  opencode serve API
+                     [portal-device-agent]  (OpenCode ホストで常駐・汎用)
+                                    │  設定で定義した shell コマンドを実行
+                                    │  opencode.* は portal-opencode-tool を呼ぶ
                                     ▼
-                              [OpenCode セッション]
+                        [OpenCode ホストのローカル処理]
 ```
 
-- 配送は **control-plane のデバイス／コマンドチャネルを流用**する。bridge は
-  通常の control-plane デバイスとして登録し、`opencode.*` オペレーションを提供する。
+- **デバイスごとに汎用 `portal-device-agent` を 1 プロセス**常駐させる。opencode 専用の
+  実行ファイルは持たず、OpenCode 操作は agent の設定に定義した custom operation として
+  薄いヘルパー CLI (`portal-opencode-tool`) を呼ぶ。
+- agent は `traits.opencode-bridge` operation を広告し、opencode 操作のキーと WebUI 情報を
+  返す。ポータルはこれを**発見（discovery）**して使うため、operation キーをハードコードしない。
 - フィードバック送信は `require_admin_device`（admin デバイス）のみ。
 - セッションは**ピン留め必須**（`opencode_session_id`）。
 
@@ -76,62 +80,85 @@ OpenCode が作成した Web アプリ（および手動登録した任意のア
 - `app-portal list-feedback [--app-slug ...]` — フィードバック一覧
 - `app-portal list-bridges` — bridge 一覧
 
-## bridge (`portal-opencode-bridge`)
+## Device agent + OpenCode helper
 
-OpenCode が動くマシンで常駐させる。control-plane の bootstrap token で登録する。
+OpenCode が動くマシンでは汎用 `portal-device-agent` を常駐させ、opencode 操作を
+custom operation として定義する。opencode 固有の処理は `portal-opencode-tool`
+（ヘルパー CLI）が担う。
 
-```bash
-portal-opencode-bridge \
-  --server-url http://<portal-host>:8000 \
-  --bootstrap-token <token> \
-  --credentials-file /var/lib/portal-opencode-bridge/credentials.json \
-  --opencode-url http://127.0.0.1:12000 \
-  --webui-base-url http://127.0.0.1:12000
+### `portal-opencode-tool`
+
+```
+portal-opencode-tool [--opencode-url URL] [--webui-base-url URL] <command>
+  feedback --session-id <id> --prompt <text>   セッションへ prompt を非同期注入し {"session_id","webui_url"} を stdout に出力
+  list-sessions [--directory <dir>]            セッション一覧
+  webui-url                                    {"webui_base_url","server_key"}
+  traits                                       {"operations": {role: op_id}, "webui_base_url", "server_key"}
 ```
 
-- bootstrap token は**初回登録のみ**必要。登録後は `--credentials-file` に bearer token が
-  保存され、以降の再起動はキャッシュを再利用する（token の再発行は不要）。
-- `--bootstrap-token-file <path>` でトークンをファイルから読むこともできる（argv 露出を避ける）。
+- `--opencode-url`（env `OPENCODE_URL`、既定 `http://127.0.0.1:12000`）
+- `--webui-base-url`（env `OPENCODE_WEBUI_BASE_URL`、既定は opencode-url。ブラウザから
+  到達可能な URL を指定する）
+- 出力は JSON。device agent は `result.stdout` として返し、ポータルがパースする。
 
-提供オペレーション:
+### `traits.opencode-bridge`
 
-- `opencode.feedback` — セッションへ prompt を非同期注入（`POST /session/{id}/prompt_async`）し deep link を返す
-- `opencode.list_sessions` — ディレクトリでフィルタしたセッション一覧
-- `opencode.webui_url` — WebUI base URL / server_key を返す
+role→operation キーの対応と WebUI 情報を返す:
 
-`--webui-base-url` はブラウザから到達可能な URL を指定する（リモート閲覧なら
-tailscale 名など）。
+```json
+{
+  "trait": "opencode-bridge",
+  "operations": {
+    "feedback": "opencode.feedback",
+    "list_sessions": "opencode.list_sessions",
+    "webui_url": "opencode.webui_url"
+  },
+  "keys": ["opencode.feedback", "opencode.list_sessions", "opencode.webui_url"],
+  "webui_base_url": "http://127.0.0.1:12000",
+  "server_key": "aHR0cDovLzEyNy4wLjAuMToxMjAwMA"
+}
+```
 
-### systemd unit 例
+ポータルは対象デバイスの `traits.opencode-bridge` を実行してキーを解決・キャッシュし、
+WebUI 情報を `app_portal_bridges` に保存する（`bridges/announce` は後方互換のため残置）。
 
-```ini
-[Unit]
-Description=Portal OpenCode bridge
-After=network-online.target
-Wants=network-online.target
+### device agent config 例
 
-[Service]
-Type=simple
-User=syoch
-StateDirectory=portal-opencode-bridge
-ExecStart=%h/.nix-profile/bin/portal-opencode-bridge \
-  --server-url https://portal.syoch.org \
-  --bootstrap-token-file /etc/nixos/portal-opencode-bridge.token \
-  --credentials-file /var/lib/portal-opencode-bridge/credentials.json \
-  --opencode-url http://127.0.0.1:12000
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
+```json
+{
+  "device_id": "opencode-bridge",
+  "display_name": "OpenCode Bridge",
+  "server_url": "https://portal.syoch.org",
+  "bootstrap_token_file": "/etc/nixos/portal-opencode-bridge.token",
+  "credentials_file": "/var/lib/portal-device-agent/credentials.json",
+  "operations": [
+    { "id": "opencode.feedback", "group": "opencode", "name": "Send Feedback",
+      "command": ["portal-opencode-tool", "feedback", "--session-id", "{session_id}", "--prompt", "{prompt}"],
+      "params_schema": { "type": "object", "properties": { "session_id": {"type":"string"}, "prompt": {"type":"string","ui_hint":{"widget":"textarea"}} } } },
+    { "id": "opencode.list_sessions", "group": "opencode", "name": "List Sessions",
+      "command": ["portal-opencode-tool", "list-sessions", "--directory", "{directory}"],
+      "params_schema": { "type": "object", "properties": { "directory": {"type":"string"} } } },
+    { "id": "opencode.webui_url", "group": "opencode", "name": "WebUI URL",
+      "command": ["portal-opencode-tool", "webui-url"],
+      "params_schema": { "type": "object", "properties": {} } },
+    { "id": "traits.opencode-bridge", "group": "opencode", "name": "Traits",
+      "command": ["portal-opencode-tool", "traits"],
+      "params_schema": { "type": "object", "properties": {} } },
+    { "id": "sys.dpms_toggle", "group": "system", "name": "Toggle DPMS",
+      "command": ["hyprctl", "dispatch", "dpms", "toggle"],
+      "params_schema": { "type": "object", "properties": {} },
+      "ui_hint": { "kind": "button", "label": "Toggle DPMS" } }
+  ]
+}
 ```
 
 bootstrap token は `python3 manage.py --config <cfg> control issue-bootstrap-token
---device-id opencode-bridge --display-name "OpenCode Bridge"` で発行する。
+--device-id opencode-bridge --display-name "OpenCode Bridge"` で発行する（初回登録のみ。
+以降は `credentials_file` に保存された bearer token を再利用する）。
 
-syoch-nix (NixOS) には `services.portal-opencode-bridge` モジュール（dotfiles
-`components/host/syoch-nix/portal-bridge.nix`）があり、bootstrap token は sops
-secret `portal-opencode-bridge-token` から供給される。
+syoch-nix (NixOS) では `services.portal-device-agent` モジュール（dotfiles
+`components/host/syoch-nix/portal-device-agent.nix`）が設定を生成して起動する。
+bootstrap token は sops secret `portal-opencode-bridge-token` から供給される。
 
 ## OpenCode 自動登録ツール
 
@@ -161,7 +188,6 @@ secret `portal-opencode-bridge-token` から供給される。
 
 ## テスト
 
-- `portal/tests/backend/test_app_portal.py` — REST + 配送フロー（bridge 結果は
-  DB でシミュレート）
-- `portal/tests/backend/test_app_portal_bridge.py` — fake OpenCode サーバに対する
-  bridge のユニットテスト
+- `portal/tests/backend/test_app_portal.py` — REST + 配送フロー（コマンド結果は DB でシミュレート）
+- `portal/tests/backend/test_opencode_tool.py` — fake OpenCode サーバに対する `OpenCodeOps` / ヘルパー CLI のテスト
+- `portal/tests/backend/test_app_portal_delivery_e2e.py` — portal + 汎用 device agent + ヘルパー CLI の配送統合テスト

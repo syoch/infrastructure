@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Integration test: portal + real portal-opencode-bridge + fake OpenCode server."""
+"""Integration test: portal + generic device agent + OpenCode helper CLI.
+
+Validates the unified design: a single `portal-device-agent` advertises the
+opencode operations (and a `traits.opencode-bridge` operation) as config-defined
+shell commands invoking `portal-opencode-tool`. The portal discovers the
+feedback operation key via the trait and parses the helper's stdout JSON.
+"""
 import json
 import os
 import signal
@@ -15,7 +21,6 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 TESTS_DIR = os.path.dirname(SCRIPT_DIR)
 PORTAL_DIR = os.path.dirname(TESTS_DIR)
-
 if PORTAL_DIR not in sys.path:
     sys.path.insert(0, PORTAL_DIR)
 
@@ -24,6 +29,7 @@ TEST_DB_PATH = os.path.join(PORTAL_DIR, "tests", "portal_test.db")
 API = "/api/app-portal"
 CTRL = "/api/control"
 WEBUI_BASE = "http://127.0.0.1:12000"
+DEVICE_ID = "opencode-bridge"
 
 
 def _free_port() -> int:
@@ -142,9 +148,72 @@ def _assert(cond, msg):
         raise AssertionError(msg)
 
 
+def _agent_config(base, token, creds_file):
+    helper = ["python3", "-m", "servers.app_portal.opencode_tool"]
+    return {
+        "device_id": DEVICE_ID,
+        "display_name": "OpenCode Bridge",
+        "server_url": base,
+        "bootstrap_token": token,
+        "credentials_file": creds_file,
+        "operations": [
+            {
+                "id": "opencode.feedback", "name": "Send Feedback", "group": "opencode",
+                "command": helper + ["feedback", "--session-id", "{session_id}", "--prompt", "{prompt}"],
+                "params_schema": {"type": "object", "properties": {"session_id": {"type": "string"}, "prompt": {"type": "string"}}},
+            },
+            {
+                "id": "opencode.list_sessions", "name": "List Sessions", "group": "opencode",
+                "command": helper + ["list-sessions", "--directory", "{directory}"],
+                "params_schema": {"type": "object", "properties": {"directory": {"type": "string"}}},
+            },
+            {
+                "id": "opencode.webui_url", "name": "WebUI URL", "group": "opencode",
+                "command": helper + ["webui-url"],
+                "params_schema": {"type": "object", "properties": {}},
+            },
+            {
+                "id": "traits.opencode-bridge", "name": "Traits", "group": "opencode",
+                "command": helper + ["traits"],
+                "params_schema": {"type": "object", "properties": {}},
+            },
+            {
+                "id": "sys.dpms_toggle", "name": "Toggle DPMS", "group": "system",
+                "command": ["true"],
+                "params_schema": {"type": "object", "properties": {}},
+                "ui_hint": {"kind": "button", "label": "Toggle DPMS"},
+            },
+        ],
+    }
+
+
+def _wait_device_online(base, admin_token, device_id, timeout=20.0):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        code, body = _req(base, "GET", CTRL + "/devices", token=admin_token)
+        if code == 200:
+            for d in body.get("devices", []):
+                if d["id"] == device_id and d.get("ws_state") == "online":
+                    return True
+        time.sleep(0.3)
+    return False
+
+
+def _wait_delivered(base, admin_token, slug, feedback_id, timeout=20.0):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        code, detail = _req(base, "GET", API + f"/apps/{slug}", token=admin_token)
+        if code == 200:
+            for item in detail.get("feedback", []):
+                if item["id"] == feedback_id and item["status"] == "delivered":
+                    return item
+        time.sleep(0.3)
+    return None
+
+
 def run_all():
     print("=" * 60)
-    print("      App Portal: full delivery integration test")
+    print("      App Portal: device-agent delivery integration test")
     print("=" * 60)
 
     fake = HTTPServer(("127.0.0.1", 0), _FakeOpenCode)
@@ -157,15 +226,19 @@ def run_all():
 
     port = _free_port()
     base = f"http://127.0.0.1:{port}"
-    runner = os.path.join(SCRIPT_DIR, "_app_portal_e2e_runner.py")
+    runner = os.path.join(SCRIPT_DIR, "_app_portal_agent_runner.py")
     with open(runner, "w") as f:
         f.write(_RUNNER.format(portal_dir=PORTAL_DIR, config_path=CONFIG_PATH, port=port))
 
     env = os.environ.copy()
     env["PYTHONPATH"] = PORTAL_DIR
+    env["OPENCODE_URL"] = fake_url
+    env["OPENCODE_WEBUI_BASE_URL"] = WEBUI_BASE
+
     server = subprocess.Popen(["python3", runner], cwd=PORTAL_DIR, env=env,
                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    bridge = None
+    agent = None
+    agent_log = open("/tmp/device_agent_e2e.log", "w")
     try:
         _assert(_wait_ready(base + CTRL + "/devices"), "portal did not start")
 
@@ -176,132 +249,68 @@ def run_all():
         admin = reg["bearer_token"]
         _run_cli(["set-admin", "--device-id", "e2e-admin"])
 
-        bridge_tok = _issue("opencode-bridge", "OpenCode Bridge")
-
-        # start the real bridge process
-        creds_file = "/tmp/portal-opencode-bridge-creds.json"
+        token = _issue(DEVICE_ID, "OpenCode Bridge")
+        creds_file = "/tmp/opencode-bridge-agent-creds.json"
+        cfg_path = "/tmp/opencode-bridge-agent.json"
         for p in (creds_file, creds_file + ".tmp"):
             if os.path.exists(p):
                 os.remove(p)
-        bridge_log = open("/tmp/bridge_e2e.log", "w")
-        bridge = subprocess.Popen(
-            ["python3", "-m", "servers.app_portal.bridge",
-             "--server-url", base,
-             "--bootstrap-token", bridge_tok,
-             "--credentials-file", creds_file,
-             "--device-id", "opencode-bridge",
-             "--display-name", "OpenCode Bridge",
-             "--opencode-url", fake_url,
-             "--webui-base-url", WEBUI_BASE],
-            cwd=PORTAL_DIR, env=env,
-            stdout=bridge_log, stderr=subprocess.STDOUT,
+        with open(cfg_path, "w") as f:
+            json.dump(_agent_config(base, token, creds_file), f)
+
+        agent = subprocess.Popen(
+            ["python3", "-m", "agents.device_agent", "--config", cfg_path],
+            cwd=PORTAL_DIR, env=env, stdout=agent_log, stderr=subprocess.STDOUT,
         )
 
-        # wait for the bridge to announce its WebUI base URL
-        print("\n[bridge] waiting for announce")
-        deadline = time.time() + 20
-        announced = False
-        while time.time() < deadline:
-            code, body = _req(base, "GET", API + "/bridges", token=admin)
-            if code == 200 and body.get("bridges"):
-                announced = True
-                break
-            time.sleep(0.3)
-        _assert(announced, "bridge did not announce webui url")
-        print("  -> announced")
+        print("\n[agent] waiting for device online")
+        _assert(_wait_device_online(base, admin, DEVICE_ID), "device agent did not come online")
+        print("  -> online")
 
-        # create app pinned to the bridge + session
         code, app = _req(base, "POST", API + "/apps", {
-            "name": "E2E Bridge App",
+            "name": "E2E Agent App",
             "project_directory": "/tmp/e2e-app",
             "opencode_session_id": "ses_e2e",
+            "bridge_device_id": DEVICE_ID,
         }, token=admin)
         _assert(code == 200, f"create app failed: {code} {app}")
         slug = app["slug"]
-        _assert(app["webui_url"].endswith("/session/ses_e2e"), f"unexpected webui_url: {app}")
 
-        print("\n[feedback] submit and wait for delivery")
+        print("\n[trait] app detail warms the opencode-bridge trait")
+        code, detail = _req(base, "GET", API + f"/apps/{slug}", token=admin)
+        _assert(code == 200, f"detail failed: {code} {detail}")
+        _assert((detail.get("webui_url") or "").endswith("/session/ses_e2e"),
+                f"webui_url not resolved via trait: {detail.get('webui_url')}")
+        print(f"  -> {detail['webui_url']}")
+
+        print("\n[feedback] submit and wait for delivery via device agent")
         code, fb = _req(base, "POST", API + f"/apps/{slug}/feedback",
-                        {"body": "integration feedback", "kind": "bug"}, token=admin)
+                        {"body": "agent delivery feedback", "kind": "bug"}, token=admin)
         _assert(code == 200, f"feedback failed: {code} {fb}")
         _assert(fb["status"] == "pending", f"expected pending: {fb}")
 
-        delivered = None
-        deadline = time.time() + 20
-        while time.time() < deadline:
-            code, detail = _req(base, "GET", API + f"/apps/{slug}", token=admin)
-            if code == 200:
-                for item in detail.get("feedback", []):
-                    if item["id"] == fb["id"] and item["status"] == "delivered":
-                        delivered = item
-                        break
-            if delivered:
-                break
-            time.sleep(0.3)
+        delivered = _wait_delivered(base, admin, slug, fb["id"])
         _assert(delivered is not None, "feedback was not delivered")
         _assert(delivered["webui_url"].endswith("/session/ses_e2e"), f"unexpected: {delivered}")
         print(f"  -> delivered, webui_url={delivered['webui_url']}")
 
         _assert(len(_FakeOpenCode.prompts) == 1, f"prompt not injected: {_FakeOpenCode.prompts}")
         prompt_text = _FakeOpenCode.prompts[0]["parts"][0]["text"]
-        _assert("integration feedback" in prompt_text, f"unexpected prompt: {prompt_text}")
+        _assert("agent delivery feedback" in prompt_text, f"unexpected prompt: {prompt_text}")
         print("  -> prompt injected into OpenCode session")
 
-        # --- restart with cached credentials (no bootstrap token) ---
-        print("\n[bridge] restart reusing cached credentials (no bootstrap token)")
-
-        def _announce_count():
-            try:
-                with open("/tmp/bridge_e2e.log") as fh:
-                    return fh.read().count("announced webui_base_url")
-            except OSError:
-                return 0
-
-        bridge.send_signal(signal.SIGTERM)
-        try:
-            bridge.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            bridge.kill()
-        bridge = subprocess.Popen(
-            ["python3", "-m", "servers.app_portal.bridge",
-             "--server-url", base,
-             "--credentials-file", creds_file,
-             "--device-id", "opencode-bridge",
-             "--opencode-url", fake_url,
-             "--webui-base-url", WEBUI_BASE],
-            cwd=PORTAL_DIR, env=env,
-            stdout=bridge_log, stderr=subprocess.STDOUT,
-        )
-        deadline = time.time() + 20
-        while time.time() < deadline and _announce_count() < 2:
-            time.sleep(0.2)
-        _assert(_announce_count() >= 2, "restarted bridge did not reconnect with cached credentials")
-
-        code, fb2 = _req(base, "POST", API + f"/apps/{slug}/feedback",
-                         {"body": "second feedback after restart", "kind": "feedback"}, token=admin)
-        _assert(code == 200, f"second feedback failed: {code} {fb2}")
-        delivered2 = None
-        deadline = time.time() + 20
-        while time.time() < deadline:
-            code, detail = _req(base, "GET", API + f"/apps/{slug}", token=admin)
-            if code == 200:
-                for item in detail.get("feedback", []):
-                    if item["id"] == fb2["id"] and item["status"] == "delivered":
-                        delivered2 = item
-                        break
-            if delivered2:
-                break
-            time.sleep(0.3)
-        _assert(delivered2 is not None, "second feedback not delivered after restart")
-        _assert(len(_FakeOpenCode.prompts) == 2, f"second prompt not injected: {_FakeOpenCode.prompts}")
-        print("  -> reused cached credentials and delivered again")
+        print("\n[dpms] device advertises the extra system operation")
+        code, dev = _req(base, "GET", CTRL + f"/operations", token=admin)
+        ids = [o["id"] for o in dev.get("operations", [])] if code == 200 else []
+        _assert("sys.dpms_toggle" in ids, f"dpms operation missing: {ids}")
+        print("  -> sys.dpms_toggle advertised")
     finally:
-        if bridge and bridge.poll() is None:
-            bridge.send_signal(signal.SIGTERM)
+        if agent and agent.poll() is None:
+            agent.send_signal(signal.SIGTERM)
             try:
-                bridge.wait(timeout=5)
+                agent.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                bridge.kill()
+                agent.kill()
         if server.poll() is None:
             server.send_signal(signal.SIGTERM)
             try:
@@ -313,7 +322,7 @@ def run_all():
             os.remove(runner)
 
     print("\n" + "=" * 60)
-    print("      ALL APP PORTAL DELIVERY INTEGRATION TESTS PASSED")
+    print("      ALL DEVICE-AGENT DELIVERY TESTS PASSED")
     print("=" * 60)
 
 
