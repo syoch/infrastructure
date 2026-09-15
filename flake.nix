@@ -17,6 +17,7 @@
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+        portalPython = pkgs.python3.withPackages (ps: import ./portal/python-deps.nix ps);
       in
       rec {
         packages = {
@@ -75,20 +76,11 @@
             };
           portal = pkgs.python3Packages.callPackage ./portal {
             buildNpmPackage = pkgs.buildNpmPackage;
+            python3Packages = pkgs.python3Packages;
           };
           test-backend = pkgs.writeShellApplication {
             name = "run-backend-tests";
-            runtimeInputs = with pkgs; [
-              (python3.withPackages (ps: with ps; [
-                sqlalchemy
-                psycopg2
-                fastapi
-                uvicorn
-                python-multipart
-                websockets
-                jsonschema
-              ]))
-            ];
+            runtimeInputs = [ portalPython ];
             text = ''
               PROJECT_ROOT=$(git rev-parse --show-toplevel)
               cd "$PROJECT_ROOT"
@@ -107,17 +99,10 @@
           };
           test-e2e = pkgs.writeShellApplication {
             name = "run-e2e-tests";
-            runtimeInputs = with pkgs; [
-              nodejs
-              chromium
-              (python3.withPackages (ps: with ps; [
-                sqlalchemy
-                psycopg2
-                fastapi
-                uvicorn
-                python-multipart
-                jsonschema
-              ]))
+            runtimeInputs = [
+              pkgs.nodejs
+              pkgs.chromium
+              portalPython
             ];
             text = ''
               set -e
@@ -286,17 +271,7 @@
             sunxi-tools
             scrcpy
             packages.ksud-next
-            (python3.withPackages (
-              ps: with ps; [
-                sqlalchemy
-                psycopg2
-                fastapi
-                uvicorn
-                python-multipart
-                websockets
-                jsonschema
-              ]
-            ))
+            portalPython
           ];
 
           shellHook = ''
@@ -310,19 +285,7 @@
               export DEPLOY_PATH="~/infrastructure"
             fi
 
-            export PATH=${
-              (pkgs.python3.withPackages (
-                ps: with ps; [
-                  sqlalchemy
-                  psycopg2
-                  fastapi
-                  uvicorn
-                  python-multipart
-                  websockets
-                  jsonschema
-                ]
-              ))
-            }/bin:$PATH
+            export PATH=${portalPython}/bin:$PATH
             function find_flake_root() {
               local dir="$PWD"
               while [ "$dir" != "/" ]; do

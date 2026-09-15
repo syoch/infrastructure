@@ -2,14 +2,7 @@
   lib,
   buildPythonApplication,
   python,
-  fastapi,
-  uvicorn,
-  sqlalchemy,
-  pydantic,
-  python-multipart,
-  psycopg2,
-  websockets,
-  jsonschema,
+  python3Packages,
   setuptools,
   buildNpmPackage,
 }:
@@ -33,17 +26,7 @@ buildPythonApplication {
 
   src = ./.;
 
-  propagatedBuildInputs = [
-    fastapi
-    uvicorn
-    sqlalchemy
-    pydantic
-    python-multipart
-    psycopg2
-    websockets
-    jsonschema
-    setuptools
-  ];
+  propagatedBuildInputs = (import ./python-deps.nix python3Packages) ++ [ setuptools ];
 
   # ビルド時にフロントエンドの成果物を取り込む
   postInstall = ''
