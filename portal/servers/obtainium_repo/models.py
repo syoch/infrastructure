@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Integer, BigInteger, Boolean, ForeignKey, Table
 from sqlalchemy.types import JSON
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship
 from backend.core.database import Base
 
 # Junction table for apps and categories (Many-to-Many)
@@ -25,10 +25,10 @@ class App(Base):
     additional_settings = Column(JSON, nullable=False, default=dict)
     
     # Relationship to Category
-    categories = relationship('Category', secondary=app_categories, back_populates='apps')
+    categories: Mapped[list['Category']] = relationship('Category', secondary=app_categories, back_populates='apps')
     
     # Relationship to LocalAppAPK
-    apks = relationship('LocalAppAPK', back_populates='app', cascade='all, delete-orphan')
+    apks: Mapped[list['LocalAppAPK']] = relationship('LocalAppAPK', back_populates='app', cascade='all, delete-orphan')
 
 class LocalAppAPK(Base):
     __tablename__ = 'local_app_apks'
@@ -39,7 +39,7 @@ class LocalAppAPK(Base):
     version = Column(String(50), nullable=False)
     architecture = Column(String(50), nullable=True)
     
-    app = relationship('App', back_populates='apks')
+    app: Mapped['App'] = relationship('App', back_populates='apks')
 
 class Category(Base):
     __tablename__ = 'categories'
@@ -48,7 +48,7 @@ class Category(Base):
     color = Column(BigInteger, nullable=False)  # Handles 32-bit unsigned integer ARGB
     
     # Relationship to App
-    apps = relationship('App', secondary=app_categories, back_populates='categories')
+    apps: Mapped[list['App']] = relationship('App', secondary=app_categories, back_populates='categories')
 
 class Setting(Base):
     __tablename__ = 'settings'

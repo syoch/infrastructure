@@ -6,7 +6,7 @@
 
   const TYPE_OPTIONS = ['string', 'number', 'integer', 'boolean', 'object', 'array', 'null'];
 
-  const isRoot = depth === 0;
+  const isRoot = $derived(depth === 0);
 
   export function getSchema(): JSONSchema {
     return JSON.parse(JSON.stringify(schema)) as JSONSchema;

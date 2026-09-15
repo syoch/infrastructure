@@ -30,7 +30,10 @@ function mountInto(
   container?: HTMLElement
 ): { el: HTMLElement; instance: Record<string, unknown> } {
   const wrapper = document.createElement('div');
-  const instance = mount(component, { target: wrapper, props }) as Record<string, unknown>;
+  const instance = mount(component as never, { target: wrapper, props } as never) as Record<
+    string,
+    unknown
+  >;
   if (container) container.appendChild(wrapper);
   flushSync();
   return { el: wrapper, instance };

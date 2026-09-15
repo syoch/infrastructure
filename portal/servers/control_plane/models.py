@@ -5,6 +5,7 @@ from sqlalchemy import (
     Column, String, Integer, Boolean, ForeignKey, Enum, Text, DateTime, UniqueConstraint, CheckConstraint
 )
 from sqlalchemy.types import JSON
+from sqlalchemy.orm import Mapped
 from backend.core.database import Base
 
 DEVICE_ID_PATTERN = r"^[a-z0-9][a-z0-9-]{0,62}[a-z0-9]$"
@@ -21,7 +22,7 @@ def _bearer_token() -> str:
 class Device(Base):
     __tablename__ = "ctrl_devices"
 
-    id = Column(String(64), primary_key=True)
+    id: Mapped[str] = Column(String(64), primary_key=True, nullable=False)
     display_name = Column(String(128), nullable=False)
     bearer_token = Column(String(64), nullable=False, unique=True, index=True)
     ws_state = Column(
@@ -41,10 +42,10 @@ class Device(Base):
 class DeviceACL(Base):
     __tablename__ = "ctrl_device_acls"
 
-    id = Column(String(36), primary_key=True, default=_uuid4)
-    source_device = Column(String(256), nullable=False)
-    target_device = Column(String(256), nullable=False)
-    operation = Column(String(256), nullable=False)
+    id: Mapped[str] = Column(String(36), primary_key=True, nullable=False, default=_uuid4)
+    source_device: Mapped[str] = Column(String(256), nullable=False)
+    target_device: Mapped[str] = Column(String(256), nullable=False)
+    operation: Mapped[str] = Column(String(256), nullable=False)
     extra = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
@@ -62,7 +63,7 @@ class DeviceACL(Base):
 class CommandRequest(Base):
     __tablename__ = "ctrl_command_requests"
 
-    id = Column(String(36), primary_key=True, default=_uuid4)
+    id: Mapped[str] = Column(String(36), primary_key=True, nullable=False, default=_uuid4)
     target_device_id = Column(
         String(64),
         ForeignKey("ctrl_devices.id", ondelete="CASCADE"),
@@ -92,7 +93,7 @@ class CommandRequest(Base):
     result = Column(JSON, nullable=True)
     error = Column(Text, nullable=True)
     claim_token = Column(String(64), nullable=True)
-    timeout_seconds = Column(Integer, default=60, nullable=False)
+    timeout_seconds: Mapped[int] = Column(Integer, default=60, nullable=False)
 
     def __repr__(self) -> str:
         return (
@@ -104,10 +105,10 @@ class CommandRequest(Base):
 class DeviceBootstrapToken(Base):
     __tablename__ = "ctrl_bootstrap_tokens"
 
-    id = Column(String(36), primary_key=True, default=_uuid4)
+    id: Mapped[str] = Column(String(36), primary_key=True, nullable=False, default=_uuid4)
     device_id = Column(String(64), nullable=False)
     display_name = Column(String(128), nullable=False)
-    expires_at = Column(DateTime, nullable=False, index=True)
+    expires_at: Mapped[datetime] = Column(DateTime, nullable=False, index=True)
     consumed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
@@ -121,8 +122,8 @@ class DeviceBootstrapToken(Base):
 class OperationSpec(Base):
     __tablename__ = "ctrl_operation_specs"
 
-    provider = Column(String(64), primary_key=True, nullable=False)
-    id = Column(String(128), primary_key=True, nullable=False)
+    provider: Mapped[str] = Column(String(64), primary_key=True, nullable=False)
+    id: Mapped[str] = Column(String(128), primary_key=True, nullable=False)
     group = Column(String(64), nullable=False, index=True)
     name = Column(String(128), nullable=False)
     description = Column(Text, nullable=True)

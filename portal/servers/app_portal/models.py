@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, Text, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.types import JSON
+from sqlalchemy.orm import Mapped
 from backend.core.database import Base
 
 
@@ -19,7 +20,7 @@ class WebApp(Base):
     url = Column(String(1024), nullable=True)
     project_directory = Column(Text, nullable=False)
     opencode_session_id = Column(String(128), nullable=False)
-    bridge_device_id = Column(String(64), nullable=False, index=True)
+    bridge_device_id: Mapped[str] = Column(String(64), nullable=False, index=True)
     source = Column(String(32), nullable=False, default="manual")
     tags = Column(JSON, nullable=False, default=list)
     status = Column(String(32), nullable=False, default="active")

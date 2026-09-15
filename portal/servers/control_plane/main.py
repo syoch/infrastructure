@@ -36,6 +36,7 @@ class ControlPlaneExtension(BaseExtension):
     def register_cli_commands(self, subparsers):
         if not self.cli_manager:
             self.setup()
+        assert self.cli_manager is not None
         self.cli_manager.register_commands(subparsers)
 
     def get_routes(self):

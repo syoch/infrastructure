@@ -1,4 +1,4 @@
-.PHONY: help install-deps install-hooks test test-backend test-e2e test-e2e-ui test-seed test-obtainium test-obtainium-smoke clean
+.PHONY: help install-deps install-hooks test test-backend test-e2e test-e2e-ui test-seed test-obtainium test-obtainium-smoke typecheck clean
 
 help:
 	@echo "Available commands:"
@@ -11,7 +11,12 @@ help:
 	@echo "  make test-seed             - Reset and seed the local test database"
 	@echo "  make test-obtainium        - Run Obtainium integration test (BACKUP=path/to/backup.tgz, on-demand)"
 	@echo "  make test-obtainium-smoke  - Run Obtainium integration test on first 3 apps (BACKUP=...)"
+	@echo "  make typecheck             - Run svelte-check (frontend) and mypy (backend)"
 	@echo "  make clean                 - Remove test artifacts (SQLite databases, uploads)"
+
+typecheck:
+	cd portal/public && npm run typecheck
+	cd portal && mypy backend servers agents manage.py
 
 install-hooks:
 	git config core.hooksPath .githooks

@@ -31,6 +31,8 @@ class ObtainiumRepoExtension(BaseExtension):
     def setup(self):
         """Initializes dependencies for the extension."""
         provider_name = self.ext_config.get("storage_provider", "StorageManagerExtension")
+        if self.host is None:
+            raise RuntimeError("extension host is not initialized")
         self.storage_ext = self.host.get_extension(provider_name, tags=["storage-provider"])
 
         self.compiler = ObtainiumConfigCompiler(self.config)
@@ -40,6 +42,7 @@ class ObtainiumRepoExtension(BaseExtension):
         """Registers CLI commands under the manage.py framework."""
         if not self.cli_manager:
             self.setup()
+        assert self.cli_manager is not None
         self.cli_manager.register_commands(subparsers)
 
     def backup_data(self, session) -> dict:

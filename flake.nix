@@ -271,6 +271,8 @@
             curl
             jq
 
+            mypy
+
             nginx
             certbot
             openssl

@@ -18,7 +18,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import jsonschema
 import logging
@@ -308,7 +308,7 @@ class Agent:
         if self.credentials and self.credentials.get("bearer_token") and self.credentials.get("device_id"):
             self.bearer_token = self.credentials["bearer_token"]
             self.device_id = self.credentials["device_id"]
-            return self.bearer_token
+            return cast(str, self.bearer_token)
         token = _resolve_bootstrap_token(self.config)
         info = _http_register(
             self.config["server_url"],
@@ -326,7 +326,7 @@ class Agent:
         if creds_path:
             _save_credentials(creds_path, self.credentials)
             log.info(f"credentials saved to {creds_path}")
-        return self.bearer_token
+        return cast(str, self.bearer_token)
 
     async def _consume_welcome(self, ws) -> list:
         raw = await ws.recv()
@@ -343,7 +343,7 @@ class Agent:
             log.info(f"welcome: {len(pending)} pending command(s) from server")
         return pending
 
-    async def _register_ops(self, ws, pending_commands: list = None) -> None:
+    async def _register_ops(self, ws, pending_commands: Optional[list] = None) -> None:
         ops = _all_ops(self.config)
         await ws.send(json.dumps({"type": "operations_register", "operations": ops}))
         ack_raw = await ws.recv()
@@ -419,11 +419,11 @@ class Agent:
                 target = params.get("id")
                 if not target:
                     return {"succeeded": False, "error": "id is required"}
-                op = _lookup_op(self.config, target)
-                if op is None:
+                found = _lookup_op(self.config, target)
+                if found is None:
                     return {"succeeded": False, "error": f"operation {target!r} not found"}
                 test_params = _parse_json_field(params.get("params"), "params") or {}
-                return self._run_user_op(op, test_params)
+                return self._run_user_op(found, test_params)
             if op_id == "device.config.get_config":
                 try:
                     with open(self.config_path, "r", encoding="utf-8") as f:
@@ -464,9 +464,9 @@ class Agent:
             pass
 
     async def _process_command(self, ws, msg: dict) -> None:
-        cid = msg["command_id"]
-        ctok = msg.get("claim_token")
-        op_id = msg.get("operation")
+        cid = str(msg["command_id"])
+        ctok = str(msg.get("claim_token") or "")
+        op_id = str(msg.get("operation") or "")
         params = msg.get("params") or {}
         ok = await self._send_claim(ws, cid, ctok)
         if not ok:
@@ -560,8 +560,9 @@ class Agent:
             log.info("signal received, shutting down")
             self.request_stop()
             try:
-                if self._ws is not None:
-                    loop.call_soon_threadsafe(lambda: asyncio.ensure_future(self._ws.close()))
+                ws = self._ws
+                if ws is not None:
+                    loop.call_soon_threadsafe(lambda: asyncio.ensure_future(ws.close()))
             except Exception:
                 pass
 

@@ -9,6 +9,7 @@ import logging
 import os
 import time
 import urllib.parse
+from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
@@ -346,7 +347,7 @@ def build_router(ext) -> APIRouter:
         if not app:
             raise HTTPException(status_code=404, detail=f"Application '{app_id}' is not registered in the database.")
 
-        arch = architecture
+        arch: Optional[str] = architecture
         if not arch or arch in ("none", "auto"):
             arch = None
 

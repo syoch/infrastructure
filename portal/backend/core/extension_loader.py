@@ -3,6 +3,7 @@ import json
 import importlib
 import logging
 import sys
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -15,9 +16,10 @@ class ExtensionHost:
     def __init__(self, extensions_dict):
         self._extensions = extensions_dict
 
-    def get_extension(self, name: str = None, tags: list = None) -> object:
+    def get_extension(self, name: Optional[str] = None, tags: Optional[list] = None) -> object:
         if not name and not tags:
             raise ValueError("Either extension name or tags must be specified.")
+        tags = tags or []
             
         if name:
             ext = self._extensions.get(name)

@@ -79,7 +79,7 @@ class ObtainiumConfigCompiler:
             filename = f"{safe_name}_{app.id}_v{latest_apk.version}{arch_str}.apk"
             apk_download_url = f"{base_url}/api/apps/download/{latest_apk.id}/{filename}"
             apk_urls = [[filename, apk_download_url]]
-            other_asset_urls = []
+            other_asset_urls: list = []
             latest_version = latest_apk.version
             # Obtainium applies both regexes to the *absolute download URL*
             # (see lib/services/apk_filter_service.dart filterApks() and

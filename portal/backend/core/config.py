@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+from typing import Any, Optional
 
 # Base Directories
 CORE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -11,7 +12,7 @@ ROOT_DIR = os.path.dirname(PORTAL_DIR)
 # Service Config (defaults, can be overridden by config JSON)
 DEFAULT_PORT = 8000
 HOST = "0.0.0.0"
-DATABASE_URL = None
+DATABASE_URL: Optional[str] = None
 SQLITE_WAL = True
 EXTENSIONS = [
     {"module": "servers.obtainium_repo", "class": "ObtainiumRepoExtension"}
@@ -22,9 +23,9 @@ STORAGE_PROVIDER = "StorageManagerExtension"
 # The SPA is built by Vite into public/dist; that directory is what gets served.
 PUBLIC_DIR = os.path.join(PORTAL_DIR, "public", "dist")
 
-LOADED_EXTENSIONS = {}
-EXTENSION_HOST = None
-_config_dir = None
+LOADED_EXTENSIONS: dict[str, Any] = {}
+EXTENSION_HOST: Any = None
+_config_dir: Optional[str] = None
 
 def get_config_dir() -> str:
     """Returns the directory containing the loaded config file, or ROOT_DIR if none loaded."""
@@ -38,7 +39,7 @@ def resolve_config_path(path: str) -> str:
         return path
     return os.path.abspath(os.path.join(get_config_dir(), path))
 
-def load_config(config_data: dict, config_dir: str = None):
+def load_config(config_data: dict, config_dir: Optional[str] = None):
     """Loads configuration dynamically from a dictionary, setting module-level variables."""
     global DEFAULT_PORT, HOST, DATABASE_URL, SQLITE_WAL, EXTENSIONS, PUBLIC_DIR, STORAGE_PROVIDER, _config_dir
     

@@ -29,6 +29,7 @@ class AppPortalExtension(BaseExtension):
     def register_cli_commands(self, subparsers):
         if not self.cli_manager:
             self.setup()
+        assert self.cli_manager is not None
         self.cli_manager.register_commands(subparsers)
 
     def get_startup_info(self, local_ip: str) -> list:
