@@ -19,7 +19,7 @@ let
     pname = "portal-frontend";
     version = "0.1.0";
     src = ./public;
-    npmDepsHash = "sha256-NE75Agamw3ztrgvbCD66JL5TIQbVgx1Eb+2Su40tmno=";
+    npmDepsHash = "sha256-XdJHWJvT5ZZeA/8yWJWbXO1mvhgogG3lEHQY1gUpdhM=";
     installPhase = ''
       mkdir -p $out
       cp -r dist $out/

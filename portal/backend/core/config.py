@@ -19,7 +19,8 @@ EXTENSIONS = [
 STORAGE_PROVIDER = "StorageManagerExtension"
 
 # Application Paths
-PUBLIC_DIR = os.path.join(PORTAL_DIR, "public")
+# The SPA is built by Vite into public/dist; that directory is what gets served.
+PUBLIC_DIR = os.path.join(PORTAL_DIR, "public", "dist")
 
 LOADED_EXTENSIONS = {}
 EXTENSION_HOST = None

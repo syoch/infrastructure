@@ -1,3 +1,4 @@
+import './style.css';
 import { fetchObtainiumExport, fetchApps, fetchSettings, App, Settings } from './js/api.js';
 import { parseHash, initRouter } from './js/router.js';
 import { initPortal } from './js/portal.js';

@@ -123,6 +123,8 @@
               set -e
               PROJECT_ROOT=$(git rev-parse --show-toplevel)
               cd "$PROJECT_ROOT"
+              echo "=== Building portal frontend (Vite) ==="
+              (cd portal/public && npm install && npm run build)
               echo "=== Running Playwright E2E Tests ==="
               cd portal/tests
               if [ ! -d node_modules ]; then
