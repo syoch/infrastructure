@@ -96,7 +96,18 @@ export async function createWebApp(payload: CreateWebAppPayload): Promise<WebApp
   return req<WebApp>('POST', '/apps', payload);
 }
 
-export async function updateWebApp(slug: string, patch: Partial<WebApp>): Promise<WebApp> {
+export interface UpdateWebAppPayload {
+  name?: string;
+  description?: string | null;
+  url?: string | null;
+  project_directory?: string;
+  opencode_session_id?: string;
+  bridge_device_id?: string;
+  tags?: string[];
+  status?: string;
+}
+
+export async function updateWebApp(slug: string, patch: UpdateWebAppPayload): Promise<WebApp> {
   return req<WebApp>('PATCH', `/apps/${encodeURIComponent(slug)}`, patch);
 }
 

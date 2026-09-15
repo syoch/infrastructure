@@ -164,6 +164,19 @@ def _run_cli(args: list[str]) -> str:
     return proc.stdout
 
 
+def _run_app_portal_cli(args: list[str]) -> str:
+    env = os.environ.copy()
+    env["PYTHONPATH"] = PORTAL_DIR
+    proc = subprocess.run(
+        ["python3", os.path.join(PORTAL_DIR, "manage.py"),
+         "--config", CONFIG_PATH, "app-portal", *args],
+        cwd=PORTAL_DIR, env=env, capture_output=True, text=True, timeout=30,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"manage.py app-portal {' '.join(args)} failed: {proc.stderr}")
+    return proc.stdout
+
+
 def _issue_bootstrap_token(device_id: str, display_name: str) -> str:
     out = _run_cli(["issue-bootstrap-token", "--device-id", device_id, "--display-name", display_name])
     for line in out.splitlines():
@@ -301,6 +314,21 @@ def run_all():
         print("\n[app] admin patch -> 200")
         code, body = admin.patch(API + f"/apps/{slug}", {"status": "archived"})
         _assert(code == 200 and body["status"] == "archived", f"patch failed: {code} {body}")
+        print("  -> 200 OK")
+
+        print("\n[app] CLI update-app -> 200")
+        _run_app_portal_cli([
+            "update-app", "--slug", slug,
+            "--status", "active",
+            "--description", "updated via cli",
+            "--tag", "cli",
+            "--tag", "updated",
+        ])
+        code, body = admin.get(API + f"/apps/{slug}")
+        _assert(code == 200, f"get after cli update failed: {code} {body}")
+        _assert(body["status"] == "active", f"cli status not applied: {body}")
+        _assert(body["description"] == "updated via cli", f"cli description not applied: {body}")
+        _assert(body["tags"] == ["cli", "updated"], f"cli tags not applied: {body}")
         print("  -> 200 OK")
 
         print("\n[app] admin delete -> 200")

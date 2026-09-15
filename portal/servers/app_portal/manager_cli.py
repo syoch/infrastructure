@@ -38,6 +38,19 @@ class AppPortalManagerCLI:
         delete = sp.add_parser("delete-app", help="Delete a registered web app")
         delete.add_argument("--slug", required=True)
 
+        update = sp.add_parser("update-app", help="Update a registered web app (only given fields change)")
+        update.add_argument("--slug", required=True)
+        update.add_argument("--name", default=None)
+        update.add_argument("--description", default=None)
+        update.add_argument("--url", default=None)
+        update.add_argument("--directory", default=None, dest="directory")
+        update.add_argument("--session-id", default=None, dest="session_id")
+        update.add_argument("--bridge-device-id", default=None, dest="bridge_device_id")
+        update.add_argument("--status", default=None,
+                            help="e.g. active / archived")
+        update.add_argument("--tag", action="append", dest="tags", default=None,
+                            help="Replace tags (repeatable)")
+
         fb = sp.add_parser("list-feedback", help="List feedback")
         fb.add_argument("--app-slug", default=None, dest="app_slug")
 
@@ -50,6 +63,8 @@ class AppPortalManagerCLI:
             self.list_apps()
         elif args.subcommand == "register-app":
             self.register_app(args)
+        elif args.subcommand == "update-app":
+            self.update_app(args)
         elif args.subcommand == "delete-app":
             self.delete_app(args.slug)
         elif args.subcommand == "list-feedback":
@@ -91,6 +106,32 @@ class AppPortalManagerCLI:
             session.add(app)
             session.flush()
             print(f"Registered app: slug={app.slug} id={app.id}")
+            return True
+
+    def update_app(self, args):
+        with session_scope() as session:
+            app = session.query(WebApp).filter_by(slug=args.slug).first()
+            if not app:
+                print(f"Error: app {args.slug!r} not found")
+                return False
+            if args.name is not None:
+                app.name = args.name
+            if args.description is not None:
+                app.description = args.description
+            if args.url is not None:
+                app.url = args.url
+            if args.directory is not None:
+                app.project_directory = args.directory
+            if args.session_id is not None:
+                app.opencode_session_id = args.session_id
+            if args.bridge_device_id is not None:
+                app.bridge_device_id = args.bridge_device_id
+            if args.status is not None:
+                app.status = args.status
+            if args.tags is not None:
+                app.tags = args.tags
+            session.flush()
+            print(f"Updated app: {app.slug}")
             return True
 
     def delete_app(self, slug: str):

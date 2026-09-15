@@ -2,6 +2,7 @@ import {
   fetchWebApps,
   fetchWebApp,
   createWebApp,
+  updateWebApp,
   deleteWebApp,
   submitFeedback,
   refreshFeedback,
@@ -177,6 +178,27 @@ function renderAppDetail(view: HTMLElement, app: WebAppDetail): void {
     </section>
 
     <section class="control-section" style="margin-top:32px;">
+      <header class="control-section-header"><h2>設定</h2></header>
+      <form id="app-edit-form" class="control-form">
+        <div class="form-group"><label>アプリ名 *</label><input name="name" required value="${escapeHTML(app.name)}"></div>
+        <div class="form-group"><label>説明</label><input name="description" value="${escapeHTML(app.description || '')}"></div>
+        <div class="form-group"><label>公開 URL</label><input name="url" value="${escapeHTML(app.url || '')}"></div>
+        <div class="form-group"><label>プロジェクトディレクトリ *</label><input name="project_directory" required value="${escapeHTML(app.project_directory)}"></div>
+        <div class="form-group"><label>OpenCode セッション ID *</label><input name="opencode_session_id" required value="${escapeHTML(app.opencode_session_id)}"></div>
+        <div class="form-group"><label>bridge device id *</label><input name="bridge_device_id" required value="${escapeHTML(app.bridge_device_id)}"></div>
+        <div class="form-group"><label>タグ (カンマ区切り)</label><input name="tags" value="${escapeHTML((app.tags || []).join(', '))}"></div>
+        <div class="form-group">
+          <label>ステータス</label>
+          <select name="status">
+            <option value="active"${app.status === 'active' ? ' selected' : ''}>active</option>
+            <option value="archived"${app.status === 'archived' ? ' selected' : ''}>archived</option>
+          </select>
+        </div>
+        <div class="form-actions"><button type="submit" class="btn btn-primary">設定を保存</button></div>
+      </form>
+    </section>
+
+    <section class="control-section" style="margin-top:32px;">
       <header class="control-section-header"><h2>フィードバックを送信</h2></header>
       <form id="feedback-form" class="control-form">
         <div class="form-group">
@@ -214,6 +236,42 @@ function renderAppDetail(view: HTMLElement, app: WebAppDetail): void {
         window.location.hash = '#/apps';
       } catch (err) {
         alert(err instanceof Error ? err.message : String(err));
+      }
+    });
+  }
+
+  const editForm = document.getElementById('app-edit-form') as HTMLFormElement | null;
+  if (editForm) {
+    editForm.addEventListener('submit', async (e: Event) => {
+      e.preventDefault();
+      const fd = new FormData(editForm);
+      const saveBtn = editForm.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = '保存中…';
+      }
+      try {
+        await updateWebApp(app.slug, {
+          name: String(fd.get('name') || ''),
+          description: String(fd.get('description') || ''),
+          url: String(fd.get('url') || ''),
+          project_directory: String(fd.get('project_directory') || ''),
+          opencode_session_id: String(fd.get('opencode_session_id') || ''),
+          bridge_device_id: String(fd.get('bridge_device_id') || ''),
+          tags: String(fd.get('tags') || '')
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean),
+          status: String(fd.get('status') || 'active'),
+        });
+        const refreshed = await fetchWebApp(app.slug);
+        renderAppDetail(view, refreshed);
+      } catch (err) {
+        alert(err instanceof Error ? err.message : String(err));
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = '設定を保存';
+        }
       }
     });
   }

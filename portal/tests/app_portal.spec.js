@@ -126,4 +126,55 @@ test.describe('App Portal UI', () => {
     await expect(history).toContainText('pending');
     await expect(history).toContainText('bug');
   });
+
+  test('edit registered app settings', async () => {
+    const devId = uniqueId('apps-edit');
+    const bootstrapToken = issueToken(devId, 'Apps Edit');
+    const reg = await registerDevice(bootstrapToken, devId, 'Apps Edit');
+    promoteToAdmin(devId);
+
+    const auth = { Authorization: `Bearer ${reg.bearer_token}` };
+    const appName = `Edit App ${Date.now()}`;
+    const created = await apiContext.post('/api/app-portal/apps', {
+      headers: auth,
+      data: {
+        name: appName,
+        description: 'before',
+        project_directory: `/tmp/edit-${Date.now()}`,
+        opencode_session_id: 'ses_edit',
+        tags: ['old'],
+      },
+    });
+    expect(created.status()).toBe(200);
+    const app = await created.json();
+
+    try {
+      await page.goto('/');
+      await page.evaluate((tok) => localStorage.setItem('syoch_control_token', tok), reg.bearer_token);
+      await page.goto(`/#/apps/${app.slug}`);
+      await expect(page.locator('#app-edit-form')).toBeVisible();
+
+      const newName = `${appName} (edited)`;
+      await page.fill('#app-edit-form input[name="name"]', newName);
+      await page.fill('#app-edit-form input[name="description"]', 'edited description');
+      await page.fill('#app-edit-form input[name="tags"]', 'new, tags');
+      await page.selectOption('#app-edit-form select[name="status"]', 'archived');
+      await page.click('#app-edit-form button[type="submit"]');
+
+      // Re-rendered header + form reflect the new values
+      await expect(page.locator('h2', { hasText: newName })).toBeVisible();
+      await expect(page.locator('#app-edit-form input[name="description"]')).toHaveValue('edited description');
+      await expect(page.locator('#app-edit-form select[name="status"]')).toHaveValue('archived');
+
+      // Persisted server-side
+      const fetched = await apiContext.get(`/api/app-portal/apps/${app.slug}`, { headers: auth });
+      const detail = await fetched.json();
+      expect(detail.name).toBe(newName);
+      expect(detail.description).toBe('edited description');
+      expect(detail.status).toBe('archived');
+      expect(detail.tags).toEqual(['new', 'tags']);
+    } finally {
+      await apiContext.delete(`/api/app-portal/apps/${app.slug}`, { headers: auth });
+    }
+  });
 });

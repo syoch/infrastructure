@@ -52,6 +52,30 @@ OpenCode が作成した Web アプリ（および手動登録した任意のア
 `webui_url` は `{webui_base_url}/server/{server_key}/session/{session_id}`。
 `server_key = base64url(webui_base_url)`（OpenCode WebUI の実装に一致）。
 
+## アプリ設定の変更
+
+登録済みアプリの設定（名前・説明・URL・directory・session・bridge・タグ・status）は
+次の 2 通りで変更できる。
+
+- WebUI: `#/apps/{slug}` の「設定」フォーム → 保存（`PATCH /api/app-portal/apps/{slug}`）
+- CLI:
+  ```bash
+  portal-manage --config <cfg> app-portal update-app --slug <slug> \
+    [--name ...] [--description ...] [--url ...] [--directory ...] \
+    [--session-id ...] [--bridge-device-id ...] [--status active|archived] \
+    [--tag a --tag b]
+  ```
+  指定したフィールドのみ更新される（slug は不変）。
+
+## CLI
+
+- `app-portal list-apps` — 一覧
+- `app-portal register-app --name ... --directory ... --session-id ...` — 手動登録
+- `app-portal update-app --slug ... [--name ...] ...` — 設定変更
+- `app-portal delete-app --slug ...` — 削除
+- `app-portal list-feedback [--app-slug ...]` — フィードバック一覧
+- `app-portal list-bridges` — bridge 一覧
+
 ## bridge (`portal-opencode-bridge`)
 
 OpenCode が動くマシンで常駐させる。control-plane の bootstrap token で登録する。
