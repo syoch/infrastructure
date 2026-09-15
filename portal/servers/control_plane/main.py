@@ -1,7 +1,9 @@
 from datetime import datetime
 import asyncio
+from typing import cast
 from fastapi import APIRouter
 from backend.extensions.base import BaseExtension
+from backend.utils.timeutil import parse_iso_datetime
 from .manager_cli import ControlPlaneManagerCLI
 from .api import router as api_router
 from .ws import router as ws_router
@@ -137,18 +139,13 @@ class ControlPlaneExtension(BaseExtension):
                 session.query(model).delete()
             session.flush()
 
-        def _parse_dt(value):
-            if not value:
-                return None
-            return datetime.fromisoformat(value)
-
         for d in data.get("ctrl_devices", []):
             existing = session.query(Device).filter_by(id=d["id"]).first()
             if existing and strategy == "merge":
                 existing.display_name = d.get("display_name", existing.display_name)
                 existing.bearer_token = d.get("bearer_token", existing.bearer_token)
                 existing.ws_state = d.get("ws_state", existing.ws_state)
-                existing.last_seen = _parse_dt(d.get("last_seen"))
+                existing.last_seen = parse_iso_datetime(d.get("last_seen"))
                 existing.extra = d.get("extra", existing.extra)
                 existing.is_first_webui_device = d.get("is_first_webui_device", existing.is_first_webui_device)
             else:
@@ -157,9 +154,9 @@ class ControlPlaneExtension(BaseExtension):
                     display_name=d["display_name"],
                     bearer_token=d["bearer_token"],
                     ws_state=d.get("ws_state", "never_connected"),
-                    last_seen=_parse_dt(d.get("last_seen")),
+                    last_seen=parse_iso_datetime(d.get("last_seen")),
                     extra=d.get("extra"),
-                    registered_at=_parse_dt(d.get("registered_at")) or datetime.utcnow(),
+                    registered_at=parse_iso_datetime(d.get("registered_at")) or datetime.utcnow(),
                     is_first_webui_device=d.get("is_first_webui_device", False),
                 ))
         session.flush()
@@ -174,7 +171,7 @@ class ControlPlaneExtension(BaseExtension):
                 target_device=a["target_device"],
                 operation=a["operation"],
                 extra=a.get("extra"),
-                created_at=_parse_dt(a.get("created_at")) or datetime.utcnow(),
+                created_at=parse_iso_datetime(a.get("created_at")) or datetime.utcnow(),
             ))
         session.flush()
 
@@ -186,9 +183,9 @@ class ControlPlaneExtension(BaseExtension):
                 id=t["id"],
                 device_id=t["device_id"],
                 display_name=t["display_name"],
-                expires_at=_parse_dt(t["expires_at"]),
-                consumed_at=_parse_dt(t.get("consumed_at")),
-                created_at=_parse_dt(t.get("created_at")) or datetime.utcnow(),
+                expires_at=cast(datetime, parse_iso_datetime(t["expires_at"])),
+                consumed_at=parse_iso_datetime(t.get("consumed_at")),
+                created_at=parse_iso_datetime(t.get("created_at")) or datetime.utcnow(),
             ))
         session.flush()
 
@@ -207,8 +204,8 @@ class ControlPlaneExtension(BaseExtension):
                 params_schema=o.get("params_schema") or {},
                 result_schema=o.get("result_schema"),
                 ui_hint=o.get("ui_hint"),
-                registered_at=_parse_dt(o.get("registered_at")) or datetime.utcnow(),
-                last_seen=_parse_dt(o.get("last_seen")),
+                registered_at=parse_iso_datetime(o.get("registered_at")) or datetime.utcnow(),
+                last_seen=parse_iso_datetime(o.get("last_seen")),
             ))
         session.flush()
 
@@ -223,9 +220,9 @@ class ControlPlaneExtension(BaseExtension):
                 operation=c["operation"],
                 params=c.get("params") or {},
                 status=c.get("status", "pending"),
-                created_at=_parse_dt(c.get("created_at")) or datetime.utcnow(),
-                claimed_at=_parse_dt(c.get("claimed_at")),
-                completed_at=_parse_dt(c.get("completed_at")),
+                created_at=parse_iso_datetime(c.get("created_at")) or datetime.utcnow(),
+                claimed_at=parse_iso_datetime(c.get("claimed_at")),
+                completed_at=parse_iso_datetime(c.get("completed_at")),
                 result=c.get("result"),
                 error=c.get("error"),
                 claim_token=c.get("claim_token"),

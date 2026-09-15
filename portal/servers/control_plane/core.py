@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 import re
-import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import AsyncIterator, Optional, Any
@@ -11,6 +10,8 @@ from fastapi import Header, Query, HTTPException, Depends, status, Request, APIR
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from backend.core.database import get_db, get_session
+from backend.utils.text import strip_type_prefix
+from backend.utils.tokens import generate_claim_token
 
 from .models import Device, DeviceACL, DeviceBootstrapToken, OperationSpec, CommandRequest
 
@@ -61,18 +62,12 @@ def require_admin(device: Device = Depends(get_current_device)) -> Device:
 
 # --- DISPATCHER & ACL ---
 
-def _strip_type_prefix(value: str) -> str:
-    if ":" in value:
-        _, pattern = value.split(":", 1)
-        return pattern
-    return value
-
 def can_issue(db: Session, source_id: str, target_id: str, operation: str) -> bool:
     acls = db.query(DeviceACL).all()
     for acl in acls:
         try:
-            src_match = re.search(_strip_type_prefix(acl.source_device), source_id)
-            tgt_match = re.search(_strip_type_prefix(acl.target_device), target_id)
+            src_match = re.search(strip_type_prefix(acl.source_device), source_id)
+            tgt_match = re.search(strip_type_prefix(acl.target_device), target_id)
             op_match = re.search(acl.operation, operation)
             if src_match and tgt_match and op_match:
                 return True
@@ -121,7 +116,7 @@ def enqueue_command(
         params=params or {},
         status="pending",
         timeout_seconds=timeout_seconds,
-        claim_token="ct_" + secrets.token_urlsafe(24),
+        claim_token=generate_claim_token(),
     )
     db.add(cmd)
     db.commit()

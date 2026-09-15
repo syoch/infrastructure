@@ -16,8 +16,6 @@ import signal
 import subprocess
 import sys
 import time
-import urllib.error
-import urllib.request
 from typing import Any, Optional, cast
 
 import jsonschema
@@ -29,6 +27,7 @@ from websockets.exceptions import (
     InvalidStatus,
     WebSocketException,
 )
+from backend.utils.agent import ReconnectBackoff, register_device
 
 from .builtin_ops import BUILTIN_OPS, is_builtin
 
@@ -101,25 +100,10 @@ def load_config(path: str) -> dict:
 
 
 def _http_register(server_url: str, device_id: str, display_name: str, bootstrap_token: str) -> dict:
-    body = json.dumps({
-        "device_id": device_id,
-        "display_name": display_name,
-        "bootstrap_token": bootstrap_token,
-    }).encode()
-    req = urllib.request.Request(
-        f"{server_url.rstrip('/')}/api/control/devices/register",
-        data=body, method="POST",
-        headers={
-            "Content-Type": "application/json",
-            "User-Agent": "portal-device-agent",
-        },
+    return register_device(
+        server_url, device_id, display_name, bootstrap_token,
+        user_agent="portal-device-agent",
     )
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            return json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        raw = e.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"register failed: HTTP {e.code} {raw}")
 
 
 def _build_command(template: Any, params: dict, use_shell: bool) -> tuple[list, bool]:
@@ -529,24 +513,23 @@ class Agent:
         self._ensure_registered()
         ws_base = self.config["server_url"].rstrip("/").replace("http://", "ws://").replace("https://", "wss://")
         ws_url = f"{ws_base}/api/control/devices/{self.device_id}/ws?token={self.bearer_token}"
-        backoff = 1.0
+        backoff = ReconnectBackoff()
         while not self._stop_event.is_set():
             try:
                 async with websockets.connect(ws_url) as ws:
                     self._ws = ws
                     log.info(f"connected to {ws_url}")
-                    backoff = 1.0
+                    backoff.reset()
                     await self._serve(ws)
             except (ConnectionClosedError, ConnectionClosedOK):
                 log.info("connection closed, reconnecting...")
             except (InvalidStatus, WebSocketException, OSError) as e:
-                log.error(f"connection error: {e}, retrying in {backoff:.1f}s")
+                log.error(f"connection error: {e}")
             except Exception as e:
                 log.error(f"unexpected error: {e}")
             if self._stop_event.is_set():
                 break
-            await asyncio.sleep(backoff)
-            backoff = min(backoff * 2, 30.0)
+            await asyncio.sleep(backoff.next_delay())
 
     def run(self) -> None:
         loop = asyncio.new_event_loop()

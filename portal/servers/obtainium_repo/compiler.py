@@ -1,12 +1,11 @@
-import os
 import re
 import json
 import logging
 import time
 from urllib.parse import urlparse
 from sqlalchemy.orm import selectinload
-from backend.core.database import get_session
 from .models import App, Category, Setting
+from .utils import export_apk_filename, select_latest_apk
 
 logger = logging.getLogger(__name__)
 
@@ -69,14 +68,10 @@ class ObtainiumConfigCompiler:
         additional_settings = dict(app.additional_settings) if app.additional_settings else {}
 
         if is_self_hosted:
-            latest_apk = sorted(app.apks, key=lambda x: x.id)[-1]
-            # Must mirror serve_scrape_index() exactly: the served filename is
-            #   {safe_name}_{app.id}_v{version}{_arch}.apk
-            safe_name = "".join(
-                c for c in app.name if c.isalnum() or c in (' ', '_', '-')
-            ).strip().replace(' ', '_')
-            arch_str = f"_{latest_apk.architecture}" if latest_apk.architecture else ""
-            filename = f"{safe_name}_{app.id}_v{latest_apk.version}{arch_str}.apk"
+            latest_apk = select_latest_apk(app.apks)
+            filename = export_apk_filename(
+                app.name, app.id, latest_apk.version, latest_apk.architecture
+            )
             apk_download_url = f"{base_url}/api/apps/download/{latest_apk.id}/{filename}"
             apk_urls = [[filename, apk_download_url]]
             other_asset_urls: list = []

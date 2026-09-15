@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter
 
 from backend.extensions.base import BaseExtension
+from backend.utils.timeutil import parse_iso_datetime
 from .api import router as api_router, configure
 from .manager_cli import AppPortalManagerCLI
 
@@ -99,11 +100,6 @@ class AppPortalExtension(BaseExtension):
     def restore_data(self, session, data: dict, strategy: str):
         from .models import WebApp, Feedback, Bridge
 
-        def _parse_dt(value):
-            if not value:
-                return None
-            return datetime.fromisoformat(value)
-
         if strategy == "overwrite":
             for model in (Feedback, WebApp, Bridge):
                 session.query(model).delete()
@@ -135,8 +131,8 @@ class AppPortalExtension(BaseExtension):
                     source=a.get("source", "manual"),
                     tags=a.get("tags") or [],
                     status=a.get("status", "active"),
-                    created_at=_parse_dt(a.get("created_at")) or datetime.utcnow(),
-                    updated_at=_parse_dt(a.get("updated_at")) or datetime.utcnow(),
+                    created_at=parse_iso_datetime(a.get("created_at")) or datetime.utcnow(),
+                    updated_at=parse_iso_datetime(a.get("updated_at")) or datetime.utcnow(),
                     created_by=a.get("created_by"),
                 ))
         session.flush()
@@ -154,9 +150,9 @@ class AppPortalExtension(BaseExtension):
                 command_id=f.get("command_id"),
                 target_session_id=f.get("target_session_id"),
                 webui_url=f.get("webui_url"),
-                delivered_at=_parse_dt(f.get("delivered_at")),
+                delivered_at=parse_iso_datetime(f.get("delivered_at")),
                 error=f.get("error"),
-                created_at=_parse_dt(f.get("created_at")) or datetime.utcnow(),
+                created_at=parse_iso_datetime(f.get("created_at")) or datetime.utcnow(),
             ))
         session.flush()
 
@@ -169,7 +165,7 @@ class AppPortalExtension(BaseExtension):
                 hostname=b.get("hostname"),
                 webui_base_url=b.get("webui_base_url"),
                 server_key=b.get("server_key"),
-                last_seen=_parse_dt(b.get("last_seen")),
-                registered_at=_parse_dt(b.get("registered_at")) or datetime.utcnow(),
+                last_seen=parse_iso_datetime(b.get("last_seen")),
+                registered_at=parse_iso_datetime(b.get("registered_at")) or datetime.utcnow(),
             ))
         session.flush()

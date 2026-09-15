@@ -50,7 +50,7 @@ def _assert(cond, msg):
         raise AssertionError(msg)
 
 
-def _check_self_hosted(app_id, name, apks, base="https://portal.syoch.org"):
+def _check_self_hosted(app_id, name, apks, base="https://portal.syoch.org", expected_version=None):
     app = _self_hosted_app(app_id, name, apks)
     export = _compiler()._build_app(app, base)
 
@@ -68,11 +68,12 @@ def _check_self_hosted(app_id, name, apks, base="https://portal.syoch.org"):
     _assert(isinstance(group, str), f"matchGroupToUse must be a string, got {group!r}")
     _assert(re.search(flt, url), f"apkFilterRegEx {flt!r} did not match {url!r}")
 
+    expected = expected_version if expected_version is not None else apks[-1]["version"]
     m = re.search(ver, url)
     _assert(m is not None, f"versionExtractionRegEx {ver!r} did not match {url!r}")
     version = m.group(int(group))
-    _assert(version == apks[-1]["version"],
-            f"extracted {version!r}, expected {apks[-1]['version']!r} (url {url!r})")
+    _assert(version == expected,
+            f"extracted {version!r}, expected {expected!r} (url {url!r})")
     _assert(filename in url, f"filename {filename!r} not in url {url!r}")
     return url, flt, ver, version
 
@@ -105,6 +106,18 @@ def run_all():
         ],
     )
     print("  -> OK")
+
+    print("\n[regex] latest chosen by version, not insertion id")
+    url, _, _, _ = _check_self_hosted(
+        "com.foo.order", "Order",
+        [
+            {"id": 30, "version": "2.1.0", "arch": None},
+            {"id": 40, "version": "1.9.0", "arch": None},
+        ],
+        expected_version="2.1.0",
+    )
+    _assert("/download/30/" in url, f"latest apk id not selected: {url}")
+    print(f"  -> {url}")
 
     print("\n[regex] regex-special package id + name characters")
     _check_self_hosted(

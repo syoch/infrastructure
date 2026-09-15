@@ -1,7 +1,5 @@
 import json
-import re
 import time
-import uuid
 from datetime import datetime
 from typing import Optional
 
@@ -11,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from backend.core.database import get_db
 from backend.core.server_base import require_admin_device
+from backend.utils.text import slugify
 from .models import WebApp, Feedback, Bridge
 from .opencode_ops import ROLE_KEYS, TRAITS_OPERATION_ID, server_key_for
 
@@ -42,11 +41,6 @@ def _device_required(
 
 def _iso(dt: Optional[datetime]) -> Optional[str]:
     return dt.isoformat() + "Z" if dt else None
-
-
-def _slugify(value: str) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "-", value.strip().lower()).strip("-")
-    return slug or uuid.uuid4().hex[:12]
 
 
 def _parse_op_result(result) -> dict:
@@ -294,7 +288,7 @@ def create_app(
     device=Depends(_device_required),
     db: Session = Depends(get_db),
 ):
-    slug = body.slug or _slugify(body.name)
+    slug = body.slug or slugify(body.name)
     if db.query(WebApp).filter(WebApp.slug == slug).first():
         raise HTTPException(status_code=409, detail=f"app slug {slug!r} already exists")
     bridge_device_id = body.bridge_device_id or _settings["bridge_device_id"]

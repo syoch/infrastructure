@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from backend.core.database import get_db
 from .models import App, Category, LocalAppAPK, Setting
-from .utils import get_base_url
+from .utils import export_apk_filename, get_base_url
 
 logger = logging.getLogger(__name__)
 
@@ -45,16 +45,6 @@ class AppSaveModel(BaseModel):
 
 class AppDeleteModel(BaseModel):
     id: str
-
-
-def _safe_app_name(app_name: str) -> str:
-    safe = "".join(c for c in app_name if c.isalnum() or c in (" ", "_", "-")).strip()
-    return safe.replace(" ", "_")
-
-
-def _export_filename(app, apk) -> str:
-    arch = f"_{apk.architecture}" if apk.architecture else ""
-    return f"{_safe_app_name(app.name)}_{apk.app_id}_v{apk.version}{arch}.apk"
 
 
 def build_router(ext) -> APIRouter:
@@ -109,7 +99,7 @@ def build_router(ext) -> APIRouter:
             for apk in db_apks:
                 if not apk.app:
                     continue
-                export_filename = _export_filename(apk.app, apk)
+                export_filename = export_apk_filename(apk.app.name, apk.app_id, apk.version, apk.architecture)
                 download_url = f"{base_url}/api/apps/download/{apk.id}/{export_filename}"
                 html_lines.append("    <li>")
                 html_lines.append(f'      <a href="{download_url}">{export_filename}</a>')
@@ -137,7 +127,7 @@ def build_router(ext) -> APIRouter:
         if not os.path.exists(filepath):
             raise HTTPException(status_code=404, detail=f"APK file not found on disk: {apk.file_hash}.apk")
 
-        export_filename = _export_filename(apk.app, apk)
+        export_filename = export_apk_filename(apk.app.name, apk.app_id, apk.version, apk.architecture)
         safe_filename_quoted = urllib.parse.quote(export_filename)
         headers = {"Content-Disposition": f"attachment; filename*=UTF-8''{safe_filename_quoted}"}
         return FileResponse(

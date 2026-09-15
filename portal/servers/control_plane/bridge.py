@@ -11,14 +11,11 @@ import argparse
 import asyncio
 import json
 import os
-import secrets
 import shlex
 import signal
 import subprocess
 import sys
 import time
-import urllib.request
-import urllib.error
 import logging
 from datetime import datetime, timezone
 from typing import Optional
@@ -27,11 +24,9 @@ import websockets
 from websockets.exceptions import (
     ConnectionClosedError, ConnectionClosedOK, InvalidStatus, WebSocketException,
 )
+from backend.utils.agent import ReconnectBackoff, register_device
 
 logger = logging.getLogger("portal-bridge")
-
-BRIDGE_DEVICE_ID = "bridge"
-BRIDGE_DISPLAY_NAME = "Portal Bridge"
 
 BRIDGE_DEVICE_ID = "bridge"
 BRIDGE_DISPLAY_NAME = "Portal Bridge"
@@ -145,25 +140,6 @@ BRIDGE_OPERATIONS = [
 ]
 
 
-def _http_register(server_url: str, device_id: str, display_name: str, bootstrap_token: str) -> dict:
-    body = json.dumps({
-        "device_id": device_id,
-        "display_name": display_name,
-        "bootstrap_token": bootstrap_token,
-    }).encode()
-    req = urllib.request.Request(
-        f"{server_url.rstrip('/')}/api/control/devices/register",
-        data=body, method="POST",
-        headers={"Content-Type": "application/json"},
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            return json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        raw = e.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"register failed: HTTP {e.code} {raw}")
-
-
 def _run_cli(manage_bin: str, config_path: Optional[str], args: list) -> tuple[int, str, str]:
     cmd = [manage_bin]
     if config_path:
@@ -252,19 +228,21 @@ def _execute_operation(operation: str, params: dict, manage_bin: str, config_pat
 
 
 async def _run(server_url: str, ws_url: str, bearer_token: str, manage_bin: str, config_path: Optional[str]) -> None:
-    backoff = 1.0
+    backoff = ReconnectBackoff()
     while True:
         try:
             async with websockets.connect(ws_url) as ws:
                 logger.info(f"connected to {ws_url}")
-                backoff = 1.0
+                backoff.reset()
                 await _serve(ws, bearer_token, manage_bin, config_path)
         except (ConnectionClosedError, ConnectionClosedOK):
             logger.info("connection closed, reconnecting...")
         except (InvalidStatus, WebSocketException, OSError) as e:
-            logger.warning(f"connection error: {e}, retrying in {backoff:.1f}s")
-        await asyncio.sleep(backoff)
-        backoff = min(backoff * 2, 30.0)
+            delay = backoff.next_delay()
+            logger.warning(f"connection error: {e}, retrying in {delay:.1f}s")
+            await asyncio.sleep(delay)
+            continue
+        await asyncio.sleep(backoff.next_delay())
 
 
 async def _serve(ws, bearer_token: str, manage_bin: str, config_path: Optional[str]) -> None:
@@ -325,7 +303,7 @@ def main() -> int:
 
     ws_base = args.server_url.rstrip("/").replace("http://", "ws://").replace("https://", "wss://")
     logger.info(f"registering device {args.device_id!r} via bootstrap token")
-    info = _http_register(args.server_url, args.device_id, args.display_name, args.bootstrap_token)
+    info = register_device(args.server_url, args.device_id, args.display_name, args.bootstrap_token)
     bearer_token = info["bearer_token"]
     logger.info(f"registered; id={info['id']} admin={info.get('is_first_webui_device', False)}")
 

@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import secrets
 from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
@@ -161,7 +162,7 @@ async def _handle_claim(conn: WebSocketConnection, payload: dict) -> None:
         if cmd.target_device_id != conn.device.id:
             await conn.send({"type": "error", "message": "command is not for this device"})
             return
-        if cmd.claim_token != claim_token:
+        if not secrets.compare_digest(cmd.claim_token or "", claim_token or ""):
             await conn.send({"type": "error", "message": "claim_token mismatch"})
             return
         if cmd.status != "pending":
@@ -294,7 +295,7 @@ async def device_ws(
     session: Session = get_session()
     try:
         device = session.query(Device).filter_by(id=device_id).first()
-        if not device or device.bearer_token != token:
+        if not device or not secrets.compare_digest(device.bearer_token or "", token or ""):
             await websocket.close(code=1008, reason="invalid token")
             return
     finally:

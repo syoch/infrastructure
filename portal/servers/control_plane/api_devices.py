@@ -6,8 +6,9 @@ from sqlalchemy.orm import Session
 from backend.core.database import get_db
 from .api_common import RegisterDeviceBody, RenameDeviceBody, _device_to_dict
 from .core import get_current_device, require_admin
-from .manager_cli import validate_device_id, generate_bearer_token
+from .manager_cli import validate_device_id
 from .models import Device, DeviceBootstrapToken
+from backend.utils.tokens import generate_bearer_token
 
 router = APIRouter(tags=["control-plane"])
 

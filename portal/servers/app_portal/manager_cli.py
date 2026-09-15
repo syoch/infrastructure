@@ -1,13 +1,6 @@
-import re
-import uuid
-
 from backend.core.database import session_scope
+from backend.utils.text import slugify
 from .models import WebApp, Feedback, Bridge
-
-
-def _slugify(value: str) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "-", value.strip().lower()).strip("-")
-    return slug or uuid.uuid4().hex[:12]
 
 
 class AppPortalManagerCLI:
@@ -83,7 +76,7 @@ class AppPortalManagerCLI:
                 print(f"{a.slug:<32} {a.name:<32} {a.opencode_session_id:<32} {a.bridge_device_id}")
 
     def register_app(self, args):
-        slug = args.slug or _slugify(args.name)
+        slug = args.slug or slugify(args.name)
         with session_scope() as session:
             if session.query(WebApp).filter_by(slug=slug).first():
                 print(f"Error: app slug {slug!r} already exists")

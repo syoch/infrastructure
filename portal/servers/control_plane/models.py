@@ -1,5 +1,4 @@
 import uuid
-import secrets
 from datetime import datetime
 from sqlalchemy import (
     Column, String, Integer, Boolean, ForeignKey, Enum, Text, DateTime, UniqueConstraint, CheckConstraint
@@ -13,10 +12,6 @@ DEVICE_ID_PATTERN = r"^[a-z0-9][a-z0-9-]{0,62}[a-z0-9]$"
 
 def _uuid4() -> str:
     return str(uuid.uuid4())
-
-
-def _bearer_token() -> str:
-    return "tk_" + secrets.token_urlsafe(32)
 
 
 class Device(Base):

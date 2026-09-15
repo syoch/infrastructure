@@ -15,8 +15,8 @@ app_categories = Table(
 class App(Base):
     __tablename__ = 'apps'
     
-    id = Column(String(255), primary_key=True)
-    name = Column(String(255), nullable=False)
+    id: Mapped[str] = Column(String(255), primary_key=True)
+    name: Mapped[str] = Column(String(255), nullable=False)
     url = Column(String(1024), nullable=False)
     override_source = Column(String(50), nullable=True)
     preferred_apk_index = Column(Integer, nullable=True)
@@ -34,9 +34,9 @@ class LocalAppAPK(Base):
     __tablename__ = 'local_app_apks'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    app_id = Column(String(255), ForeignKey('apps.id', ondelete='CASCADE'), nullable=False)
+    app_id: Mapped[str] = Column(String(255), ForeignKey('apps.id', ondelete='CASCADE'), nullable=False)
     file_hash = Column(String(64), nullable=False)
-    version = Column(String(50), nullable=False)
+    version: Mapped[str] = Column(String(50), nullable=False)
     architecture = Column(String(50), nullable=True)
     
     app: Mapped['App'] = relationship('App', back_populates='apks')

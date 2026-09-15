@@ -1,5 +1,4 @@
 import re
-import secrets
 import uuid
 from datetime import datetime, timedelta
 from backend.core.database import session_scope
@@ -10,13 +9,6 @@ from .models import (
 
 DEVICE_ID_REGEX = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}[a-z0-9]$")
 KNOWN_TYPES = {"device"}
-
-
-def _strip_type_prefix(value: str) -> str:
-    if ":" in value:
-        type_, pattern = value.split(":", 1)
-        return pattern
-    return value
 
 
 def validate_acl_field(field: str, value: str, require_prefix: bool) -> None:
@@ -39,10 +31,6 @@ def validate_device_id(value: str) -> None:
         raise ValueError(
             f"device id must match {DEVICE_ID_REGEX.pattern} (got {value!r})"
         )
-
-
-def generate_bearer_token() -> str:
-    return "tk_" + secrets.token_urlsafe(32)
 
 
 class ControlPlaneManagerCLI:
