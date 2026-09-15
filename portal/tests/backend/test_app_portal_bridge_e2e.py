@@ -179,11 +179,16 @@ def run_all():
         bridge_tok = _issue("opencode-bridge", "OpenCode Bridge")
 
         # start the real bridge process
+        creds_file = "/tmp/portal-opencode-bridge-creds.json"
+        for p in (creds_file, creds_file + ".tmp"):
+            if os.path.exists(p):
+                os.remove(p)
         bridge_log = open("/tmp/bridge_e2e.log", "w")
         bridge = subprocess.Popen(
             ["python3", "-m", "servers.app_portal.bridge",
              "--server-url", base,
              "--bootstrap-token", bridge_tok,
+             "--credentials-file", creds_file,
              "--device-id", "opencode-bridge",
              "--display-name", "OpenCode Bridge",
              "--opencode-url", fake_url,
@@ -241,6 +246,55 @@ def run_all():
         prompt_text = _FakeOpenCode.prompts[0]["parts"][0]["text"]
         _assert("integration feedback" in prompt_text, f"unexpected prompt: {prompt_text}")
         print("  -> prompt injected into OpenCode session")
+
+        # --- restart with cached credentials (no bootstrap token) ---
+        print("\n[bridge] restart reusing cached credentials (no bootstrap token)")
+
+        def _announce_count():
+            try:
+                with open("/tmp/bridge_e2e.log") as fh:
+                    return fh.read().count("announced webui_base_url")
+            except OSError:
+                return 0
+
+        bridge.send_signal(signal.SIGTERM)
+        try:
+            bridge.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            bridge.kill()
+        bridge = subprocess.Popen(
+            ["python3", "-m", "servers.app_portal.bridge",
+             "--server-url", base,
+             "--credentials-file", creds_file,
+             "--device-id", "opencode-bridge",
+             "--opencode-url", fake_url,
+             "--webui-base-url", WEBUI_BASE],
+            cwd=PORTAL_DIR, env=env,
+            stdout=bridge_log, stderr=subprocess.STDOUT,
+        )
+        deadline = time.time() + 20
+        while time.time() < deadline and _announce_count() < 2:
+            time.sleep(0.2)
+        _assert(_announce_count() >= 2, "restarted bridge did not reconnect with cached credentials")
+
+        code, fb2 = _req(base, "POST", API + f"/apps/{slug}/feedback",
+                         {"body": "second feedback after restart", "kind": "feedback"}, token=admin)
+        _assert(code == 200, f"second feedback failed: {code} {fb2}")
+        delivered2 = None
+        deadline = time.time() + 20
+        while time.time() < deadline:
+            code, detail = _req(base, "GET", API + f"/apps/{slug}", token=admin)
+            if code == 200:
+                for item in detail.get("feedback", []):
+                    if item["id"] == fb2["id"] and item["status"] == "delivered":
+                        delivered2 = item
+                        break
+            if delivered2:
+                break
+            time.sleep(0.3)
+        _assert(delivered2 is not None, "second feedback not delivered after restart")
+        _assert(len(_FakeOpenCode.prompts) == 2, f"second prompt not injected: {_FakeOpenCode.prompts}")
+        print("  -> reused cached credentials and delivered again")
     finally:
         if bridge and bridge.poll() is None:
             bridge.send_signal(signal.SIGTERM)

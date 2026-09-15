@@ -124,6 +124,39 @@ def _http_register(server_url: str, device_id: str, display_name: str, bootstrap
         raise RuntimeError(f"register failed: HTTP {e.code} {raw}")
 
 
+def _load_credentials(path: Optional[str]) -> Optional[dict]:
+    if not path or not os.path.exists(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        logger.warning(f"failed to read credentials from {path}: {e}")
+        return None
+
+
+def _save_credentials(path: str, data: dict) -> None:
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f)
+        f.write("\n")
+    os.replace(tmp, path)
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
+
+
+def _resolve_bootstrap_token(arg_token: Optional[str], token_file: Optional[str]) -> str:
+    if arg_token:
+        return arg_token
+    if token_file:
+        with open(token_file, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    raise SystemExit("--bootstrap-token or --bootstrap-token-file is required when no cached credentials exist")
+
+
 # --- OpenCode operations ---
 
 class OpenCodeOps:
@@ -319,7 +352,11 @@ def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [opencode-bridge] %(message)s")
     parser = argparse.ArgumentParser(description="Portal app-portal OpenCode bridge")
     parser.add_argument("--server-url", required=True, help="e.g. http://127.0.0.1:8000")
-    parser.add_argument("--bootstrap-token", required=True, help="Bootstrap token issued by portal-manage")
+    parser.add_argument("--bootstrap-token", help="Bootstrap token issued by portal-manage (first run only)")
+    parser.add_argument("--bootstrap-token-file", default=None,
+                        help="File containing the bootstrap token (alternative to --bootstrap-token)")
+    parser.add_argument("--credentials-file", default=None,
+                        help="Persist the registered device credentials here so restarts reuse them")
     parser.add_argument("--device-id", default=BRIDGE_DEVICE_ID)
     parser.add_argument("--display-name", default=BRIDGE_DISPLAY_NAME)
     parser.add_argument("--opencode-url", default=os.environ.get("OPENCODE_URL", DEFAULT_OPENCODE_URL))
@@ -331,12 +368,24 @@ def main() -> int:
     ops = OpenCodeOps(args.opencode_url, webui_base_url)
 
     ws_base = args.server_url.rstrip("/").replace("http://", "ws://").replace("https://", "wss://")
-    logger.info(f"registering device {args.device_id!r} via bootstrap token")
-    info = _http_register(args.server_url, args.device_id, args.display_name, args.bootstrap_token)
-    bearer_token = info["bearer_token"]
-    logger.info(f"registered; id={info['id']}")
 
-    ws_url = f"{ws_base}/api/control/devices/{info['id']}/ws?token={bearer_token}"
+    credentials = _load_credentials(args.credentials_file)
+    if credentials and credentials.get("device_id") and credentials.get("bearer_token"):
+        device_id = credentials["device_id"]
+        bearer_token = credentials["bearer_token"]
+        logger.info(f"using cached credentials for device {device_id!r}")
+    else:
+        token = _resolve_bootstrap_token(args.bootstrap_token, args.bootstrap_token_file)
+        logger.info(f"registering device {args.device_id!r} via bootstrap token")
+        info = _http_register(args.server_url, args.device_id, args.display_name, token)
+        device_id = info["id"]
+        bearer_token = info["bearer_token"]
+        if args.credentials_file:
+            _save_credentials(args.credentials_file, {"device_id": device_id, "bearer_token": bearer_token})
+            logger.info(f"credentials saved to {args.credentials_file}")
+        logger.info(f"registered; id={device_id}")
+
+    ws_url = f"{ws_base}/api/control/devices/{device_id}/ws?token={bearer_token}"
 
     stop = asyncio.Event()
     loop = asyncio.new_event_loop()
