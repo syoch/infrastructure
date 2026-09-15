@@ -203,25 +203,27 @@ in
       }
     ];
 
-    services.nginx.virtualHosts."${cfg.nginx.hostName}" = mkIf (cfg.nginx.enable && cfg.nginx.hostName != null) {
-      listenAddresses = cfg.nginx.listenAddresses;
-      extraConfig = cfg.nginx.extraConfig;
-      locations =
-        {
-          "/" = {
-            proxyPass = cfg.nginx.proxyPass;
-            proxyWebsockets = true;
-          };
-        }
-        // lib.optionalAttrs (cfg.basicAuth.enable && cfg.basicAuth.htpasswdFile != null) (
-          lib.genAttrs cfg.basicAuth.protectedPaths (path: {
-            proxyPass = cfg.nginx.proxyPass;
-            extraConfig = ''
-              auth_basic "${cfg.basicAuth.realm}";
-              auth_basic_user_file ${cfg.basicAuth.htpasswdFile};
-            '';
-          })
-        );
+    services.nginx.virtualHosts = mkIf (cfg.nginx.enable && cfg.nginx.hostName != null) {
+      "${cfg.nginx.hostName}" = {
+        listenAddresses = cfg.nginx.listenAddresses;
+        extraConfig = cfg.nginx.extraConfig;
+        locations =
+          {
+            "/" = {
+              proxyPass = cfg.nginx.proxyPass;
+              proxyWebsockets = true;
+            };
+          }
+          // lib.optionalAttrs (cfg.basicAuth.enable && cfg.basicAuth.htpasswdFile != null) (
+            lib.genAttrs cfg.basicAuth.protectedPaths (path: {
+              proxyPass = cfg.nginx.proxyPass;
+              extraConfig = ''
+                auth_basic "${cfg.basicAuth.realm}";
+                auth_basic_user_file ${cfg.basicAuth.htpasswdFile};
+              '';
+            })
+          );
+      };
     };
   };
 }
