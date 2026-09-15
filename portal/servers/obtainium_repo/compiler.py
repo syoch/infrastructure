@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import time
 from urllib.parse import urlparse
@@ -66,22 +67,30 @@ class ObtainiumConfigCompiler:
 
         if is_self_hosted:
             latest_apk = sorted(app.apks, key=lambda x: x.id)[-1]
-            escaped_name = app.name.replace(".", r"\.").replace(' ', '_')
-            escaped_pkg = app.id.replace(".", r"\.")
+            # Must mirror serve_scrape_index() exactly: the served filename is
+            #   {safe_name}_{app.id}_v{version}{_arch}.apk
+            safe_name = "".join(
+                c for c in app.name if c.isalnum() or c in (' ', '_', '-')
+            ).strip().replace(' ', '_')
             arch_str = f"_{latest_apk.architecture}" if latest_apk.architecture else ""
-            v_prefix = "" if (
-                latest_apk.version.lower().startswith('v')
-                or latest_apk.version.lower().startswith('r')
-            ) else "v"
-            filename = f"{escaped_name}_{app.id}_{v_prefix}{latest_apk.version}{arch_str}.apk"
+            filename = f"{safe_name}_{app.id}_v{latest_apk.version}{arch_str}.apk"
             apk_download_url = f"{base_url}/api/apps/download/{latest_apk.id}/{filename}"
             apk_urls = [[filename, apk_download_url]]
             other_asset_urls = []
             latest_version = latest_apk.version
+            # Obtainium applies both regexes to the *absolute download URL*
+            # (see lib/services/apk_filter_service.dart filterApks() and
+            # lib/app_sources/html.dart extractVersion()). Do not anchor to the
+            # whole string or to the bare filename.
+            pkg = re.escape(app.id)
+            archs = sorted({a.architecture for a in app.apks if a.architecture})
+            arch_group = (
+                f"(?:_(?:{'|'.join(re.escape(a) for a in archs)}))?" if archs else ""
+            )
             additional_settings.update({
-                "apkFilterRegEx": f"^{escaped_name}_{escaped_pkg}_v.*\\.apk$",
-                "versionExtractionRegEx": f"^{escaped_name}_{escaped_pkg}_v([^\\s_]+).*\\.apk$",
-                "matchGroupToUse": 1,
+                "apkFilterRegEx": f"_{pkg}_v[^/]+\\.apk$",
+                "versionExtractionRegEx": f"_v([^/]+?){arch_group}\\.apk$",
+                "matchGroupToUse": "1",
             })
         else:
             apk_urls = [["placeholder", "placeholder"]]

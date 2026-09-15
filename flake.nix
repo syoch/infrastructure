@@ -95,6 +95,7 @@
               echo "=== Running Python Backend Tests ==="
               python3 portal/tests/backend/test_backup_restore.py
               python3 portal/tests/backend/verify_roundtrip.py
+              python3 portal/tests/backend/test_obtainium_compiler.py
               python3 portal/tests/backend/test_control_plane.py
               python3 portal/tests/backend/test_control_plane_backup.py
               python3 portal/tests/backend/test_control_plane_ws.py
