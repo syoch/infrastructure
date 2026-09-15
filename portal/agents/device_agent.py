@@ -21,6 +21,7 @@ import urllib.request
 from typing import Any, Optional
 
 import jsonschema
+import logging
 import websockets
 from websockets.exceptions import (
     ConnectionClosedError,
@@ -30,6 +31,8 @@ from websockets.exceptions import (
 )
 
 from .builtin_ops import BUILTIN_OPS, is_builtin
+
+log = logging.getLogger("device-agent")
 
 
 CONFIG_SCHEMA = {
@@ -67,7 +70,7 @@ def _load_credentials(path: Optional[str]) -> Optional[dict]:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     except (OSError, json.JSONDecodeError) as e:
-        print(f"[device-agent] failed to read credentials from {path}: {e}", file=sys.stderr)
+        log.warning(f"failed to read credentials from {path}: {e}")
         return None
 
 
@@ -294,12 +297,12 @@ class Agent:
         try:
             new_cfg = load_config(self.config_path)
         except Exception as e:
-            print(f"[device-agent] reload failed: {e}", file=sys.stderr)
+            log.warning(f"reload failed: {e}")
             return
         self.config = new_cfg
         if self.credentials is None:
             self.credentials = _load_credentials(self.config.get("credentials_file"))
-        print(f"[device-agent] config reloaded: {len(self.config.get('operations', []))} user ops", file=sys.stderr)
+        log.info(f"config reloaded: {len(self.config.get('operations', []))} user ops")
 
     def _ensure_registered(self) -> str:
         if self.credentials and self.credentials.get("bearer_token") and self.credentials.get("device_id"):
@@ -322,7 +325,7 @@ class Agent:
         creds_path = self.config.get("credentials_file")
         if creds_path:
             _save_credentials(creds_path, self.credentials)
-            print(f"[device-agent] credentials saved to {creds_path}", file=sys.stderr)
+            log.info(f"credentials saved to {creds_path}")
         return self.bearer_token
 
     async def _consume_welcome(self, ws) -> list:
@@ -330,14 +333,14 @@ class Agent:
         try:
             msg = json.loads(raw)
         except json.JSONDecodeError:
-            print(f"[device-agent] non-JSON welcome: {raw!r}", file=sys.stderr)
+            log.warning(f"non-JSON welcome: {raw!r}")
             return []
         if msg.get("type") != "welcome":
-            print(f"[device-agent] unexpected first message: {msg.get('type')!r}", file=sys.stderr)
+            log.warning(f"unexpected first message: {msg.get('type')!r}")
             return []
         pending = msg.get("pending_commands") or []
         if pending:
-            print(f"[device-agent] welcome: {len(pending)} pending command(s) from server", file=sys.stderr)
+            log.info(f"welcome: {len(pending)} pending command(s) from server")
         return pending
 
     async def _register_ops(self, ws, pending_commands: list = None) -> None:
@@ -347,13 +350,13 @@ class Agent:
         try:
             ack = json.loads(ack_raw)
         except json.JSONDecodeError:
-            print(f"[device-agent] non-JSON ack: {ack_raw!r}", file=sys.stderr)
+            log.warning(f"non-JSON ack: {ack_raw!r}")
             return
         if ack.get("type") != "operations_registered":
-            print(f"[device-agent] unexpected register ack: {ack}", file=sys.stderr)
+            log.warning(f"unexpected register ack: {ack}")
             return
         self._registered_ops = ops
-        print(f"[device-agent] registered {ack.get('count', 0)} operations", file=sys.stderr)
+        log.info(f"registered {ack.get('count', 0)} operations")
 
     async def _drain_pending(self, ws, pending: list) -> None:
         for cmd in pending:
@@ -467,9 +470,9 @@ class Agent:
         params = msg.get("params") or {}
         ok = await self._send_claim(ws, cid, ctok)
         if not ok:
-            print(f"[device-agent] claim failed for {cid[:8]}", file=sys.stderr)
+            log.warning(f"claim failed for {cid[:8]}")
             return
-        print(f"[device-agent] executing {op_id} (id={cid[:8]})", file=sys.stderr)
+        log.info(f"executing {op_id} (id={cid[:8]})")
         loop = asyncio.get_event_loop()
         if is_builtin(op_id):
             body = await loop.run_in_executor(None, self._handle_builtin, op_id, params)
@@ -499,7 +502,7 @@ class Agent:
                 try:
                     await self._register_ops(ws)
                 except Exception as e:
-                    print(f"[device-agent] re-register failed: {e}", file=sys.stderr)
+                    log.warning(f"re-register failed: {e}")
                     raise
                 self._reload_event.clear()
             try:
@@ -517,9 +520,9 @@ class Agent:
                 try:
                     await self._process_command(ws, msg)
                 except Exception as e:
-                    print(f"[device-agent] process_command error: {e}", file=sys.stderr)
+                    log.error(f"process_command error: {e}")
             elif mtype == "bye":
-                print(f"[device-agent] server said bye: {msg.get('reason')}", file=sys.stderr)
+                log.info(f"server said bye: {msg.get('reason')}")
                 return
 
     async def _run_forever(self) -> None:
@@ -531,15 +534,15 @@ class Agent:
             try:
                 async with websockets.connect(ws_url) as ws:
                     self._ws = ws
-                    print(f"[device-agent] connected to {ws_url}", file=sys.stderr)
+                    log.info(f"connected to {ws_url}")
                     backoff = 1.0
                     await self._serve(ws)
             except (ConnectionClosedError, ConnectionClosedOK):
-                print("[device-agent] connection closed, reconnecting...", file=sys.stderr)
+                log.info("connection closed, reconnecting...")
             except (InvalidStatus, WebSocketException, OSError) as e:
-                print(f"[device-agent] connection error: {e}, retrying in {backoff:.1f}s", file=sys.stderr)
+                log.error(f"connection error: {e}, retrying in {backoff:.1f}s")
             except Exception as e:
-                print(f"[device-agent] unexpected error: {e}", file=sys.stderr)
+                log.error(f"unexpected error: {e}")
             if self._stop_event.is_set():
                 break
             await asyncio.sleep(backoff)
@@ -550,11 +553,11 @@ class Agent:
         asyncio.set_event_loop(loop)
 
         def _on_sighup(*_):
-            print("[device-agent] SIGHUP received, scheduling reload", file=sys.stderr)
+            log.info("SIGHUP received, scheduling reload")
             self.request_reload()
 
         def _on_sigterm(*_):
-            print("[device-agent] signal received, shutting down", file=sys.stderr)
+            log.info("signal received, shutting down")
             self.request_stop()
             try:
                 if self._ws is not None:
@@ -575,6 +578,7 @@ class Agent:
 
 
 def main() -> int:
+    logging.basicConfig(level=logging.INFO, format="[device-agent] %(message)s")
     parser = argparse.ArgumentParser(description="Portal control-plane device agent")
     parser.add_argument("--config", required=True, help="Path to config.json")
     args = parser.parse_args()

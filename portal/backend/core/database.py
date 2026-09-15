@@ -1,7 +1,10 @@
+import logging
 import sys
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import declarative_base, sessionmaker
 from backend.core import config
+
+logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 
@@ -15,8 +18,8 @@ def get_engine():
         return _engine
         
     if not config.DATABASE_URL:
-        print("Error: Database connection URL is not set.", file=sys.stderr)
-        print("Please start the application with a valid configuration file (--config).", file=sys.stderr)
+        logger.error("Database connection URL is not set.")
+        logger.error("Please start the application with a valid configuration file (--config).")
         sys.exit(1)
         
     # Pick JSON/JSONB type implementation depending on dialect

@@ -1,11 +1,14 @@
 import os
 import re
 import json
+import logging
 import time
 from urllib.parse import urlparse
 from sqlalchemy.orm import selectinload
 from backend.core.database import get_session
 from .models import App, Category, Setting
+
+logger = logging.getLogger(__name__)
 
 class ObtainiumConfigCompiler:
     """
@@ -46,7 +49,7 @@ class ObtainiumConfigCompiler:
             try:
                 compiled_apps.append(self._build_app(app, base_url))
             except Exception as e:
-                print(f"Error compiling app config {app.id}: {e}")
+                logger.error("Error compiling app config %s: %s", app.id, e)
 
         master_export = {"apps": compiled_apps}
         settings = self._build_settings(session)
@@ -160,5 +163,5 @@ class ObtainiumConfigCompiler:
                 categories_dict = {c.name: c.color for c in db_cats}
                 export_settings["categories"] = json.dumps(categories_dict, ensure_ascii=False)
         except Exception as e:
-            print(f"Error formulating export settings: {e}")
+            logger.error("Error formulating export settings: %s", e)
         return export_settings

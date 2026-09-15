@@ -1,7 +1,11 @@
 import os
 import json
 import importlib
+import logging
 import sys
+
+logger = logging.getLogger(__name__)
+
 
 class ExtensionHost:
     """
@@ -36,7 +40,11 @@ class ExtensionHost:
         if not matched_exts:
             raise ValueError(f"No loaded extension implements all required tags: {tags}")
         if len(matched_exts) > 1:
-            print(f"Warning: Multiple extensions match tags {tags}. Resolving to the first loaded: {matched_exts[0].__class__.__name__}")
+            logger.warning(
+                "Multiple extensions match tags %s. Resolving to the first loaded: %s",
+                tags,
+                matched_exts[0].__class__.__name__,
+            )
         return matched_exts[0]
 
 def load_extensions(core_config, host=None):
@@ -75,9 +83,9 @@ def load_extensions(core_config, host=None):
             ext_instance = ext_class(core_config, ext_config)
             extensions.append(ext_instance)
             core_config.LOADED_EXTENSIONS[class_name] = ext_instance
-            print(f"Dynamically loaded extension: {module_name}.{class_name}")
-        except Exception as e:
-            print(f"Warning: Failed to dynamically load extension '{module_name}': {e}")
+            logger.info("Dynamically loaded extension: %s.%s", module_name, class_name)
+        except (ImportError, AttributeError, TypeError, ValueError) as e:
+            logger.warning("Failed to dynamically load extension '%s': %s", module_name, e)
             
     # Instantiate ExtensionHost and inject it into loaded extensions
     if host is None:

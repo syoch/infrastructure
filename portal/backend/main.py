@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import logging
 import os
 import sys
 
@@ -15,48 +16,55 @@ from backend.utils.network import get_local_ip
 # Import Extensions Loader
 from backend.core.extension_loader import load_extensions
 
+logger = logging.getLogger("portal")
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Portal Server Backend")
     parser.add_argument("--config", help="Path to config JSON file")
+    parser.add_argument("--log-level", default=os.environ.get("PORTAL_LOG_LEVEL", "INFO"))
     args, _ = parser.parse_known_args()
     if args.config:
         config.load_config_from_file(args.config)
 
-    print("=" * 60)
-    print("         Android Device Provisioning Portal")
-    print("=" * 60)
-    
+    logging.basicConfig(
+        level=getattr(logging, str(args.log_level).upper(), logging.INFO),
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+
+    logger.info("Android Device Provisioning Portal starting")
+
     # Initialize Core Server
     server = PortalServer(host=config.HOST, port=config.DEFAULT_PORT)
-    
+
     # Initialize Extensions dynamically
     extensions = load_extensions(config)
-    
+
     # Initialize Database (Extensions must be loaded first so their models register onto Base.metadata)
     from backend.core.database import init_db
-    print("Initializing database...")
+
+    logger.info("Initializing database...")
     init_db()
-    
+
     # Setup and register extensions
     for ext in extensions:
-        print(f"Loading extension: {ext.__class__.__name__}...")
+        logger.info("Loading extension: %s...", ext.__class__.__name__)
         ext.setup()
         server.register_extension(ext)
         if hasattr(ext, "install_event_loop_capture"):
             ext.install_event_loop_capture(server.app)
-        
-    print("-" * 60)
-    print("Available Portal Access URLs:")
+
     local_ip = get_local_ip()
-    print(f"  Local Portal UI:  http://{local_ip}:{config.DEFAULT_PORT}/")
+    logger.info("Available Portal Access URLs:")
+    logger.info("  Local Portal UI:  http://%s:%s/", local_ip, config.DEFAULT_PORT)
     for ext in extensions:
         if hasattr(ext, "get_startup_info"):
             for line in ext.get_startup_info(local_ip):
-                print(f"  {line}")
-    print("=" * 60)
+                logger.info("  %s", line)
 
     server.start()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
