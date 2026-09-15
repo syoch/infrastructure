@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { untrack } from 'svelte';
   import {
     fetchWebApps,
     fetchWebApp,
@@ -24,20 +24,26 @@
   let showRegister = $state(false);
   let message = $state('');
 
-  onMount(async () => {
-    if (!getToken()) {
-      window.location.hash = '#/control';
-      return;
-    }
-    await load();
+  // Re-run when the route's slug changes (the component instance is reused
+  // between #/apps and #/apps/{slug}).
+  $effect(() => {
+    const s = slug;
+    untrack(() => {
+      if (!getToken()) {
+        window.location.hash = '#/control';
+        return;
+      }
+      void load(s);
+    });
   });
 
-  async function load(): Promise<void> {
+  async function load(s: string): Promise<void> {
     loading = true;
     error = '';
+    app = null;
     try {
-      if (slug) {
-        app = await fetchWebApp(slug);
+      if (s) {
+        app = await fetchWebApp(s);
       } else {
         apps = await fetchWebApps();
       }
@@ -207,16 +213,16 @@
       <header class="control-section-header"><h2>設定</h2></header>
       {#if message}<p style="color:#20a020; font-size:0.85em;">{message}</p>{/if}
       <form id="app-edit-form" class="control-form" onsubmit={onSave}>
-        <div class="form-group"><label>アプリ名 *</label><input name="name" required value={app.name}></div>
-        <div class="form-group"><label>説明</label><input name="description" value={app.description || ''}></div>
-        <div class="form-group"><label>公開 URL</label><input name="url" value={app.url || ''}></div>
-        <div class="form-group"><label>プロジェクトディレクトリ *</label><input name="project_directory" required value={app.project_directory}></div>
-        <div class="form-group"><label>OpenCode セッション ID *</label><input name="opencode_session_id" required value={app.opencode_session_id}></div>
-        <div class="form-group"><label>bridge device id *</label><input name="bridge_device_id" required value={app.bridge_device_id}></div>
-        <div class="form-group"><label>タグ (カンマ区切り)</label><input name="tags" value={(app.tags || []).join(', ')}></div>
+        <div class="form-group"><label for="ef-name">アプリ名 *</label><input id="ef-name" name="name" required value={app.name}></div>
+        <div class="form-group"><label for="ef-description">説明</label><input id="ef-description" name="description" value={app.description || ''}></div>
+        <div class="form-group"><label for="ef-url">公開 URL</label><input id="ef-url" name="url" value={app.url || ''}></div>
+        <div class="form-group"><label for="ef-dir">プロジェクトディレクトリ *</label><input id="ef-dir" name="project_directory" required value={app.project_directory}></div>
+        <div class="form-group"><label for="ef-session">OpenCode セッション ID *</label><input id="ef-session" name="opencode_session_id" required value={app.opencode_session_id}></div>
+        <div class="form-group"><label for="ef-bridge">bridge device id *</label><input id="ef-bridge" name="bridge_device_id" required value={app.bridge_device_id}></div>
+        <div class="form-group"><label for="ef-tags">タグ (カンマ区切り)</label><input id="ef-tags" name="tags" value={(app.tags || []).join(', ')}></div>
         <div class="form-group">
-          <label>ステータス</label>
-          <select name="status">
+          <label for="ef-status">ステータス</label>
+          <select id="ef-status" name="status">
             <option value="active" selected={app.status === 'active'}>active</option>
             <option value="archived" selected={app.status === 'archived'}>archived</option>
           </select>
@@ -229,8 +235,8 @@
       <header class="control-section-header"><h2>フィードバックを送信</h2></header>
       <form id="feedback-form" class="control-form" onsubmit={onFeedback}>
         <div class="form-group">
-          <label>種別</label>
-          <select name="kind">
+          <label for="fb-kind">種別</label>
+          <select id="fb-kind" name="kind">
             <option value="feedback">フィードバック</option>
             <option value="bug">不具合</option>
             <option value="feature">要望</option>
@@ -238,8 +244,8 @@
           </select>
         </div>
         <div class="form-group">
-          <label>内容 *</label>
-          <textarea name="body" rows="5" required placeholder="気づいた点や要望を書いてください"></textarea>
+          <label for="fb-body">内容 *</label>
+          <textarea id="fb-body" name="body" rows="5" required placeholder="気づいた点や要望を書いてください"></textarea>
         </div>
         <div class="form-actions">
           <button type="submit" class="btn btn-primary">送信 (エージェントに注入)</button>
@@ -290,12 +296,12 @@
     <div id="app-register-form-container">
       {#if showRegister}
         <form id="app-register-form" class="control-form" style="margin-bottom:24px;" onsubmit={onCreate}>
-          <div class="form-group"><label>アプリ名 *</label><input name="name" required></div>
-          <div class="form-group"><label>説明</label><input name="description"></div>
-          <div class="form-group"><label>公開 URL</label><input name="url" placeholder="http://..."></div>
-          <div class="form-group"><label>プロジェクトディレクトリ *</label><input name="project_directory" placeholder="/home/syoch/work/..." required></div>
-          <div class="form-group"><label>OpenCode セッション ID *</label><input name="opencode_session_id" placeholder="ses_..." required></div>
-          <div class="form-group"><label>タグ (カンマ区切り)</label><input name="tags"></div>
+          <div class="form-group"><label for="rg-name">アプリ名 *</label><input id="rg-name" name="name" required></div>
+          <div class="form-group"><label for="rg-description">説明</label><input id="rg-description" name="description"></div>
+          <div class="form-group"><label for="rg-url">公開 URL</label><input id="rg-url" name="url" placeholder="http://..."></div>
+          <div class="form-group"><label for="rg-dir">プロジェクトディレクトリ *</label><input id="rg-dir" name="project_directory" placeholder="/home/syoch/work/..." required></div>
+          <div class="form-group"><label for="rg-session">OpenCode セッション ID *</label><input id="rg-session" name="opencode_session_id" placeholder="ses_..." required></div>
+          <div class="form-group"><label for="rg-tags">タグ (カンマ区切り)</label><input id="rg-tags" name="tags"></div>
           <div class="form-actions"><button type="submit" class="btn btn-primary">登録</button></div>
         </form>
       {/if}

@@ -17,6 +17,28 @@
       results.push({ pass: !!cond, name, extra: extra || null });
     }
 
+    // The Svelte components listen to real DOM events, so mutate the element
+    // and dispatch the corresponding (bubbling) event afterwards.
+    function fire(el, type) {
+      el.dispatchEvent(new Event(type, { bubbles: true }));
+    }
+    function setValue(el, value) {
+      el.value = value;
+      fire(el, "input");
+    }
+    function setChange(el, value) {
+      el.value = value;
+      fire(el, "change");
+    }
+    function setChecked(el, checked) {
+      el.checked = checked;
+      fire(el, "change");
+    }
+    function setSelect(el, value) {
+      el.value = value;
+      fire(el, "change");
+    }
+
     function runCase(name, fn) {
       try {
         fn();
@@ -30,7 +52,7 @@
       const root = document.createElement("div");
       document.body.appendChild(root);
       const { el, getValue } = renderSchema({ type: "string", title: "Name" }, root);
-      el.querySelector("input").value = "alice";
+      setValue(el.querySelector("input"), "alice");
       assert(getValue() === "alice", "string input roundtrip");
     });
 
@@ -38,7 +60,7 @@
       const root = document.createElement("div");
       document.body.appendChild(root);
       const { el, getValue } = renderSchema({ type: "integer", minimum: 0, maximum: 10 }, root);
-      el.querySelector("input").value = "5";
+      setValue(el.querySelector("input"), "5");
       assert(getValue() === 5, "integer parse");
     });
 
@@ -46,9 +68,9 @@
       const root = document.createElement("div");
       document.body.appendChild(root);
       const { el, getValue } = renderSchema({ type: "boolean" }, root);
-      el.querySelector("input").checked = true;
+      setChecked(el.querySelector("input"), true);
       assert(getValue() === true, "boolean true");
-      el.querySelector("input").checked = false;
+      setChecked(el.querySelector("input"), false);
       assert(getValue() === false, "boolean false");
     });
 
@@ -56,7 +78,7 @@
       const root = document.createElement("div");
       document.body.appendChild(root);
       const { el, getValue } = renderSchema({ type: "string", enum: ["a", "b", "c"] }, root);
-      el.querySelector("select").value = "b";
+      setSelect(el.querySelector("select"), "b");
       assert(getValue() === "b", "enum select");
     });
 
@@ -73,8 +95,8 @@
       };
       const { el, getValue } = renderSchema(schema, root);
       const inputs = el.querySelectorAll("input");
-      inputs[0].value = "bob";
-      inputs[1].value = "30";
+      setValue(inputs[0], "bob");
+      setValue(inputs[1], "30");
       const v = getValue();
       assert(v.name === "bob" && v.age === 30, "object roundtrip", v);
     });
@@ -83,7 +105,7 @@
       const root = document.createElement("div");
       document.body.appendChild(root);
       const { el, getValue } = renderSchema({ type: "string", ui_hint: { widget: "json" } }, root);
-      el.querySelector("textarea").value = '{"x": 1, "y": [2,3]}';
+      setValue(el.querySelector("textarea"), '{"x": 1, "y": [2,3]}');
       const v = getValue();
       assert(v && v.x === 1 && Array.isArray(v.y) && v.y.length === 2, "json widget parse", v);
     });
@@ -97,9 +119,9 @@
       addBtn.click();
       addBtn.click();
       const inputs = el.querySelectorAll("input");
-      inputs[0].value = "a";
-      inputs[1].value = "b";
-      inputs[2].value = "c";
+      setValue(inputs[0], "a");
+      setValue(inputs[1], "b");
+      setValue(inputs[2], "c");
       const v = getValue();
       assert(Array.isArray(v) && v.length === 3 && v[0] === "a", "array of strings", v);
     });
@@ -123,10 +145,10 @@
       el.querySelector("button").click();
       const items = el.querySelectorAll(".schema-array-item");
       const inputs0 = items[0].querySelectorAll("input");
-      inputs0[0].value = "first";
-      inputs0[1].value = "42";
+      setValue(inputs0[0], "first");
+      setValue(inputs0[1], "42");
       const inputs1 = items[1].querySelectorAll("input");
-      inputs1[0].value = "second";
+      setValue(inputs1[0], "second");
       const v = getValue();
       assert(v.length === 2 && v[0].name === "first" && v[0].value === 42, "nested object in array", v);
     });
@@ -142,10 +164,9 @@
       };
       const { el, getValue } = renderSchema(schema, root);
       const sel = el.querySelector("select");
-      sel.value = "1";
-      sel.dispatchEvent(new Event("change"));
+      setSelect(sel, "1");
       const inputs = el.querySelectorAll("input");
-      inputs[0].value = "7";
+      setValue(inputs[0], "7");
       const v = getValue();
       assert(v && v.id === 7, "oneOf variant", v);
     });
@@ -170,8 +191,7 @@
       document.body.appendChild(root);
       const { el, getSchema } = renderSchemaEditor({ type: "object", properties: { foo: { type: "string" } } }, root);
       const nameInp = el.querySelector("input");
-      nameInp.value = "bar";
-      nameInp.dispatchEvent(new Event("change"));
+      setChange(nameInp, "bar");
       const s = getSchema();
       assert("bar" in s.properties, "schema editor renamed property", Object.keys(s.properties));
     });
