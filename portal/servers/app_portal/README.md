@@ -60,9 +60,14 @@ OpenCode が動くマシンで常駐させる。control-plane の bootstrap toke
 portal-opencode-bridge \
   --server-url http://<portal-host>:8000 \
   --bootstrap-token <token> \
+  --credentials-file /var/lib/portal-opencode-bridge/credentials.json \
   --opencode-url http://127.0.0.1:12000 \
   --webui-base-url http://127.0.0.1:12000
 ```
+
+- bootstrap token は**初回登録のみ**必要。登録後は `--credentials-file` に bearer token が
+  保存され、以降の再起動はキャッシュを再利用する（token の再発行は不要）。
+- `--bootstrap-token-file <path>` でトークンをファイルから読むこともできる（argv 露出を避ける）。
 
 提供オペレーション:
 
@@ -78,22 +83,31 @@ tailscale 名など）。
 ```ini
 [Unit]
 Description=Portal OpenCode bridge
-After=network.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
+Type=simple
+User=syoch
+StateDirectory=portal-opencode-bridge
 ExecStart=%h/.nix-profile/bin/portal-opencode-bridge \
   --server-url https://portal.syoch.org \
-  --bootstrap-token %h/.config/portal-opencode-bridge.token \
+  --bootstrap-token-file /etc/nixos/portal-opencode-bridge.token \
+  --credentials-file /var/lib/portal-opencode-bridge/credentials.json \
   --opencode-url http://127.0.0.1:12000
 Restart=always
 RestartSec=5
 
 [Install]
-WantedBy=default.target
+WantedBy=multi-user.target
 ```
 
 bootstrap token は `python3 manage.py --config <cfg> control issue-bootstrap-token
 --device-id opencode-bridge --display-name "OpenCode Bridge"` で発行する。
+
+syoch-nix (NixOS) には `services.portal-opencode-bridge` モジュール（dotfiles
+`components/host/syoch-nix/portal-bridge.nix`）があり、bootstrap token は sops
+secret `portal-opencode-bridge-token` から供給される。
 
 ## OpenCode 自動登録ツール
 
