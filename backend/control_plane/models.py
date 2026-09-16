@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Any
 from sqlalchemy import (
     Column, String, Integer, Boolean, ForeignKey, Enum, Text, DateTime, UniqueConstraint, CheckConstraint
 )
@@ -18,17 +19,17 @@ class Device(Base):
     __tablename__ = "ctrl_devices"
 
     id: Mapped[str] = Column(String(64), primary_key=True, nullable=False)
-    display_name = Column(String(128), nullable=False)
+    display_name: Mapped[str] = Column(String(128), nullable=False)
     bearer_token: Mapped[str] = Column(String(64), nullable=False, unique=True, index=True)
-    ws_state = Column(
+    ws_state: Mapped[str] = Column(
         Enum("online", "offline", "never_connected", name="ctrl_ws_state"),
         default="never_connected",
         nullable=False,
     )
     last_seen = Column(DateTime, nullable=True)
     extra = Column(Text, nullable=True)
-    registered_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    is_first_webui_device = Column(Boolean, default=False, nullable=False)
+    registered_at: Mapped[datetime] = Column(DateTime, default=datetime.utcnow, nullable=False)
+    is_first_webui_device: Mapped[bool] = Column(Boolean, default=False, nullable=False)
 
     def __repr__(self) -> str:
         return f"<Device id={self.id!r} name={self.display_name!r} ws_state={self.ws_state!r}>"
@@ -59,21 +60,21 @@ class CommandRequest(Base):
     __tablename__ = "ctrl_command_requests"
 
     id: Mapped[str] = Column(String(36), primary_key=True, nullable=False, default=_uuid4)
-    target_device_id = Column(
+    target_device_id: Mapped[str] = Column(
         String(64),
         ForeignKey("ctrl_devices.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-    source_device_id = Column(
+    source_device_id: Mapped[str] = Column(
         String(64),
         ForeignKey("ctrl_devices.id"),
         nullable=False,
         index=True,
     )
-    operation = Column(String(64), nullable=False)
-    params = Column(JSON, nullable=False, default=dict)
-    status = Column(
+    operation: Mapped[str] = Column(String(64), nullable=False)
+    params: Mapped[dict[str, Any]] = Column(JSON, nullable=False, default=dict)
+    status: Mapped[str] = Column(
         Enum(
             "pending", "claimed", "succeeded", "failed", "timeout", "cancelled",
             name="ctrl_cmd_status",
@@ -119,8 +120,8 @@ class OperationSpec(Base):
 
     provider: Mapped[str] = Column(String(64), primary_key=True, nullable=False)
     id: Mapped[str] = Column(String(128), primary_key=True, nullable=False)
-    group = Column(String(64), nullable=False, index=True)
-    name = Column(String(128), nullable=False)
+    group: Mapped[str] = Column(String(64), nullable=False, index=True)
+    name: Mapped[str] = Column(String(128), nullable=False)
     description = Column(Text, nullable=True)
     params_schema = Column(JSON, nullable=False, default=dict)
     result_schema = Column(JSON, nullable=True)

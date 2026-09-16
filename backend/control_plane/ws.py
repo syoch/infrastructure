@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 import secrets
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import datetime, timedelta
 from typing import Any, Optional
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from backend.core.database import get_session
 from .models import Device, CommandRequest, OperationSpec
 from .core import provider_device_id, publish_command_status
+from .protocol import CommandMessage, PendingCommand, WelcomeMessage
 
 
 router = APIRouter(prefix="/api/control", tags=["control-plane-ws"])
@@ -49,15 +50,16 @@ class ConnectionManager:
         if conn is None:
             return False
         try:
-            await conn.send({
+            message: CommandMessage = {
                 "type": "command",
                 "command_id": command.id,
                 "operation": command.operation,
                 "params": command.params,
                 "timeout_seconds": command.timeout_seconds,
-                "claim_token": command.claim_token,
+                "claim_token": command.claim_token or "",
                 "source_device_id": command.source_device_id,
-            })
+            }
+            await conn.send(message)
             return True
         except Exception as e:
             log.warning(f"push_command failed for {device_id}: {e}")
@@ -71,7 +73,7 @@ class WebSocketConnection:
         self.session_factory = session_factory
         self._closed = False
 
-    async def send(self, data: dict[str, Any]) -> None:
+    async def send(self, data: Mapping[str, Any]) -> None:
         if self._closed:
             return
         await self.websocket.send_text(json.dumps(data))
@@ -105,24 +107,25 @@ async def _send_welcome(conn: WebSocketConnection) -> None:
             .order_by(CommandRequest.created_at)
             .all()
         )
-        pending_data = [
+        pending_data: list[PendingCommand] = [
             {
                 "command_id": c.id,
                 "operation": c.operation,
                 "params": c.params,
                 "timeout_seconds": c.timeout_seconds,
-                "claim_token": c.claim_token,
+                "claim_token": c.claim_token or "",
                 "source_device_id": c.source_device_id,
             }
             for c in pending
         ]
-        await conn.send({
+        welcome: WelcomeMessage = {
             "type": "welcome",
             "device_id": conn.device.id,
             "display_name": conn.device.display_name,
             "is_first_webui_device": conn.device.is_first_webui_device,
             "pending_commands": pending_data,
-        })
+        }
+        await conn.send(welcome)
     finally:
         session.close()
 

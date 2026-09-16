@@ -16,6 +16,7 @@ import signal
 import subprocess
 import sys
 import time
+from collections.abc import Mapping
 from typing import Any, Optional, cast
 
 import jsonschema
@@ -28,6 +29,13 @@ from websockets.exceptions import (
     WebSocketException,
 )
 from .utils import ReconnectBackoff, register_device
+from .protocol import (
+    ClaimMessage,
+    CommandMessage,
+    OperationsRegisterMessage,
+    PendingCommand,
+    PongMessage,
+)
 
 from .builtin_ops import BUILTIN_OPS, is_builtin
 
@@ -314,7 +322,7 @@ class Agent:
             log.info(f"credentials saved to {creds_path}")
         return cast(str, self.bearer_token)
 
-    async def _consume_welcome(self, ws: Any) -> list[dict[str, Any]]:
+    async def _consume_welcome(self, ws: Any) -> list[PendingCommand]:
         raw = await ws.recv()
         try:
             msg = json.loads(raw)
@@ -324,14 +332,15 @@ class Agent:
         if msg.get("type") != "welcome":
             log.warning(f"unexpected first message: {msg.get('type')!r}")
             return []
-        pending: list[dict[str, Any]] = msg.get("pending_commands") or []
+        pending: list[PendingCommand] = msg.get("pending_commands") or []
         if pending:
             log.info(f"welcome: {len(pending)} pending command(s) from server")
         return pending
 
-    async def _register_ops(self, ws: Any, pending_commands: Optional[list[dict[str, Any]]] = None) -> None:
+    async def _register_ops(self, ws: Any, pending_commands: Optional[list[PendingCommand]] = None) -> None:
         ops = _all_ops(self.config)
-        await ws.send(json.dumps({"type": "operations_register", "operations": ops}))
+        message: OperationsRegisterMessage = {"type": "operations_register", "operations": ops}
+        await ws.send(json.dumps(message))
         ack_raw = await ws.recv()
         try:
             ack = json.loads(ack_raw)
@@ -344,20 +353,22 @@ class Agent:
         self._registered_ops = ops
         log.info(f"registered {ack.get('count', 0)} operations")
 
-    async def _drain_pending(self, ws: Any, pending: list[dict[str, Any]]) -> None:
+    async def _drain_pending(self, ws: Any, pending: list[PendingCommand]) -> None:
         for cmd in pending:
-            await self._process_command(ws, {
+            message: CommandMessage = {
                 "type": "command",
                 "command_id": cmd["command_id"],
                 "operation": cmd["operation"],
                 "params": cmd.get("params") or {},
                 "timeout_seconds": cmd.get("timeout_seconds") or 60,
-                "claim_token": cmd.get("claim_token"),
-                "source_device_id": cmd.get("source_device_id"),
-            })
+                "claim_token": cmd.get("claim_token") or "",
+                "source_device_id": cmd.get("source_device_id") or "",
+            }
+            await self._process_command(ws, message)
 
     async def _send_claim(self, ws: Any, command_id: str, claim_token: str) -> bool:
-        await ws.send(json.dumps({"type": "claim", "command_id": command_id, "claim_token": claim_token}))
+        message: ClaimMessage = {"type": "claim", "command_id": command_id, "claim_token": claim_token}
+        await ws.send(json.dumps(message))
         try:
             ack: dict[str, Any] = json.loads(await asyncio.wait_for(ws.recv(), timeout=5.0))
         except asyncio.TimeoutError:
@@ -449,7 +460,7 @@ class Agent:
         except OSError:
             pass
 
-    async def _process_command(self, ws: Any, msg: dict[str, Any]) -> None:
+    async def _process_command(self, ws: Any, msg: Mapping[str, Any]) -> None:
         cid = str(msg["command_id"])
         ctok = str(msg.get("claim_token") or "")
         op_id = str(msg.get("operation") or "")
@@ -501,7 +512,7 @@ class Agent:
                 continue
             mtype = msg.get("type")
             if mtype == "ping":
-                await ws.send(json.dumps({"type": "pong"}))
+                await ws.send(json.dumps(PongMessage(type="pong")))
             elif mtype == "command":
                 try:
                     await self._process_command(ws, msg)

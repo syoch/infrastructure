@@ -6,6 +6,7 @@ import threading
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
+from collections.abc import Mapping
 from typing import AsyncIterator, Optional, Any
 
 from fastapi import Header, Query, HTTPException, Depends, status, Request, APIRouter
@@ -16,6 +17,7 @@ from backend.utils.text import strip_type_prefix
 from backend.utils.tokens import generate_claim_token
 
 from .models import Device, DeviceACL, DeviceBootstrapToken, OperationSpec, CommandRequest
+from .protocol import CommandStatusEvent
 
 log = logging.getLogger("control_plane.core")
 
@@ -155,12 +157,12 @@ def get_main_loop() -> Any:
 
 class EventBus:
     def __init__(self) -> None:
-        self._subscribers: list[asyncio.Queue[dict[str, Any]]] = []
+        self._subscribers: list[asyncio.Queue[Mapping[str, Any]]] = []
         self._lock = asyncio.Lock()
-        self._last_statuses: dict[str, dict[str, Any]] = {}
+        self._last_statuses: dict[str, Mapping[str, Any]] = {}
 
-    async def subscribe(self) -> asyncio.Queue[dict[str, Any]]:
-        q: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=256)
+    async def subscribe(self) -> asyncio.Queue[Mapping[str, Any]]:
+        q: asyncio.Queue[Mapping[str, Any]] = asyncio.Queue(maxsize=256)
         async with self._lock:
             self._subscribers.append(q)
             snapshot = list(self._last_statuses.values())
@@ -171,12 +173,12 @@ class EventBus:
                 break
         return q
 
-    async def unsubscribe(self, q: asyncio.Queue[dict[str, Any]]) -> None:
+    async def unsubscribe(self, q: asyncio.Queue[Mapping[str, Any]]) -> None:
         async with self._lock:
             if q in self._subscribers:
                 self._subscribers.remove(q)
 
-    async def publish(self, event: dict[str, Any]) -> None:
+    async def publish(self, event: Mapping[str, Any]) -> None:
         async with self._lock:
             self._last_statuses[event.get("command_id", "")] = event
             subs = list(self._subscribers)
@@ -246,7 +248,7 @@ def wait_for_command_result(
 
 def publish_command_status(cmd: CommandRequest) -> None:
     _notify_command_waiters(cmd.id)
-    event = {
+    event: CommandStatusEvent = {
         "type": "command_status",
         "command_id": cmd.id,
         "status": cmd.status,
@@ -265,12 +267,12 @@ def publish_command_status(cmd: CommandRequest) -> None:
         return
     asyncio.ensure_future(event_bus.publish(event))
 
-def _device_acl_filter(device: Device, event: dict[str, Any]) -> bool:
+def _device_acl_filter(device: Device, event: Mapping[str, Any]) -> bool:
     if device.is_first_webui_device:
         return True
     return event.get("source_device_id") == device.id or event.get("target_device_id") == device.id
 
-async def _sse_generator(device: Device, queue: asyncio.Queue[dict[str, Any]]) -> AsyncIterator[bytes]:
+async def _sse_generator(device: Device, queue: asyncio.Queue[Mapping[str, Any]]) -> AsyncIterator[bytes]:
     yield b": connected\n\n"
     loop = asyncio.get_running_loop()
     last_ping = loop.time()
