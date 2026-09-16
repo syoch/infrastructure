@@ -15,9 +15,8 @@ HOST = "0.0.0.0"
 DATABASE_URL: Optional[str] = None
 SQLITE_WAL = True
 EXTENSIONS = [
-    {"module": "servers.obtainium_repo", "class": "ObtainiumRepoExtension"}
+    {"id": "obtainium"}
 ]
-STORAGE_PROVIDER = "StorageManagerExtension"
 
 # Application Paths
 # The SPA is built by Vite into public/dist; that directory is what gets served.
@@ -41,14 +40,13 @@ def resolve_config_path(path: str) -> str:
 
 def load_config(config_data: dict, config_dir: Optional[str] = None):
     """Loads configuration dynamically from a dictionary, setting module-level variables."""
-    global DEFAULT_PORT, HOST, DATABASE_URL, SQLITE_WAL, EXTENSIONS, PUBLIC_DIR, STORAGE_PROVIDER, _config_dir
+    global DEFAULT_PORT, HOST, DATABASE_URL, SQLITE_WAL, EXTENSIONS, PUBLIC_DIR, _config_dir
     
     _config_dir = config_dir
     
     server_cfg = config_data.get("server", {})
     DEFAULT_PORT = server_cfg.get("port", DEFAULT_PORT)
     HOST = server_cfg.get("host", HOST)
-    STORAGE_PROVIDER = server_cfg.get("storage_provider", STORAGE_PROVIDER)
     
     db_cfg = config_data.get("database", {})
     DATABASE_URL = db_cfg.get("url")

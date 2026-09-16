@@ -15,6 +15,8 @@ class AppPortalExtension(BaseExtension):
     control-plane command channel.
     """
 
+    ID = "app-portal"
+
     def __init__(self, core_config, ext_config=None):
         super().__init__(core_config)
         self.ext_config = ext_config or {}

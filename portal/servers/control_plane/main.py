@@ -16,6 +16,8 @@ class ControlPlaneExtension(BaseExtension):
     Manages devices, ACLs, bootstrap tokens, and operation dispatch.
     """
 
+    ID = "control-plane"
+
     def __init__(self, core_config, ext_config=None):
         super().__init__(core_config)
         self.ext_config = ext_config or {}

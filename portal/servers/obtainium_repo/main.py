@@ -20,6 +20,8 @@ class ObtainiumRepoExtension(BaseExtension):
     Handles dynamic JSON generation, HTML scraping page generation, and APK file serving.
     """
 
+    ID = "obtainium"
+
     def __init__(self, core_config, ext_config=None):
         super().__init__(core_config)
         self.ext_config = ext_config or {}
@@ -30,10 +32,10 @@ class ObtainiumRepoExtension(BaseExtension):
 
     def setup(self):
         """Initializes dependencies for the extension."""
-        provider_name = self.ext_config.get("storage_provider", "StorageManagerExtension")
+        provider_id = self.ext_config.get("storage_provider", "storage")
         if self.host is None:
             raise RuntimeError("extension host is not initialized")
-        self.storage_ext = self.host.get_extension(provider_name, tags=["storage-provider"])
+        self.storage_ext = self.host.get_extension(provider_id, tags=["storage-provider"])
 
         self.compiler = ObtainiumConfigCompiler(self.config)
         self.cli_manager = ObtainiumRepoManagerCLI(self.config, self.compiler)

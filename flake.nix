@@ -180,15 +180,13 @@
                 };
                 extensions = [
                   {
-                    module = "servers.storage_manager";
-                    class = "StorageManagerExtension";
+                    id = "storage";
                     config = {
                       uploads_dir = "/var/uploads";
                     };
                   }
                   {
-                    module = "servers.obtainium_repo";
-                    class = "ObtainiumRepoExtension";
+                    id = "obtainium";
                   }
                 ];
               }));

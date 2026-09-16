@@ -9,23 +9,19 @@
   },
   "extensions": [
     {
-      "module": "servers.storage_manager",
-      "class": "StorageManagerExtension",
+      "id": "storage",
       "config": {
         "uploads_dir": "uploads"
       }
     },
     {
-      "module": "servers.obtainium_repo",
-      "class": "ObtainiumRepoExtension"
+      "id": "obtainium"
     },
     {
-      "module": "servers.control_plane",
-      "class": "ControlPlaneExtension"
+      "id": "control-plane"
     },
     {
-      "module": "servers.app_portal",
-      "class": "AppPortalExtension",
+      "id": "app-portal",
       "config": {
         "bridge_device_id": "opencode-bridge"
       }

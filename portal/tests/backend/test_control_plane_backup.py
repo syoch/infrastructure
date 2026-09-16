@@ -114,9 +114,9 @@ def _count_all(session):
 
 
 def _find_cpext():
-    for ext_name, ext in config.LOADED_EXTENSIONS.items():
-        if ext_name == "ControlPlaneExtension":
-            return ext
+    ext = config.LOADED_EXTENSIONS.get("control-plane")
+    if ext is not None:
+        return ext
     raise RuntimeError("ControlPlaneExtension not loaded")
 
 
@@ -154,7 +154,7 @@ def test_backup_restore_via_tarball():
 
     BackupManager.create_backup_tarball(
         out_path=backup_file, session=session,
-        storage_ext=config.LOADED_EXTENSIONS.get("StorageManagerExtension"),
+        storage_ext=config.LOADED_EXTENSIONS.get("storage"),
         include_apks=False,
     )
     assert os.path.exists(backup_file), "backup tarball not created"
@@ -174,7 +174,7 @@ def test_backup_restore_via_tarball():
 
     BackupManager.restore_backup_tarball(
         in_path=backup_file, session=session,
-        storage_ext=config.LOADED_EXTENSIONS.get("StorageManagerExtension"),
+        storage_ext=config.LOADED_EXTENSIONS.get("storage"),
         strategy="overwrite",
     )
 
@@ -214,7 +214,7 @@ def test_backup_merge_preserves_existing():
 
     BackupManager.create_backup_tarball(
         out_path=backup_file, session=session,
-        storage_ext=config.LOADED_EXTENSIONS.get("StorageManagerExtension"),
+        storage_ext=config.LOADED_EXTENSIONS.get("storage"),
         include_apks=False,
     )
     print("  -> backup A created (contains: webui + bkp-device-1 + 1 ACL + 1 token + 1 op + 1 command)")
@@ -250,7 +250,7 @@ def test_backup_merge_preserves_existing():
 
     BackupManager.restore_backup_tarball(
         in_path=backup_file, session=session,
-        storage_ext=config.LOADED_EXTENSIONS.get("StorageManagerExtension"),
+        storage_ext=config.LOADED_EXTENSIONS.get("storage"),
         strategy="merge",
     )
 

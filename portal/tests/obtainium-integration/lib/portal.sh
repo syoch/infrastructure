@@ -33,15 +33,13 @@ portal_prepare_config() {
   },
   "extensions": [
     {
-      "module": "servers.storage_manager",
-      "class": "StorageManagerExtension",
+      "id": "storage",
       "config": {
         "uploads_dir": "${cfg_dir}/uploads"
       }
     },
     {
-      "module": "servers.obtainium_repo",
-      "class": "ObtainiumRepoExtension"
+      "id": "obtainium"
     }
   ]
 }

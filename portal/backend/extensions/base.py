@@ -3,6 +3,10 @@ class BaseExtension:
     Abstract base class for all portal extensions.
     Any extension should inherit from this class and implement the necessary methods.
     """
+
+    #: Stable identifier used by deployment configuration (see config.EXTENSIONS).
+    ID: str = ""
+
     def __init__(self, core_config):
         """
         Initializes the extension with the global backend core configuration.

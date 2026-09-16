@@ -36,8 +36,8 @@ def run_test():
     for ext in extensions:
         ext.setup()
 
-    storage_ext = config.LOADED_EXTENSIONS.get("StorageManagerExtension")
-    obtainium_repo_ext = config.LOADED_EXTENSIONS.get("ObtainiumRepoExtension")
+    storage_ext = config.LOADED_EXTENSIONS.get("storage")
+    obtainium_repo_ext = config.LOADED_EXTENSIONS.get("obtainium")
 
     session = get_session()
 

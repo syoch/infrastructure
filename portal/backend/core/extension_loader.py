@@ -1,9 +1,8 @@
-import os
-import json
-import importlib
 import logging
 import sys
 from typing import Optional
+
+from backend.core.extensions import load_extension_class
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +10,7 @@ logger = logging.getLogger(__name__)
 class ExtensionHost:
     """
     Registry host that acts as the service locator for loaded extensions.
-    Provides tag verification and validation.
+    Extensions are keyed by their stable ID and can also be looked up by tag.
     """
     def __init__(self, extensions_dict):
         self._extensions = extensions_dict
@@ -20,7 +19,7 @@ class ExtensionHost:
         if not name and not tags:
             raise ValueError("Either extension name or tags must be specified.")
         tags = tags or []
-            
+
         if name:
             ext = self._extensions.get(name)
             if not ext:
@@ -31,14 +30,14 @@ class ExtensionHost:
                     if tag not in ext_tags:
                         raise ValueError(f"Extension '{name}' does not implement the required tag '{tag}'.")
             return ext
-            
+
         # Match purely by tags
         matched_exts = []
         for ext in self._extensions.values():
             ext_tags = getattr(ext, "tags", [])
             if all(tag in ext_tags for tag in tags):
                 matched_exts.append(ext)
-                
+
         if not matched_exts:
             raise ValueError(f"No loaded extension implements all required tags: {tags}")
         if len(matched_exts) > 1:
@@ -49,49 +48,59 @@ class ExtensionHost:
             )
         return matched_exts[0]
 
+
 def load_extensions(core_config, host=None):
     """
-    Dynamically loads portal extensions specified in core_config.EXTENSIONS
+    Loads the extensions listed in ``core_config.EXTENSIONS`` by ID.
+
+    Each entry is either ``"<id>"`` or ``{"id": "<id>", "config": {...}}``.
+    Unknown or duplicate IDs abort startup.
     """
-    extensions = []
-    
-    # Ensure portal directory is in sys.path so 'servers' package can be imported
     if core_config.PORTAL_DIR not in sys.path:
         sys.path.insert(0, core_config.PORTAL_DIR)
-    # Ensure root workspace is in sys.path for sibling imports if any
     if core_config.ROOT_DIR not in sys.path:
         sys.path.insert(0, core_config.ROOT_DIR)
 
-    # Initialize registry for cross-extension queries
-    core_config.LOADED_EXTENSIONS = {}
+    loaded: dict[str, object] = {}
+    extensions = []
 
-    # Use extensions list defined in config
-    extension_list = getattr(core_config, "EXTENSIONS", [])
+    for entry in getattr(core_config, "EXTENSIONS", []):
+        extension_id: Optional[str]
+        ext_config: dict
+        if isinstance(entry, str):
+            extension_id, ext_config = entry, {}
+        else:
+            extension_id = entry.get("id")
+            ext_config = entry.get("config") or {}
+        if not extension_id:
+            raise ValueError(f"extension entry is missing an id: {entry!r}")
+        if extension_id in loaded:
+            raise ValueError(f"duplicate extension id {extension_id!r}")
 
-    for ext_info in extension_list:
-        module_name = ext_info.get("module")
-        class_name = ext_info.get("class")
-        if not module_name or not class_name:
-            continue
-            
         try:
-            # Dynamically import the module
-            module = importlib.import_module(module_name)
-            # Get the extension class
-            ext_class = getattr(module, class_name)
-            
-            # Get extension specific config and instantiate class
-            ext_config = ext_info.get("config", {})
-            ext_instance = ext_class(core_config, ext_config)
-            extensions.append(ext_instance)
-            core_config.LOADED_EXTENSIONS[class_name] = ext_instance
-            logger.info("Dynamically loaded extension: %s.%s", module_name, class_name)
-        except (ImportError, AttributeError, TypeError, ValueError) as e:
-            logger.warning("Failed to dynamically load extension '%s': %s", module_name, e)
-            
-    # Instantiate ExtensionHost and inject it into loaded extensions
+            ext_class = load_extension_class(extension_id)
+        except (ImportError, AttributeError) as e:
+            raise ValueError(
+                f"failed to import extension {extension_id!r}: {e}"
+            ) from e
+
+        declared_id = getattr(ext_class, "ID", None)
+        if declared_id != extension_id:
+            logger.warning(
+                "extension %s declares ID %r; registry id is %r",
+                ext_class.__name__,
+                declared_id,
+                extension_id,
+            )
+
+        ext_instance = ext_class(core_config, ext_config)
+        extensions.append(ext_instance)
+        loaded[extension_id] = ext_instance
+        logger.info("Loaded extension: %s (%s)", extension_id, ext_class.__name__)
+
+    core_config.LOADED_EXTENSIONS = loaded
     if host is None:
-        host = ExtensionHost(core_config.LOADED_EXTENSIONS)
+        host = ExtensionHost(loaded)
     core_config.EXTENSION_HOST = host
 
     for ext in extensions:

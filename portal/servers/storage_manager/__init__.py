@@ -14,6 +14,8 @@ class StorageManagerExtension(BaseExtension):
     """
     Plugin extension that provides generic RESTful Content-Addressable Storage (CAS) file management.
     """
+    ID = "storage"
+
     def __init__(self, core_config, ext_config=None):
         super().__init__(core_config)
         self.ext_config = ext_config or {}

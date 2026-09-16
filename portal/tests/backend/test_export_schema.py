@@ -202,7 +202,7 @@ def run():
     # Reseed DB for downstream tests
     print("Re-seeding database from seed_backup.tar.gz...")
     seed_backup_path = os.path.join(BACKUP_DIR, 'seed_backup.tar.gz')
-    storage_ext = config.LOADED_EXTENSIONS.get("StorageManagerExtension")
+    storage_ext = config.LOADED_EXTENSIONS.get("storage")
     session = get_session()
     BackupManager.restore_backup_tarball(
         in_path=seed_backup_path,
