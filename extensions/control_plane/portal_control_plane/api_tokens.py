@@ -6,10 +6,13 @@ from sqlalchemy.orm import Session
 
 from backend.core.database import get_db
 from .api_common import (
+    DeleteOut,
     DeleteResponse,
     TokenDict,
     TokenIssueBody,
+    TokenListOut,
     TokenListResponse,
+    TokenOut,
     _token_to_dict,
 )
 from .core import require_admin
@@ -18,7 +21,7 @@ from .models import Device, DeviceBootstrapToken
 router = APIRouter(tags=["control-plane"])
 
 
-@router.get("/tokens", response_model=None)
+@router.get("/tokens", response_model=TokenListOut)
 def list_tokens(
     device: Device = Depends(require_admin),
     db: Session = Depends(get_db),
@@ -27,7 +30,7 @@ def list_tokens(
     return {"tokens": [_token_to_dict(t) for t in tokens]}
 
 
-@router.post("/tokens", response_model=None)
+@router.post("/tokens", response_model=TokenOut)
 def issue_token(
     body: TokenIssueBody,
     device: Device = Depends(require_admin),
@@ -50,7 +53,7 @@ def issue_token(
     return _token_to_dict(tok)
 
 
-@router.delete("/tokens/{token_id}", response_model=None)
+@router.delete("/tokens/{token_id}", response_model=DeleteOut)
 def delete_token(
     token_id: str,
     device: Device = Depends(require_admin),

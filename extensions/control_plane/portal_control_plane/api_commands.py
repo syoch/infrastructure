@@ -10,8 +10,11 @@ from backend.core.database import get_db
 from .api_common import (
     CommandBody,
     CommandDict,
+    CommandListOut,
     CommandListResponse,
+    CommandOut,
     OperationDict,
+    OperationListOut,
     OperationListResponse,
     _command_to_dict,
     _operation_to_dict,
@@ -58,7 +61,7 @@ async def sse_events(
     )
 
 
-@router.get("/operations", response_model=None)
+@router.get("/operations", response_model=OperationListOut)
 def list_operations(
     device: Device = Depends(get_current_device),
     db: Session = Depends(get_db),
@@ -67,7 +70,7 @@ def list_operations(
     return {"operations": [_operation_to_dict(o) for o in visible]}
 
 
-@router.post("/commands", response_model=None)
+@router.post("/commands", response_model=CommandOut)
 def create_command(
     body: CommandBody,
     device: Device = Depends(get_current_device),
@@ -101,7 +104,7 @@ def create_command(
     return _command_to_dict(cmd)
 
 
-@router.get("/commands", response_model=None)
+@router.get("/commands", response_model=CommandListOut)
 def list_commands(
     device: Device = Depends(get_current_device),
     db: Session = Depends(get_db),
@@ -146,7 +149,7 @@ def list_commands(
     }
 
 
-@router.get("/commands/{command_id}", response_model=None)
+@router.get("/commands/{command_id}", response_model=CommandOut)
 def get_command(
     command_id: str,
     device: Device = Depends(get_current_device),

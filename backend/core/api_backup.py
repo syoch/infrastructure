@@ -11,6 +11,7 @@ from typing import Any, Optional, TypedDict, cast
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Header, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from backend.core import config
@@ -24,6 +25,11 @@ router = APIRouter(tags=["backup"])
 
 
 class StatusMessageResponse(TypedDict):
+    status: str
+    message: str
+
+
+class StatusMessageOut(BaseModel):
     status: str
     message: str
 
@@ -100,7 +106,7 @@ def handle_backup(
         raise HTTPException(status_code=500, detail=f"Backup failed: {str(e)}")
 
 
-@router.post("/api/restore", response_model=None)
+@router.post("/api/restore", response_model=StatusMessageOut)
 async def handle_restore(
     file: UploadFile = File(...),
     strategy: str = Form("overwrite"),

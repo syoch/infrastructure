@@ -6,6 +6,7 @@ import logging
 from typing import Any, Optional, TypedDict
 from fastapi import APIRouter, File, UploadFile, Query, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
+from pydantic import BaseModel
 from backend.extensions.base import BaseExtension
 from backend.core.database import session_scope
 
@@ -24,6 +25,22 @@ class StorageUploadResponse(TypedDict):
 
 
 class StorageDeleteResponse(TypedDict):
+    status: str
+    message: str
+
+
+class StorageFileOut(BaseModel):
+    id: str
+    size: int
+
+
+class StorageUploadOut(BaseModel):
+    status: str
+    message: str
+    file_hash: str
+
+
+class StorageDeleteOut(BaseModel):
     status: str
     message: str
 
@@ -141,7 +158,7 @@ class StorageManagerExtension(BaseExtension):
     def setup_routes(self) -> None:
         router = APIRouter()
         self.router = router
-        @router.get("/api/storage/files", response_model=None)
+        @router.get("/api/storage/files", response_model=list[StorageFileOut])
         def serve_files_list() -> list[StorageFileDict]:
             """GET /api/storage/files - Lists all stored files in CAS with their size."""
             files: list[StorageFileDict] = []
@@ -157,7 +174,7 @@ class StorageManagerExtension(BaseExtension):
                             pass
             return files
 
-        @router.post("/api/storage/files", response_model=None)
+        @router.post("/api/storage/files", response_model=StorageUploadOut)
         async def handle_upload(file: UploadFile = File(...)) -> StorageUploadResponse:
             """POST /api/storage/files - Uploads a file, hashes it, and saves it in CAS."""
             try:
@@ -194,7 +211,7 @@ class StorageManagerExtension(BaseExtension):
                 filename=filename
             )
 
-        @router.delete("/api/storage/files/{file_hash}", response_model=None)
+        @router.delete("/api/storage/files/{file_hash}", response_model=StorageDeleteOut)
         def handle_delete(file_hash: str) -> StorageDeleteResponse:
             """DELETE /api/storage/files/[file_hash] - Physically deletes the file if unreferenced."""
             filepath = self.get_file_path(file_hash)

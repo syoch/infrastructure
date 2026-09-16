@@ -22,10 +22,14 @@ from sqlalchemy.orm import Session, selectinload
 from backend.core.database import get_db
 from .models import App, Category, LocalAppAPK, Setting
 from .responses import (
+    LocalApkUploadOut,
     LocalApkUploadResponse,
     ObtainiumAppDict,
+    ObtainiumAppsOut,
     ObtainiumAppsResponse,
+    StatusMessageCountOut,
     StatusMessageCountResponse,
+    StatusMessageOut,
     StatusMessageResponse,
 )
 from .utils import export_apk_filename, get_base_url
@@ -168,7 +172,7 @@ def build_router(ext: "ObtainiumRepoExtension") -> APIRouter:
             logger.exception("Error serving download")
             raise HTTPException(status_code=500, detail=f"Error serving download: {str(e)}")
 
-    @router.get("/api/apps", response_model=None)
+    @router.get("/api/apps", response_model=ObtainiumAppsOut)
     def serve_apps_api(db: Session = Depends(get_db)) -> ObtainiumAppsResponse:
         """API GET endpoint to retrieve list of all app configurations with categories and linked APKs."""
         try:
@@ -215,7 +219,7 @@ def build_router(ext: "ObtainiumRepoExtension") -> APIRouter:
             logger.exception("Error reading global settings")
             raise HTTPException(status_code=500, detail=f"Error reading global settings: {str(e)}")
 
-    @router.post("/api/apps/save", response_model=None)
+    @router.post("/api/apps/save", response_model=StatusMessageOut)
     def handle_save_app(body: AppSaveModel, db: Session = Depends(get_db)) -> StatusMessageResponse:
         """API POST endpoint to save or update an app configuration in the database."""
         try:
@@ -249,7 +253,7 @@ def build_router(ext: "ObtainiumRepoExtension") -> APIRouter:
             logger.exception("Error saving app configuration: %s", body.id)
             raise HTTPException(status_code=500, detail=f"Error saving app configuration: {str(e)}")
 
-    @router.post("/api/apps/delete", response_model=None)
+    @router.post("/api/apps/delete", response_model=StatusMessageOut)
     def handle_delete_app(body: AppDeleteModel, db: Session = Depends(get_db)) -> StatusMessageResponse:
         """API POST endpoint to delete an app configuration from the database."""
         try:
@@ -278,7 +282,7 @@ def build_router(ext: "ObtainiumRepoExtension") -> APIRouter:
             logger.exception("Error deleting app configuration: %s", body.id)
             raise HTTPException(status_code=500, detail=f"Error deleting app configuration: {str(e)}")
 
-    @router.post("/api/apps/compile", response_model=None)
+    @router.post("/api/apps/compile", response_model=StatusMessageCountOut)
     def handle_compile(request: Request) -> StatusMessageCountResponse:
         """API POST endpoint to force cache invalidation and compilation."""
         try:
@@ -294,7 +298,7 @@ def build_router(ext: "ObtainiumRepoExtension") -> APIRouter:
             logger.exception("Error during configuration compile")
             raise HTTPException(status_code=500, detail=f"Error during configuration compile: {str(e)}")
 
-    @router.post("/api/settings/save", response_model=None)
+    @router.post("/api/settings/save", response_model=StatusMessageOut)
     def handle_save_settings(data: dict[str, Any], db: Session = Depends(get_db)) -> StatusMessageResponse:
         """API POST endpoint to save global settings in the database."""
         try:
@@ -325,7 +329,7 @@ def build_router(ext: "ObtainiumRepoExtension") -> APIRouter:
             logger.exception("Error saving global settings")
             raise HTTPException(status_code=500, detail=f"Error saving global settings: {str(e)}")
 
-    @router.post("/api/apps/local-apks", response_model=None)
+    @router.post("/api/apps/local-apks", response_model=LocalApkUploadOut)
     def handle_local_apk_upload(
         file: UploadFile = File(...),
         app_id: str = Form(...),
@@ -403,7 +407,7 @@ def build_router(ext: "ObtainiumRepoExtension") -> APIRouter:
             logger.exception("Database error during registration")
             raise HTTPException(status_code=500, detail=f"Database error during registration: {str(e)}")
 
-    @router.delete("/api/apps/local-apks/{apk_id}", response_model=None)
+    @router.delete("/api/apps/local-apks/{apk_id}", response_model=StatusMessageOut)
     def handle_delete_mapping(apk_id: int, db: Session = Depends(get_db)) -> StatusMessageResponse:
         """DELETE /api/apps/local-apks/{apk_id} - Removes APK metadata link from DB and triggers storage cleanup."""
         try:
@@ -428,7 +432,7 @@ def build_router(ext: "ObtainiumRepoExtension") -> APIRouter:
             logger.exception("Error deleting APK metadata: %s", apk_id)
             raise HTTPException(status_code=500, detail=f"Error deleting APK metadata: {str(e)}")
 
-    @router.post("/api/apps/import", response_model=None)
+    @router.post("/api/apps/import", response_model=StatusMessageCountOut)
     def handle_import_settings(data: dict[str, Any], db: Session = Depends(get_db)) -> StatusMessageCountResponse:
         """POST /api/apps/import - Imports an Obtainium export JSON into the database."""
         if not isinstance(data, dict) or ("apps" not in data and "settings" not in data):

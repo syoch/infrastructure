@@ -5,7 +5,10 @@ from backend.core.database import get_db
 from .api_common import (
     ACLBody,
     ACLDict,
+    ACLListOut,
     ACLListResponse,
+    ACLOut,
+    DeleteOut,
     DeleteResponse,
     _acl_to_dict,
 )
@@ -15,7 +18,7 @@ from .models import Device, DeviceACL
 router = APIRouter(tags=["control-plane"])
 
 
-@router.get("/acls", response_model=None)
+@router.get("/acls", response_model=ACLListOut)
 def list_acls(
     device: Device = Depends(get_current_device),
     db: Session = Depends(get_db),
@@ -24,7 +27,7 @@ def list_acls(
     return {"acls": [_acl_to_dict(a) for a in acls]}
 
 
-@router.post("/acls", response_model=None)
+@router.post("/acls", response_model=ACLOut)
 def create_acl(
     body: ACLBody,
     device: Device = Depends(require_admin),
@@ -48,7 +51,7 @@ def create_acl(
     return _acl_to_dict(acl)
 
 
-@router.patch("/acls/{acl_id}", response_model=None)
+@router.patch("/acls/{acl_id}", response_model=ACLOut)
 def update_acl(
     acl_id: str,
     body: ACLBody,
@@ -66,7 +69,7 @@ def update_acl(
     return _acl_to_dict(acl)
 
 
-@router.delete("/acls/{acl_id}", response_model=None)
+@router.delete("/acls/{acl_id}", response_model=DeleteOut)
 def delete_acl(
     acl_id: str,
     device: Device = Depends(require_admin),

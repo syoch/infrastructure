@@ -5,9 +5,12 @@ from sqlalchemy.orm import Session
 
 from backend.core.database import get_db
 from .api_common import (
+    DeleteOut,
     DeleteResponse,
     DeviceDict,
+    DeviceListOut,
     DeviceListResponse,
+    DeviceOut,
     RegisterDeviceBody,
     RenameDeviceBody,
     _device_to_dict,
@@ -20,7 +23,7 @@ from backend.utils.tokens import generate_bearer_token
 router = APIRouter(tags=["control-plane"])
 
 
-@router.get("/devices", response_model=None)
+@router.get("/devices", response_model=DeviceListOut, response_model_exclude_unset=True)
 def list_devices(
     device: Device = Depends(get_current_device),
     db: Session = Depends(get_db),
@@ -29,7 +32,7 @@ def list_devices(
     return {"devices": [_device_to_dict(d) for d in devices]}
 
 
-@router.get("/devices/me", response_model=None)
+@router.get("/devices/me", response_model=DeviceOut, response_model_exclude_unset=True)
 def get_me(
     device: Device = Depends(get_current_device),
     db: Session = Depends(get_db),
@@ -37,7 +40,7 @@ def get_me(
     return _device_to_dict(device, include_token=True)
 
 
-@router.patch("/devices/{device_id}", response_model=None)
+@router.patch("/devices/{device_id}", response_model=DeviceOut, response_model_exclude_unset=True)
 def rename_device(
     device_id: str,
     body: RenameDeviceBody,
@@ -55,7 +58,7 @@ def rename_device(
     return _device_to_dict(target)
 
 
-@router.delete("/devices/{device_id}", response_model=None)
+@router.delete("/devices/{device_id}", response_model=DeleteOut)
 def delete_device(
     device_id: str,
     device: Device = Depends(require_admin),
@@ -72,7 +75,7 @@ def delete_device(
     return {"status": "success", "deleted": device_id}
 
 
-@router.post("/devices/{device_id}/set-admin", response_model=None)
+@router.post("/devices/{device_id}/set-admin", response_model=DeviceOut, response_model_exclude_unset=True)
 def set_admin(
     device_id: str,
     device: Device = Depends(require_admin),
@@ -90,7 +93,7 @@ def set_admin(
     return _device_to_dict(target)
 
 
-@router.post("/devices/register", response_model=None)
+@router.post("/devices/register", response_model=DeviceOut, response_model_exclude_unset=True)
 def register_device(
     body: RegisterDeviceBody,
     db: Session = Depends(get_db),

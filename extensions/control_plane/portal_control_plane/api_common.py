@@ -93,6 +93,90 @@ class DeleteResponse(TypedDict):
     deleted: str
 
 
+class DeviceOut(BaseModel):
+    id: str
+    display_name: str
+    ws_state: str
+    last_seen: str | None
+    registered_at: str | None
+    is_first_webui_device: bool
+    bearer_token: str | None = None
+
+
+class ACLOut(BaseModel):
+    id: str
+    source_device: str
+    target_device: str
+    operation: str
+    extra: str | None
+    created_at: str | None
+
+
+class OperationOut(BaseModel):
+    id: str
+    provider: str
+    group: str
+    name: str
+    description: str | None
+    params_schema: Any
+    result_schema: Any
+    ui_hint: Any
+    registered_at: str | None
+    last_seen: str | None
+
+
+class CommandOut(BaseModel):
+    id: str
+    target_device_id: str
+    source_device_id: str
+    operation: str
+    params: dict[str, Any]
+    status: str
+    created_at: datetime
+    claimed_at: datetime | None
+    completed_at: datetime | None
+    result: Any
+    error: str | None
+    timeout_seconds: int
+
+
+class TokenOut(BaseModel):
+    id: str
+    device_id: str
+    display_name: str
+    expires_at: str | None
+    consumed_at: str | None
+    created_at: str | None
+
+
+class DeviceListOut(BaseModel):
+    devices: list[DeviceOut]
+
+
+class ACLListOut(BaseModel):
+    acls: list[ACLOut]
+
+
+class OperationListOut(BaseModel):
+    operations: list[OperationOut]
+
+
+class CommandListOut(BaseModel):
+    commands: list[CommandOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class TokenListOut(BaseModel):
+    tokens: list[TokenOut]
+
+
+class DeleteOut(BaseModel):
+    status: str
+    deleted: str
+
+
 def _device_to_dict(d: Device, include_token: bool = False) -> DeviceDict:
     res: DeviceDict = {
         "id": d.id,

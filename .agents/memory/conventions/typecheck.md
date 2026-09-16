@@ -39,24 +39,34 @@ Run inside `nix develop` (devShell now provides `mypy`; the devShell python also
 - Keep `device_agent/` standalone: use local types/`Any`, never import from `backend`.
 
 
-## FastAPI JSON responses typed with TypedDict (2026-09)
-REST response bodies are now typed with `TypedDict`s (control-plane in `extensions/control_plane/portal_control_plane/api_common.py`;
+## FastAPI JSON responses: TypedDict + Pydantic response_model (2026-09)
+REST response bodies are typed with `TypedDict`s (control-plane in `extensions/control_plane/portal_control_plane/api_common.py`;
 app-portal in `extensions/app_portal/portal_app_portal/responses.py`; obtainium in `extensions/obtainium/portal_obtainium/responses.py`; storage +
 api_backup define them locally). Serializers (`_device_to_dict` etc.) return the TypedDicts.
-- **Mandatory rule:** FastAPI uses a handler's return annotation as `response_model`. Whenever a handler's
-  annotation changed from `dict[str, Any]` to a TypedDict, the route decorator MUST also set
-  `response_model=None` (e.g. `@router.get("/devices", response_model=None)`) to preserve the old runtime
-  behavior (no validation/serialization change). Forgetting it is a silent behavior change.
-- Genuinely dynamic payloads stay `dict[str, Any]` with no `response_model` change:
-  obtainium `serve_settings_api` (arbitrary setting keys), `serve_export` (compiled export), control-plane
-  `api.py` (router wiring only, no dicts). `_opencode_meta`/`_parse_op_result` are internal, not responses.
-- Use `NotRequired[...]` for conditionally present keys (`DeviceDict.bearer_token`, `AppDict.feedback`).
-- Legacy `Column(...)` non-null columns read into a TypedDict were promoted to `Mapped[...]` on the model
-  (DeviceBootstrapToken.device_id/display_name/created_at, OperationSpec.params_schema,
-  WebApp/Feedback/Bridge many fields, obtainium App.pinned/allow_id_change/additional_settings,
-  LocalAppAPK.id, Category.name/color) rather than lying in the TypedDict.
-- Verification gate after such changes: `mypy backend device_agent` Success; reset port 8000 +
-  `rm -f tests/portal_test.db*` + `make test-backend` EXIT 0; `make typecheck`; `make test-e2e` 37 passed.
+- **Mandatory rule:** FastAPI uses a handler's return annotation as `response_model` when the decorator
+  does not set one. Leaving it unset with a bare `dict[str, Any]`-style TypedDict return is a silent
+  behavior change (FastAPI would validate/serialize through the annotation). The current convention is to
+  give every JSON route an explicit Pydantic `BaseModel` `response_model` (see below), NOT
+  `response_model=None` (that was the older stopgap, now removed repo-wide).
+- **Pydantic response models mirror the TypedDicts** next to them and are set as
+  `response_model=<Model>` so `/openapi.json` gains response schemas (control-plane: `DeviceOut`/`ACLOut`/
+  `OperationOut`/`CommandOut`/`TokenOut` + `*ListOut` wrappers + `DeleteOut`; app-portal: `FeedbackOut`/
+  `AppOut`/`BridgeOut` + wrappers + `BridgeAnnounceOut`/`DeleteOut`; obtainium: `LocalApkOut`/
+  `ObtainiumAppOut` + `ObtainiumAppsOut`/`StatusMessageOut`/`StatusMessageCountOut`/`LocalApkUploadOut`;
+  storage: `StorageFileOut`/`StorageUploadOut`/`StorageDeleteOut`; api_backup: `StatusMessageOut`).
+- **Conditional (`NotRequired`) keys** (`DeviceDict.bearer_token`, `AppDict.feedback`) are declared with a
+  default in the model and the route sets `response_model_exclude_unset=True` (device list/me/register,
+  app get/list/create/patch) so the key stays absent rather than becoming `null`. `None`-able fields stay
+  nullable (no `exclude_none`) so literal `null` is still emitted.
+- Any stays Any for dynamic payloads (`params`, `result`, `params_schema`, `ui_hint`,
+  `additionalSettings`). Genuinely dynamic routes stay unmodeled: obtainium `serve_settings_api`
+  (arbitrary setting keys), `serve_export` (compiled export), `/api/settings`; binary/streaming routes
+  (`/api/backup`, `/api/storage/files/{hash}` download, `/api/apps/download/*`, `/api/control/events`
+  SSE, `scrape-index.html`) keep no JSON model.
+- Verification gate after such changes: `make typecheck` (svelte-check 0 + mypy Success); reset port 8000 +
+  `rm -f tests/portal_test.db*` + `make test-backend` EXIT 0; `make test-e2e` 37 passed. OpenAPI check:
+  `python3 backend/app.py --config tests/config.test.json` then grep the new model names under
+  `components.schemas` and confirm affected paths declare `$ref` response schemas.
 
 ## Extensions moved out of backend (2026-09)
 `make typecheck` now runs:

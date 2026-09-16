@@ -13,13 +13,20 @@ from .models import WebApp, Feedback, Bridge
 from .opencode_ops import ROLE_KEYS, TRAITS_OPERATION_ID, server_key_for
 from .responses import (
     AppDict,
+    AppListOut,
     AppListResponse,
+    AppOut,
+    BridgeAnnounceOut,
     BridgeAnnounceResponse,
     BridgeDict,
+    BridgeListOut,
     BridgeListResponse,
+    DeleteOut,
     DeleteResponse,
     FeedbackDict,
+    FeedbackListOut,
     FeedbackListResponse,
+    FeedbackOut,
 )
 
 
@@ -274,7 +281,7 @@ class BridgeAnnounceBody(BaseModel):
 
 # --- Routes ---
 
-@router.get("/apps", response_model=None)
+@router.get("/apps", response_model=AppListOut, response_model_exclude_unset=True)
 def list_apps(
     device: Any = Depends(_device_required),
     db: Session = Depends(get_db),
@@ -283,7 +290,7 @@ def list_apps(
     return {"apps": [_app_to_dict(db, a) for a in apps]}
 
 
-@router.post("/apps", response_model=None)
+@router.post("/apps", response_model=AppOut, response_model_exclude_unset=True)
 def create_app(
     body: AppCreateBody,
     device: Any = Depends(_device_required),
@@ -311,7 +318,7 @@ def create_app(
     return _app_to_dict(db, app)
 
 
-@router.get("/apps/{slug}", response_model=None)
+@router.get("/apps/{slug}", response_model=AppOut, response_model_exclude_unset=True)
 def get_app(
     slug: str,
     device: Any = Depends(_device_required),
@@ -325,7 +332,7 @@ def get_app(
     return _app_to_dict(db, app, include_feedback=True)
 
 
-@router.patch("/apps/{slug}", response_model=None)
+@router.patch("/apps/{slug}", response_model=AppOut, response_model_exclude_unset=True)
 def update_app(
     slug: str,
     body: AppUpdateBody,
@@ -345,7 +352,7 @@ def update_app(
     return _app_to_dict(db, app)
 
 
-@router.delete("/apps/{slug}", response_model=None)
+@router.delete("/apps/{slug}", response_model=DeleteOut)
 def delete_app(
     slug: str,
     device: Any = Depends(require_admin_device),
@@ -357,7 +364,7 @@ def delete_app(
     return {"status": "success", "deleted": slug}
 
 
-@router.post("/apps/{slug}/feedback", response_model=None)
+@router.post("/apps/{slug}/feedback", response_model=FeedbackOut)
 def submit_feedback(
     slug: str,
     body: FeedbackBody,
@@ -418,7 +425,7 @@ def submit_feedback(
     return _feedback_to_dict(fb)
 
 
-@router.get("/feedback", response_model=None)
+@router.get("/feedback", response_model=FeedbackListOut)
 def list_feedback(
     device: Any = Depends(require_admin_device),
     db: Session = Depends(get_db),
@@ -430,7 +437,7 @@ def list_feedback(
     return {"feedback": result}
 
 
-@router.post("/feedback/{feedback_id}/refresh", response_model=None)
+@router.post("/feedback/{feedback_id}/refresh", response_model=FeedbackOut)
 def refresh_feedback(
     feedback_id: str,
     device: Any = Depends(require_admin_device),
@@ -445,7 +452,7 @@ def refresh_feedback(
     return _feedback_to_dict(fb)
 
 
-@router.post("/bridges/announce", response_model=None)
+@router.post("/bridges/announce", response_model=BridgeAnnounceOut)
 def announce_bridge(
     body: BridgeAnnounceBody,
     device: Any = Depends(_device_required),
@@ -469,7 +476,7 @@ def announce_bridge(
     }
 
 
-@router.get("/bridges", response_model=None)
+@router.get("/bridges", response_model=BridgeListOut)
 def list_bridges(
     device: Any = Depends(require_admin_device),
     db: Session = Depends(get_db),
