@@ -55,7 +55,18 @@ def get_current_device(
         )
     return device
 
-def require_admin(device: Device = Depends(get_current_device)) -> Device:
+def require_admin(
+    authorization: str = Header(default=""),
+    token: str = Query(default=""),
+    db: Session = Depends(get_db),
+) -> Device:
+    """Resolves the current device and requires it to be the admin (first WebUI) device.
+
+    Takes the raw request credentials so it can also serve as the core's
+    pluggable admin-device dependency (see ``backend.core.auth``); it remains a
+    valid FastAPI dependency for the control-plane routes.
+    """
+    device = get_current_device(authorization=authorization, token=token, db=db)
     if not device.is_first_webui_device:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

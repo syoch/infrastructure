@@ -13,8 +13,15 @@ PORTAL_DIR = os.path.dirname(os.path.dirname(os.path.dirname(SCRIPT_DIR)))
 if PORTAL_DIR not in sys.path:
     sys.path.insert(0, PORTAL_DIR)
 
-from backend.app_portal.opencode_ops import OpenCodeOps, server_key_for
-from backend.app_portal.opencode_tool import main as tool_main
+
+# Make the out-of-tree portal_* extension packages importable from the source tree.
+import glob as _ext_glob
+for _ext_dir in sorted(_ext_glob.glob(os.path.join(PORTAL_DIR, "extensions", "*"))):
+    if os.path.isdir(_ext_dir) and _ext_dir not in sys.path:
+        sys.path.insert(0, _ext_dir)
+
+from portal_app_portal.opencode_ops import OpenCodeOps, server_key_for
+from portal_app_portal.opencode_tool import main as tool_main
 
 
 class _FakeOpenCode(BaseHTTPRequestHandler):

@@ -12,6 +12,6 @@ blocks a worker thread until the command reaches a terminal status
   (which never publish) still resolve.
 - Used by `servers/app_portal/api.py:_opencode_meta` to synchronously resolve the `opencode-bridge`
   trait in `GET /apps/{slug}` and `POST /apps/{slug}/feedback`. That synchronous contract is
-  asserted by `backend/app_portal/tests/test_app_portal_delivery_e2e.py`; do not make these routes async
+  asserted by `extensions/app_portal/tests/test_app_portal_delivery_e2e.py`; do not make these routes async
   without also moving the sync SQLAlchemy work off the event loop.
 - No `time.sleep` remains in `servers/`.

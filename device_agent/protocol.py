@@ -1,4 +1,4 @@
-"""Wire protocol with the control plane (mirror of backend/control_plane/protocol.py).
+"""Wire protocol with the control plane (mirror of extensions/control_plane/portal_control_plane/protocol.py).
 
 Kept local so the device agent stays a standalone package with no backend
 dependency.

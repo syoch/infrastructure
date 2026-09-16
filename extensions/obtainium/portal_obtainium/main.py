@@ -1,6 +1,6 @@
 """Obtainium repository extension lifecycle.
 
-HTTP routes live in :mod:`backend.obtainium.api`; this module keeps the
+HTTP routes live in :mod:`portal_obtainium.api`; this module keeps the
 extension class plus its backup/restore and CLI hooks.
 """
 import logging

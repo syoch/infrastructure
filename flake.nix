@@ -35,16 +35,16 @@
               python3 backend/core/tests/test_backup_restore.py
               python3 backend/core/tests/verify_roundtrip.py
               python3 backend/core/tests/test_external_extension.py
-              python3 backend/obtainium/tests/test_export_schema.py
-              python3 backend/obtainium/tests/test_obtainium_compiler.py
-              python3 backend/control_plane/tests/test_control_plane.py
-              python3 backend/control_plane/tests/test_control_plane_core.py
-              python3 backend/control_plane/tests/test_control_plane_backup.py
-              python3 backend/control_plane/tests/test_control_plane_ws.py
-              python3 backend/control_plane/tests/test_device_agent.py
-              python3 backend/app_portal/tests/test_app_portal.py
-              python3 backend/app_portal/tests/test_opencode_tool.py
-              python3 backend/app_portal/tests/test_app_portal_delivery_e2e.py
+              python3 extensions/obtainium/tests/test_export_schema.py
+              python3 extensions/obtainium/tests/test_obtainium_compiler.py
+              python3 extensions/control_plane/tests/test_control_plane.py
+              python3 extensions/control_plane/tests/test_control_plane_core.py
+              python3 extensions/control_plane/tests/test_control_plane_backup.py
+              python3 extensions/control_plane/tests/test_control_plane_ws.py
+              python3 extensions/control_plane/tests/test_device_agent.py
+              python3 extensions/app_portal/tests/test_app_portal.py
+              python3 extensions/app_portal/tests/test_opencode_tool.py
+              python3 extensions/app_portal/tests/test_app_portal_delivery_e2e.py
             '';
           };
           test-e2e = pkgs.writeShellApplication {

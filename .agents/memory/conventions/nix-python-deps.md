@@ -15,3 +15,9 @@ Pitfall: `nix build`/`nix develop` only see Git-tracked files in a flake. A new 
 
 Verify: `nix build .#portal --no-link`, `nix build .#test-backend .#test-e2e --no-link`,
 `nix develop --command python3 -c "import fastapi, websockets, pydantic"`.
+
+## First-party extensions in extensions/ (2026-09)
+`default.nix` src fileset now unions `./extensions` (in addition to backend/frontend/pyproject.toml/
+python-deps.nix) so setuptools' `package-dir` can find the `portal_*` packages. Built output installs
+`portal_obtainium`, `portal_control_plane`, `portal_app_portal`, `portal_storage`, `backend`, and
+`frontend` into site-packages; entry_points.txt carries the four `portal.extensions` IDs.

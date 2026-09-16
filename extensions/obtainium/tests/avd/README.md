@@ -59,11 +59,11 @@ make test-obtainium-smoke BACKUP=~/backups/portal-backup-20260601.tgz
 
 # Or invoke the script directly. Wrap in `nix develop -c` to get the
 # matching Python/tarfile/argparse environment.
-nix develop -c ./backend/obtainium/tests/avd/obtainium-integration \
+nix develop -c ./extensions/obtainium/tests/avd/obtainium-integration \
   --backup-tarball ~/backups/portal-backup-20260601.tgz
 
 # With explicit options
-nix develop -c ./backend/obtainium/tests/avd/obtainium-integration \
+nix develop -c ./extensions/obtainium/tests/avd/obtainium-integration \
   --backup-tarball ~/backups/portal-backup-20260601.tgz \
   --emulator-mode docker \
   --apps 5 \

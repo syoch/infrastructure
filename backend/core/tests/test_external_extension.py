@@ -10,12 +10,20 @@ import importlib.metadata as metadata
 import os
 import sys
 import tempfile
+import tomllib
 from types import SimpleNamespace
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PORTAL_DIR = os.path.dirname(os.path.dirname(os.path.dirname(SCRIPT_DIR)))
 if PORTAL_DIR not in sys.path:
     sys.path.insert(0, PORTAL_DIR)
+
+
+# Make the out-of-tree portal_* extension packages importable from the source tree.
+import glob as _ext_glob
+for _ext_dir in sorted(_ext_glob.glob(os.path.join(PORTAL_DIR, "extensions", "*"))):
+    if os.path.isdir(_ext_dir) and _ext_dir not in sys.path:
+        sys.path.insert(0, _ext_dir)
 
 from backend.core import extensions  # noqa: E402
 
@@ -45,6 +53,19 @@ def _install_fake_entry_point(tmp_dir: str):
     return SimpleNamespace(name="hello", value="fake_hello:FakeHello")
 
 
+def _first_party_entry_points():
+    """The first-party entry points declared by the repo itself.
+
+    In this source-tree test we fake ``importlib.metadata.entry_points``; a real
+    installed distribution would report the first-party extensions here too, so
+    include them alongside the fake external one.
+    """
+    with open(os.path.join(PORTAL_DIR, "pyproject.toml"), "rb") as f:
+        data = tomllib.load(f)
+    group = data.get("project", {}).get("entry-points", {}).get("portal.extensions", {})
+    return [SimpleNamespace(name=name, value=value) for name, value in group.items()]
+
+
 def run_all():
     print("=" * 60)
     print("      External extension (entry point) discovery tests")
@@ -55,7 +76,8 @@ def run_all():
     tmp_dir = tempfile.mkdtemp(prefix="portal-ext-test-")
     try:
         fake = _install_fake_entry_point(tmp_dir)
-        metadata.entry_points = lambda **kwargs: [fake]
+        fake_eps = _first_party_entry_points() + [fake]
+        metadata.entry_points = lambda **kwargs: fake_eps
         sys.path.insert(0, tmp_dir)
         importlib.invalidate_caches()
         extensions.extension_targets.cache_clear()

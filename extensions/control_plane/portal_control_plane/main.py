@@ -2,12 +2,13 @@ from datetime import datetime
 import asyncio
 from typing import Any, Optional, cast
 from fastapi import APIRouter
+from backend.core.auth import set_admin_device_dependency
 from backend.extensions.base import BaseExtension
 from backend.utils.timeutil import parse_iso_datetime
 from .manager_cli import ControlPlaneManagerCLI
 from .api import router as api_router
 from .ws import router as ws_router
-from .core import set_main_loop
+from .core import require_admin, set_main_loop
 
 
 class ControlPlaneExtension(BaseExtension):
@@ -30,6 +31,9 @@ class ControlPlaneExtension(BaseExtension):
 
     def setup(self) -> None:
         self.cli_manager = ControlPlaneManagerCLI(self.config)
+        # Make the admin-device dependency available to core routes (backup /
+        # restore) without core importing this extension.
+        set_admin_device_dependency(require_admin)
 
     def install_event_loop_capture(self, app: Any) -> None:
         """Registers a FastAPI startup hook to capture the main asyncio loop."""

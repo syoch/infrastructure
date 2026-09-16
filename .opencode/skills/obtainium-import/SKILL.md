@@ -18,7 +18,7 @@ Use this when:
 
 ## Source-code verified facts (upstream `ImranR98/Obtainium` @ `main`)
 
-All findings come from the `ImranR98/Obtainium` repository. The portal's export format (`backend/obtainium/compiler.py`) is designed to be compatible with the **same** `App.fromJson` parser that Obtainium uses internally, so the round-trip is intentional.
+All findings come from the `ImranR98/Obtainium` repository. The portal's export format (`extensions/obtainium/portal_obtainium/compiler.py`) is designed to be compatible with the **same** `App.fromJson` parser that Obtainium uses internally, so the round-trip is intentional.
 
 ### 1. AndroidManifest.xml — registered intent filters
 
@@ -277,12 +277,12 @@ The portal produces an Obtainium-compatible export at `https://<host>/obtainium-
 | Deep-link import shows a dialog with truncated Raw JSON | `App.toJson` outputs `apkUrls` and `additionalSettings` as JSON-encoded strings, so a single app can be ~1 KB. With 100+ apps, the dialog text becomes huge. |
 | `obtainium://app/<long base64>` rejected by `am` with `TransactionTooLargeException` | Android Binder cap is ~1 MB per process. The encoded URL should stay under ~500 KB. Use the chunked script above. |
 | After import, app "latestVersion" is null for self-hosted apps | Self-hosted apps have `apkUrls[0].value == "<base_url>/api/apps/download/<id>/<filename>"` from compiler.py:77. If the base URL is not reachable from the device, `checkUpdate` will fail; this is expected and unrelated to import. |
-| Import succeeds but apps show "Override Source: HTML" with a placeholder URL | The portal's `restore_data` (`backend/obtainium/main.py:136-138`) sanitizes self-hosted URLs to `/scrape-index.html` on restore. The export JSON should still contain the full base URL — if the device sees a relative path, the portal config was not providing `get_base_url()` correctly. |
+| Import succeeds but apps show "Override Source: HTML" with a placeholder URL | The portal's `restore_data` (`extensions/obtainium/portal_obtainium/main.py:136-138`) sanitizes self-hosted URLs to `/scrape-index.html` on restore. The export JSON should still contain the full base URL — if the device sees a relative path, the portal config was not providing `get_base_url()` correctly. |
 
 ## Related skills and code references
 
 - `cloudflare-access` — CF Access path bypass for `/obtainium-export.json`
-- `portal-architecture` — portal's export compiler at `backend/obtainium/compiler.py:25-122` and the import API at `backend/obtainium/main.py:598-648`
+- `portal-architecture` — portal's export compiler at `extensions/obtainium/portal_obtainium/compiler.py:25-122` and the import API at `extensions/obtainium/portal_obtainium/main.py:598-648`
 - `obtainium-integration` — E2E tests that round-trip the export via AVD (uses adb, not the same path as user-driven import)
 - `portal-e2e` — Playwright test `tests/dashboard.spec.js:300-363` covers the inverse flow (JSON → portal DB) but the format is the same
 

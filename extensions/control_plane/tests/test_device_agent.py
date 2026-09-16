@@ -32,6 +32,13 @@ TEST_DB_PATH = os.path.join(PORTAL_DIR, "tests", "portal_test.db")
 if PORTAL_DIR not in sys.path:
     sys.path.insert(0, PORTAL_DIR)
 
+
+# Make the out-of-tree portal_* extension packages importable from the source tree.
+import glob as _ext_glob
+for _ext_dir in sorted(_ext_glob.glob(os.path.join(PORTAL_DIR, "extensions", "*"))):
+    if os.path.isdir(_ext_dir) and _ext_dir not in sys.path:
+        sys.path.insert(0, _ext_dir)
+
 from device_agent.agent import (
     Agent,
     _build_command,
@@ -51,7 +58,7 @@ from device_agent.builtin_ops import BUILTIN_OPS, get_builtin_ops, is_builtin
 from backend.core import config as _test_config
 _test_config.load_config_from_file(CONFIG_PATH)
 from backend.core.database import session_scope as _test_session_scope
-from backend.control_plane.models import DeviceBootstrapToken as _TestBootstrapToken, Device as _TestDevice
+from portal_control_plane.models import DeviceBootstrapToken as _TestBootstrapToken, Device as _TestDevice
 
 import websockets
 
@@ -719,7 +726,7 @@ def test_integration_register_and_execute(tmp_dir):
                 ack = json.loads(await ws.recv())
                 assert ack["type"] == "operations_registered"
 
-                from backend.control_plane.models import DeviceACL
+                from portal_control_plane.models import DeviceACL
                 with _test_session_scope() as s:
                     s.add(DeviceACL(
                         id=str(uuid.uuid4()),

@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from backend.core import config
+from backend.core.auth import get_admin_device_dependency
 from backend.core.database import get_db
 from backend.core.protocols import StorageProvider
 
@@ -34,15 +35,16 @@ def require_admin_device(
 ) -> Any:
     """Requires a control-plane admin device (Bearer token + is_first_webui_device).
 
-    Imported lazily to avoid a hard dependency on the control-plane extension
-    when it is not loaded.
+    The provider is registered by the control-plane extension at startup; core
+    does not import it directly. Without the extension loaded this returns 503.
     """
-    from backend.control_plane.core import get_current_device
-
-    device = get_current_device(authorization=authorization, token=token, db=db)
-    if not device.is_first_webui_device:
-        raise HTTPException(status_code=403, detail="admin privilege required")
-    return device
+    provider = get_admin_device_dependency()
+    if provider is None:
+        raise HTTPException(
+            status_code=503,
+            detail="admin device auth requires the control-plane extension",
+        )
+    return provider(authorization=authorization, token=token, db=db)
 
 
 def _storage_extension() -> Optional[StorageProvider]:

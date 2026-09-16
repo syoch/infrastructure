@@ -10,9 +10,16 @@ PORTAL_DIR = os.path.dirname(os.path.dirname(os.path.dirname(SCRIPT_DIR)))
 if PORTAL_DIR not in sys.path:
     sys.path.insert(0, PORTAL_DIR)
 
+
+# Make the out-of-tree portal_* extension packages importable from the source tree.
+import glob as _ext_glob
+for _ext_dir in sorted(_ext_glob.glob(os.path.join(PORTAL_DIR, "extensions", "*"))):
+    if os.path.isdir(_ext_dir) and _ext_dir not in sys.path:
+        sys.path.insert(0, _ext_dir)
+
 from backend.core.database import session_scope, Base, get_engine
-from backend.control_plane.models import Device, DeviceACL, CommandRequest
-from backend.control_plane.core import can_issue, EventBus, get_current_device
+from portal_control_plane.models import Device, DeviceACL, CommandRequest
+from portal_control_plane.core import can_issue, EventBus, get_current_device
 
 class TestControlPlaneCore(unittest.TestCase):
     @classmethod

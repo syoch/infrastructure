@@ -9,13 +9,13 @@ Obtainium と連携し、APK の配信・更新管理を行う。
 
 | ディレクトリ | 役割 |
 |-------------|------|
-| `backend/` | Python/FastAPI アプリ本体 |
+| `backend/` | Python/FastAPI アプリ本体 (core のみ) |
 | `backend/core/` | コア (extension registry/loader, backup manager, database, auth, config) |
-| `backend/{obtainium,control_plane,app_portal,storage}/` | 拡張機能 (extension)。各機能のテストは `backend/<feature>/tests/` |
+| `extensions/<feature>/portal_<feature>/` | 第一者拡張機能 (obtainium, control_plane, app_portal, storage)。`portal.extensions` entry point で登録。テストは `extensions/<feature>/tests/` |
 | `device_agent/` | 汎用デバイスエージェント (ポータル標準コンポーネント) |
 | `frontend/` | フロントエンド (Svelte 5 + Vite SPA)。E2E spec は `frontend/src/features/<feature>/e2e/` |
 | `tests/` | 共有テストフィクスチャ (`config.test.json`, `bootstrap/`, `uploads/`) |
-| `backend/obtainium/tests/avd/` | Obtainium 統合試験 (AVD 使用) |
+| `extensions/obtainium/tests/avd/` | Obtainium 統合試験 (AVD 使用) |
 | `nixos/` | NixOS モジュール (`portal-service.nix`, `portal-device-agent.nix`) |
 | `contrib/` | 非ポータル資産 (gamemcbe, tailscale, Android root ツール) と専用 flake |
 | `docs/` | ドキュメント (外部拡張の追加方法は `docs/external-extensions.md`) |
@@ -41,7 +41,7 @@ Android root 系ツール (aapt, scrcpy, dtc, usbutils, sunxi-tools, ksud-next) 
 # 全テスト
 make test
 
-# バックエンドテストのみ (機能別に backend/<feature>/tests/ に配置)
+# バックエンドテストのみ (機能別に extensions/<feature>/tests/ に配置)
 make test-backend
 # 注: control_plane_ws テストは `nix develop` 環境 (websockets パッケージ) を必要とします
 
@@ -94,7 +94,7 @@ make test-obtainium-smoke BACKUP=path/to/backup.tgz
 - Control plane WS: `/api/control/devices/{device_id}/ws?token=tk_xxx`
 - Control plane bridge: `portal-control-bridge --server-url <...> --bootstrap-token <...>`
 - Device agent: `portal-device-agent --config /path/to/config.json` (汎用 shell-command ベース)
-- Device dogfooding: `backend/control_plane/bridge.py` が `acl.*` / `device_admin.*` を advertise
+- Device dogfooding: `extensions/control_plane/portal_control_plane/bridge.py` が `acl.*` / `device_admin.*` を advertise
 - WebUI: `#/control` ルート (`#/control/devices`, `#/control/acl`, `#/operations`)
 - Control 画面: `frontend/src/features/control_plane/`
 - Operations クエリ: `#/operations?status=&from=&to=&op=&limit=&offset=`

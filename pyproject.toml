@@ -20,11 +20,27 @@ dependencies = [
 [project.scripts]
 portal-server = "backend.app:main"
 portal-manage = "backend.manage:main"
-portal-control-bridge = "backend.control_plane.bridge:main"
-portal-opencode-tool = "backend.app_portal.opencode_tool:main"
+portal-control-bridge = "portal_control_plane.bridge:main"
+portal-opencode-tool = "portal_app_portal.opencode_tool:main"
+
+[project.entry-points."portal.extensions"]
+storage = "portal_storage:StorageManagerExtension"
+obtainium = "portal_obtainium:ObtainiumRepoExtension"
+control-plane = "portal_control_plane:ControlPlaneExtension"
+app-portal = "portal_app_portal:AppPortalExtension"
 
 [tool.setuptools]
-packages = ["backend", "backend.core", "backend.utils", "backend.extensions", "backend.obtainium", "backend.storage", "backend.control_plane", "backend.app_portal"]
+packages = ["backend", "backend.core", "backend.utils", "backend.extensions", "portal_obtainium", "portal_control_plane", "portal_app_portal", "portal_storage"]
+
+[tool.setuptools.package-dir]
+backend = "backend"
+"backend.core" = "backend/core"
+"backend.utils" = "backend/utils"
+"backend.extensions" = "backend/extensions"
+portal_obtainium = "extensions/obtainium/portal_obtainium"
+portal_control_plane = "extensions/control_plane/portal_control_plane"
+portal_app_portal = "extensions/app_portal/portal_app_portal"
+portal_storage = "extensions/storage/portal_storage"
 
 [tool.setuptools.package-data]
 "*" = ["**/*"]
@@ -34,7 +50,7 @@ packages = ["backend", "backend.core", "backend.utils", "backend.extensions", "b
 
 [tool.mypy]
 python_version = "3.12"
-mypy_path = "."
+mypy_path = ".:extensions/obtainium:extensions/control_plane:extensions/app_portal:extensions/storage"
 explicit_package_bases = true
 namespace_packages = true
 ignore_missing_imports = true

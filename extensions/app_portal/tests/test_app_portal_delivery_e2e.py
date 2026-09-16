@@ -24,6 +24,17 @@ TESTS_DIR = os.path.join(PORTAL_DIR, "tests")
 if PORTAL_DIR not in sys.path:
     sys.path.insert(0, PORTAL_DIR)
 
+
+# Make the out-of-tree portal_* extension packages importable from the source tree.
+import glob as _ext_glob
+_EXTENSION_DIRS = sorted(
+    d for d in _ext_glob.glob(os.path.join(PORTAL_DIR, "extensions", "*")) if os.path.isdir(d)
+)
+for _ext_dir in _EXTENSION_DIRS:
+    if _ext_dir not in sys.path:
+        sys.path.insert(0, _ext_dir)
+_SUBPROCESS_PYTHONPATH = os.pathsep.join([PORTAL_DIR, *_EXTENSION_DIRS])
+
 CONFIG_PATH = os.path.join(PORTAL_DIR, "tests", "config.test.json")
 TEST_DB_PATH = os.path.join(PORTAL_DIR, "tests", "portal_test.db")
 API = "/api/app-portal"
@@ -125,7 +136,7 @@ def _req(base, method, path, body=None, token=None):
 
 def _run_cli(args):
     env = os.environ.copy()
-    env["PYTHONPATH"] = PORTAL_DIR
+    env["PYTHONPATH"] = _SUBPROCESS_PYTHONPATH
     proc = subprocess.run(
         ["python3", os.path.join(PORTAL_DIR, "backend", "manage.py"), "--config", CONFIG_PATH, "control", *args],
         cwd=PORTAL_DIR, env=env, capture_output=True, text=True, timeout=30,
@@ -149,7 +160,7 @@ def _assert(cond, msg):
 
 
 def _agent_config(base, token, creds_file):
-    helper = ["python3", "-m", "backend.app_portal.opencode_tool"]
+    helper = ["python3", "-m", "portal_app_portal.opencode_tool"]
     return {
         "device_id": DEVICE_ID,
         "display_name": "OpenCode Bridge",
@@ -231,7 +242,7 @@ def run_all():
         f.write(_RUNNER.format(portal_dir=PORTAL_DIR, config_path=CONFIG_PATH, port=port))
 
     env = os.environ.copy()
-    env["PYTHONPATH"] = PORTAL_DIR
+    env["PYTHONPATH"] = _SUBPROCESS_PYTHONPATH
     env["OPENCODE_URL"] = fake_url
     env["OPENCODE_WEBUI_BASE_URL"] = WEBUI_BASE
 

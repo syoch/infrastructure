@@ -40,8 +40,8 @@ Run inside `nix develop` (devShell now provides `mypy`; the devShell python also
 
 
 ## FastAPI JSON responses typed with TypedDict (2026-09)
-REST response bodies are now typed with `TypedDict`s (control-plane in `backend/control_plane/api_common.py`;
-app-portal in `backend/app_portal/responses.py`; obtainium in `backend/obtainium/responses.py`; storage +
+REST response bodies are now typed with `TypedDict`s (control-plane in `extensions/control_plane/portal_control_plane/api_common.py`;
+app-portal in `extensions/app_portal/portal_app_portal/responses.py`; obtainium in `extensions/obtainium/portal_obtainium/responses.py`; storage +
 api_backup define them locally). Serializers (`_device_to_dict` etc.) return the TypedDicts.
 - **Mandatory rule:** FastAPI uses a handler's return annotation as `response_model`. Whenever a handler's
   annotation changed from `dict[str, Any]` to a TypedDict, the route decorator MUST also set
@@ -57,3 +57,11 @@ api_backup define them locally). Serializers (`_device_to_dict` etc.) return the
   LocalAppAPK.id, Category.name/color) rather than lying in the TypedDict.
 - Verification gate after such changes: `mypy backend device_agent` Success; reset port 8000 +
   `rm -f tests/portal_test.db*` + `make test-backend` EXIT 0; `make typecheck`; `make test-e2e` 37 passed.
+
+## Extensions moved out of backend (2026-09)
+`make typecheck` now runs:
+`mypy backend device_agent extensions/obtainium/portal_obtainium extensions/control_plane/portal_control_plane extensions/app_portal/portal_app_portal extensions/storage/portal_storage`
+= Success in 53 source files. `[tool.mypy] mypy_path` includes the four extension package dirs
+(`.:extensions/obtainium:extensions/control_plane:extensions/app_portal:extensions/storage`) so
+cross-package `portal_*` imports resolve; `exclude=["tests/","build/"]` still skips all test dirs.
+Delete `.mypy_cache` after moving packages (stale `backend.<feature>` module entries).

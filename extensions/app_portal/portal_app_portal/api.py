@@ -43,7 +43,7 @@ def _device_required(
     db: Session = Depends(get_db),
 ) -> Any:
     """Requires any registered control-plane device (Bearer token)."""
-    from backend.control_plane.core import get_current_device
+    from portal_control_plane.core import get_current_device
 
     return get_current_device(authorization=authorization, token=token, db=db)
 
@@ -92,7 +92,7 @@ def webui_url_for(db: Session, app: WebApp) -> Optional[str]:
 
 
 def _device_online(db: Session, device_id: str) -> bool:
-    from backend.control_plane.models import Device
+    from portal_control_plane.models import Device
 
     d = db.query(Device).filter_by(id=device_id).first()
     return bool(d and d.ws_state == "online")
@@ -110,7 +110,7 @@ def _opencode_meta(db: Session, source_device: Any, device_id: str, timeout: flo
     if not _device_online(db, device_id):
         return {}
     try:
-        from backend.control_plane.core import enqueue_command, wait_for_command_result
+        from portal_control_plane.core import enqueue_command, wait_for_command_result
 
         cmd = enqueue_command(
             db,
@@ -152,7 +152,7 @@ def _reconcile(db: Session, fb: Feedback) -> Feedback:
     """Lazily reflect the control-plane command status onto a feedback row."""
     if fb.status != "pending" or not fb.command_id:
         return fb
-    from backend.control_plane.models import CommandRequest
+    from portal_control_plane.models import CommandRequest
 
     cmd = db.query(CommandRequest).filter_by(id=fb.command_id).first()
     if cmd is None:
@@ -381,8 +381,8 @@ def submit_feedback(
     db.refresh(fb)
 
     try:
-        from backend.control_plane.core import enqueue_command
-        from backend.control_plane.models import Device as ControlDevice
+        from portal_control_plane.core import enqueue_command
+        from portal_control_plane.models import Device as ControlDevice
 
         bridge_dev = db.query(ControlDevice).filter_by(id=app.bridge_device_id).first()
         if bridge_dev is None:

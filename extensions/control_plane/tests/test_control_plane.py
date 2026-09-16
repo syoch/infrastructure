@@ -17,6 +17,13 @@ ROOT_DIR = PORTAL_DIR
 if PORTAL_DIR not in sys.path:
     sys.path.insert(0, PORTAL_DIR)
 
+
+# Make the out-of-tree portal_* extension packages importable from the source tree.
+import glob as _ext_glob
+for _ext_dir in sorted(_ext_glob.glob(os.path.join(PORTAL_DIR, "extensions", "*"))):
+    if os.path.isdir(_ext_dir) and _ext_dir not in sys.path:
+        sys.path.insert(0, _ext_dir)
+
 CONFIG_PATH = os.path.join(PORTAL_DIR, "tests", "config.test.json")
 TEST_DB_PATH = os.path.join(PORTAL_DIR, "tests", "portal_test.db")
 
@@ -167,7 +174,7 @@ def _seed_device(db_path: str, device_id: str, display_name: str,
     from backend.core import config
     config.load_config_from_file(CONFIG_PATH)
     from backend.core.database import session_scope
-    from backend.control_plane.models import Device
+    from portal_control_plane.models import Device
     with session_scope() as s:
         s.add(Device(
             id=device_id,
@@ -198,7 +205,7 @@ def _seed_acl(source: str, target: str, operation: str):
     from backend.core import config
     config.load_config_from_file(CONFIG_PATH)
     from backend.core.database import session_scope
-    from backend.control_plane.models import DeviceACL
+    from portal_control_plane.models import DeviceACL
     with session_scope() as s:
         s.add(DeviceACL(
             source_device=source,
@@ -211,7 +218,7 @@ def _seed_operation(op_id: str, provider: str, group: str, name: str):
     from backend.core import config
     config.load_config_from_file(CONFIG_PATH)
     from backend.core.database import session_scope
-    from backend.control_plane.models import OperationSpec
+    from portal_control_plane.models import OperationSpec
     with session_scope() as s:
         s.add(OperationSpec(
             id=op_id,
@@ -226,7 +233,7 @@ def _issue_bootstrap_token(device_id: str, display_name: str) -> str:
     from backend.core import config
     config.load_config_from_file(CONFIG_PATH)
     from backend.core.database import session_scope
-    from backend.control_plane.models import DeviceBootstrapToken
+    from portal_control_plane.models import DeviceBootstrapToken
     from datetime import datetime, timedelta
     import uuid
     tok_id = str(uuid.uuid4())

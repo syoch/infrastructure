@@ -30,5 +30,5 @@ init-cert.sh
 setup.sh
 
 # Obtainium AVD harness output
-backend/obtainium/tests/avd/results/*
-!backend/obtainium/tests/avd/results/.gitkeep
+extensions/obtainium/tests/avd/results/*
+!extensions/obtainium/tests/avd/results/.gitkeep

@@ -11,14 +11,21 @@ ROOT_DIR = PORTAL_DIR
 if PORTAL_DIR not in sys.path:
     sys.path.insert(0, PORTAL_DIR)
 
+
+# Make the out-of-tree portal_* extension packages importable from the source tree.
+import glob as _ext_glob
+for _ext_dir in sorted(_ext_glob.glob(os.path.join(PORTAL_DIR, "extensions", "*"))):
+    if os.path.isdir(_ext_dir) and _ext_dir not in sys.path:
+        sys.path.insert(0, _ext_dir)
+
 CONFIG_PATH = os.path.join(TESTS_DIR, 'config.test.json')
 from backend.core import config
 config.load_config_from_file(CONFIG_PATH)
 
 from backend.core.database import get_session
-from backend.obtainium.models import App, Category, Setting
-from backend.obtainium.compiler import ObtainiumConfigCompiler
-from backend.obtainium.manager_cli import ObtainiumRepoManagerCLI
+from portal_obtainium.models import App, Category, Setting
+from portal_obtainium.compiler import ObtainiumConfigCompiler
+from portal_obtainium.manager_cli import ObtainiumRepoManagerCLI
 from backend.core import config
 
 def canonicalize_app(app):

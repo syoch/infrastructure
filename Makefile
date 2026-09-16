@@ -11,12 +11,12 @@ help:
 	@echo "  make test-seed             - Reset and seed the local test database"
 	@echo "  make test-obtainium        - Run Obtainium integration test (BACKUP=path/to/backup.tgz, on-demand)"
 	@echo "  make test-obtainium-smoke  - Run Obtainium integration test on first 3 apps (BACKUP=...)"
-	@echo "  make typecheck             - Run svelte-check (frontend) and mypy (backend)"
+	@echo "  make typecheck             - Run svelte-check (frontend) and mypy (backend + extensions)"
 	@echo "  make clean                 - Remove test artifacts (SQLite databases, uploads)"
 
 typecheck:
 	cd frontend && npm run typecheck
-	mypy backend device_agent
+	mypy backend device_agent extensions/obtainium/portal_obtainium extensions/control_plane/portal_control_plane extensions/app_portal/portal_app_portal extensions/storage/portal_storage
 
 install-hooks:
 	git config core.hooksPath .githooks
@@ -33,16 +33,16 @@ test-backend:
 	python3 backend/core/tests/test_backup_restore.py
 	python3 backend/core/tests/verify_roundtrip.py
 	python3 backend/core/tests/test_external_extension.py
-	python3 backend/obtainium/tests/test_export_schema.py
-	python3 backend/obtainium/tests/test_obtainium_compiler.py
-	python3 backend/control_plane/tests/test_control_plane.py
-	python3 backend/control_plane/tests/test_control_plane_core.py
-	python3 backend/control_plane/tests/test_control_plane_backup.py
-	python3 backend/control_plane/tests/test_control_plane_ws.py
-	python3 backend/control_plane/tests/test_device_agent.py
-	python3 backend/app_portal/tests/test_app_portal.py
-	python3 backend/app_portal/tests/test_opencode_tool.py
-	python3 backend/app_portal/tests/test_app_portal_delivery_e2e.py
+	python3 extensions/obtainium/tests/test_export_schema.py
+	python3 extensions/obtainium/tests/test_obtainium_compiler.py
+	python3 extensions/control_plane/tests/test_control_plane.py
+	python3 extensions/control_plane/tests/test_control_plane_core.py
+	python3 extensions/control_plane/tests/test_control_plane_backup.py
+	python3 extensions/control_plane/tests/test_control_plane_ws.py
+	python3 extensions/control_plane/tests/test_device_agent.py
+	python3 extensions/app_portal/tests/test_app_portal.py
+	python3 extensions/app_portal/tests/test_opencode_tool.py
+	python3 extensions/app_portal/tests/test_app_portal_delivery_e2e.py
 
 test-e2e: frontend/node_modules
 	@echo "Building frontend..."
@@ -61,17 +61,17 @@ test-obtainium:
 		echo "Usage: make test-obtainium BACKUP=path/to/backup-XXXX.tgz" >&2; \
 		exit 2; \
 	fi
-	nix develop -c ./backend/obtainium/tests/avd/obtainium-integration --backup-tarball "$(BACKUP)"
+	nix develop -c ./extensions/obtainium/tests/avd/obtainium-integration --backup-tarball "$(BACKUP)"
 
 test-obtainium-smoke:
 	@if [[ -z "$(BACKUP)" ]]; then \
 		echo "Usage: make test-obtainium-smoke BACKUP=path/to/backup-XXXX.tgz" >&2; \
 		exit 2; \
 	fi
-	nix develop -c ./backend/obtainium/tests/avd/obtainium-integration \
+	nix develop -c ./extensions/obtainium/tests/avd/obtainium-integration \
 		--backup-tarball "$(BACKUP)" \
 		--apps 3 \
-		--output-dir ./backend/obtainium/tests/avd/results/smoke-$$(date +%s)
+		--output-dir ./extensions/obtainium/tests/avd/results/smoke-$$(date +%s)
 
 frontend/node_modules: frontend/package.json
 	cd frontend && npm install
@@ -81,4 +81,4 @@ clean:
 	rm -f tests/portal_test.db*
 	rm -rf tests/uploads/*
 	rm -rf tests/test-results
-	rm -rf backend/obtainium/tests/avd/results/*
+	rm -rf extensions/obtainium/tests/avd/results/*

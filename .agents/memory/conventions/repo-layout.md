@@ -1,39 +1,42 @@
-# Repository layout (post feature-first refactor)
+# Repository layout (post feature-first + extension externalization)
 
 The repo IS the portal. Top-level:
-- `backend/` — FastAPI app. `backend/core/` (config, database, server_base, extension registry/loader, backup, auth), `backend/extensions/base.py` (BaseExtension), `backend/utils/`, and feature packages `backend/{obtainium,control_plane,app_portal,storage}/`.
-- `device_agent/` — `agent.py` + `builtin_ops.py` (was `agents/`).
-- `frontend/` — Svelte 5 + Vite SPA; E2E specs colocated at `frontend/src/features/<feature>/e2e/*.spec.js` and `frontend/src/shared/e2e/`.
-- `tests/` — shared fixtures only (`config.test.json`, `bootstrap/seed_backup.tar.gz`, `uploads/`, `test-results/`).
-- `backend/<feature>/tests/` — backend tests (core, obtainium, control_plane, app_portal); AVD harness at `backend/obtainium/tests/avd/`.
-- `nixos/` — `portal-service.nix`, `portal-device-agent.nix`, `default.nix`.
-- `contrib/` — non-portal assets (gamemcbe, tailscale, Android root tools) with its own `contrib/flake.nix`.
+- `backend/` — core framework only: `core/` (config, database, server_base, extension registry/loader `extensions.py`, `auth.py` provider registry, backup, utils), `extensions/base.py` (BaseExtension), `app.py` (portal-server), `manage.py`.
+- `extensions/` — first-party extensions, each a top-level package OUTSIDE backend, registered via entry points:
+  - `extensions/obtainium/portal_obtainium/` (+ `tests/`, `tests/avd/`)
+  - `extensions/control_plane/portal_control_plane/` (+ `tests/`)
+  - `extensions/app_portal/portal_app_portal/` (+ `tests/`)
+  - `extensions/storage/portal_storage/`
+- `device_agent/` — standalone agent package (`agent.py`, `builtin_ops.py`, `protocol.py`, own pyproject/default.nix); deps websockets+jsonschema only.
+- `frontend/` — Svelte 5 + Vite; E2E specs at `frontend/src/features/<feature>/e2e/`.
+- `tests/` — shared fixtures only (`config.test.json`, `bootstrap/`, `uploads/`).
+- `nixos/`, `contrib/`, `docs/`, `examples/`.
 
-Python namespaces: `backend.*` and `device_agent.*` (repo root on sys.path). `backend/core/config.py`:
-`PORTAL_DIR = ROOT_DIR =` repo root; `PUBLIC_DIR = <root>/frontend/dist`.
+## Extension registration (entry points only)
+`EXTENSION_REGISTRY` in `backend/core/extensions.py` is empty for first-party extensions. IDs come from
+the `portal.extensions` entry-point group declared in the root `pyproject.toml`:
+`storage`, `obtainium`, `control-plane`, `app-portal` → `portal_<feature>:<Class>`.
+- Installed: `importlib.metadata.entry_points(group="portal.extensions")`.
+- Dev/CI from source (not installed): `_repo_local_targets()` parses the root `pyproject.toml`
+  `[project.entry-points."portal.extensions"]` with `tomllib` and adds each `extensions/*` dir to
+  `sys.path`. No IDs are hardcoded.
+- Config selects IDs: `extensions: [{"id": "...", "config": {...}}]`.
 
-Entry points (pyproject): `backend.app:main` (server), `backend.manage:main`, `backend.control_plane.bridge:main`, `device_agent.agent:main`, `backend.app_portal.opencode_tool:main`.
+## Packaging
+Single distribution `portal` (root `pyproject.toml`) with `[tool.setuptools.package-dir]` mapping
+`portal_<feature>` → `extensions/<feature>/portal_<feature>`, and `[project.entry-points."portal.extensions"]`.
+Entry points: `portal-server`=backend.app, `portal-manage`=backend.manage, `portal-control-bridge`=portal_control_plane.bridge,
+`portal-opencode-tool`=portal_app_portal.opencode_tool. To make an extension truly third-party later, move its
+pyproject/derivation out and depend on `portal` for `BaseExtension`.
 
-## Extension IDs (config)
-`config.EXTENSIONS` lists IDs (strings or `{id, config}`). Registry in `backend/core/extensions.py`:
-`storage`, `obtainium`, `control-plane`, `app-portal`. Each extension class declares `ID`.
-`{module, class}` is no longer supported. `LOADED_EXTENSIONS` is keyed by ID.
-(The backup tarball still keys extension data by CLASS NAME — unchanged on-disk format.)
-
-## Naming
-`nixosModules.{portal,portal-device-agent,default}`; options `services.portal` /
-`services.portal-device-agent`; units `portal`, `portal-bridge`, `portal-device-agent`;
-default user/group/StateDirectory `portal`. `nixos/web-infrastructure.nix` was removed.
-Flake description is portal-centric; devShell keeps `android-tools` (adb) only.
-
-## default.nix
-`src = lib.fileset.toSource { root = ./.; fileset = unions [ ./backend ./device_agent ./frontend ./pyproject.toml ./python-deps.nix ]; }`.
-`propagatedBuildInputs = (import ./python-deps.nix python.pkgs) ++ [ setuptools ]` — use
-`python.pkgs` (NOT a `python3Packages` arg; nixpkgs forbids `python3Packages` as a build arg).
-`postInstall` copies `frontend/` into site-packages.
+## Auth decoupling
+`backend/core/auth.py` holds a pluggable admin-device dependency registry
+(`set_admin_device_dependency`/`get_admin_device_dependency`). Core's `api_backup.require_admin_device`
+resolves it at request time (503 if unset). `portal_control_plane` registers `core.require_admin` in `setup()`.
+Core never imports an extension.
 
 ## Tests / commands
-`make test-backend` (paths under `backend/<feature>/tests/`), `make test-e2e`
-(`cd frontend && npx playwright test`; config `frontend/playwright.config.js`,
-webServer cwd = repo root, fixtures in `tests/`), `make typecheck` (`cd frontend && npm run typecheck` + `mypy backend device_agent`).
+`make test-backend` runs `extensions/<feature>/tests/*.py` (tests add `extensions/*` to sys.path);
+`make test-e2e` = `cd frontend && npx playwright test`; `make typecheck` = svelte-check + mypy
+(`backend device_agent` + each `extensions/*/portal_*`). AVD harness: `extensions/obtainium/tests/avd/`.
 Contrib: `nix develop ./contrib`, `nix build ./contrib#ksud-next`.

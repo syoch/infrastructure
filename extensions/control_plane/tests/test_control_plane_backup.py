@@ -21,6 +21,13 @@ ROOT_DIR = PORTAL_DIR
 if PORTAL_DIR not in sys.path:
     sys.path.insert(0, PORTAL_DIR)
 
+
+# Make the out-of-tree portal_* extension packages importable from the source tree.
+import glob as _ext_glob
+for _ext_dir in sorted(_ext_glob.glob(os.path.join(PORTAL_DIR, "extensions", "*"))):
+    if os.path.isdir(_ext_dir) and _ext_dir not in sys.path:
+        sys.path.insert(0, _ext_dir)
+
 CONFIG_PATH = os.path.join(PORTAL_DIR, "tests", "config.test.json")
 TEST_DB_PATH = os.path.join(PORTAL_DIR, "tests", "portal_test.db")
 
@@ -30,7 +37,7 @@ config.load_config_from_file(CONFIG_PATH)
 from backend.core.database import get_session, session_scope
 from backend.core.extension_loader import load_extensions
 from backend.core.backup_manager import BackupManager
-from backend.control_plane.models import (
+from portal_control_plane.models import (
     Device, DeviceACL, DeviceBootstrapToken, OperationSpec, CommandRequest,
 )
 
