@@ -1,12 +1,12 @@
 import logging
 import os
-from typing import Any
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from backend.core import config
+from backend.extensions.base import BaseExtension
 from backend.core.api_backup import require_admin_device, router as backup_router
 
 logger = logging.getLogger(__name__)
@@ -25,9 +25,9 @@ class PortalServer:
         self.app = FastAPI(title="Android Device Provisioning Portal")
         self.app.include_router(backup_router)
 
-    def register_extension(self, extension: Any) -> None:
+    def register_extension(self, extension: BaseExtension) -> None:
         """Mounts the extension router onto the main FastAPI application if present."""
-        router = getattr(extension, "router", None)
+        router = extension.router
         if router:
             self.app.include_router(router)
             logger.info("Mounted router for extension: %s", extension.__class__.__name__)

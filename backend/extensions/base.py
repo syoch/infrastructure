@@ -1,4 +1,6 @@
-from typing import Any
+from typing import Any, Optional
+
+from fastapi import APIRouter, FastAPI
 
 
 class BaseExtension:
@@ -10,11 +12,16 @@ class BaseExtension:
     #: Stable identifier used by deployment configuration (see config.EXTENSIONS).
     ID: str = ""
 
-    def __init__(self, core_config: Any):
+    #: Optional router mounted on the server (set in __init__/setup by the extension).
+    router: Optional[APIRouter] = None
+
+    def __init__(self, core_config: Any, ext_config: Optional[dict[str, Any]] = None) -> None:
         """
-        Initializes the extension with the global backend core configuration.
+        Initializes the extension with the global backend core configuration and
+        the per-extension config object from the portal config.
         """
         self.config = core_config
+        self.ext_config = ext_config or {}
         self.tags: list[str] = []
         self.host: Any = None
 
@@ -32,7 +39,7 @@ class BaseExtension:
             return {
                 "/api/my-extension-route": self.handle_my_route
             }
-            
+
         The handler callable should accept:
             (handler_instance, path, query_params)
         """
@@ -58,6 +65,14 @@ class BaseExtension:
         """
         pass
 
+    def install_event_loop_capture(self, app: FastAPI) -> None:
+        """
+        Optional hook to register a FastAPI startup handler that captures the
+        main asyncio event loop (used by the control plane to push commands
+        from worker threads).
+        """
+        pass
+
     def backup_data(self, session: Any) -> dict[str, Any]:
         """
         Optional hook to return JSON-serializable database records or metadata for backup.
@@ -67,6 +82,12 @@ class BaseExtension:
     def restore_data(self, session: Any, data: dict[str, Any], strategy: str) -> None:
         """
         Optional hook to restore data serialized by backup_data.
+        """
+        pass
+
+    def post_restore(self, strategy: str) -> None:
+        """
+        Optional hook invoked after a successful database restore.
         """
         pass
 
@@ -95,7 +116,3 @@ class BaseExtension:
         Optional hook to return a list of diagnostic/info strings to be printed on startup.
         """
         return []
-
-
-
-

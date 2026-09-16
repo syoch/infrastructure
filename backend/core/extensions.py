@@ -18,7 +18,9 @@ import importlib
 import importlib.metadata
 import logging
 from functools import lru_cache
-from typing import Any, Type, cast
+from typing import cast
+
+from backend.extensions.base import BaseExtension
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +62,7 @@ def known_extension_ids() -> list[str]:
     return sorted(extension_targets())
 
 
-def load_extension_class(extension_id: str) -> Type[Any]:
+def load_extension_class(extension_id: str) -> type[BaseExtension]:
     target = extension_targets().get(extension_id)
     if target is None:
         raise ValueError(
@@ -69,4 +71,4 @@ def load_extension_class(extension_id: str) -> Type[Any]:
         )
     module_name, _, class_name = target.partition(":")
     module = importlib.import_module(module_name)
-    return cast(Type[Any], getattr(module, class_name))
+    return cast(type[BaseExtension], getattr(module, class_name))

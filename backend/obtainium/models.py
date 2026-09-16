@@ -35,7 +35,7 @@ class LocalAppAPK(Base):
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     app_id: Mapped[str] = Column(String(255), ForeignKey('apps.id', ondelete='CASCADE'), nullable=False)
-    file_hash = Column(String(64), nullable=False)
+    file_hash: Mapped[str] = Column(String(64), nullable=False)
     version: Mapped[str] = Column(String(50), nullable=False)
     architecture = Column(String(50), nullable=True)
     

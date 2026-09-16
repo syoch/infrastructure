@@ -8,8 +8,11 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
+from typing import cast
+
 from backend.core import config
 from backend.core.extension_loader import load_extensions
+from backend.core.protocols import StorageProvider
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Portal Management Utility")
@@ -45,8 +48,10 @@ def main() -> None:
     if args.command == "backup":
         from backend.core.database import session_scope
         from backend.core.backup_manager import BackupManager
-        host = getattr(config, "EXTENSION_HOST", None)
-        storage_ext = host.get_extension(tags=["storage-provider"]) if host else None
+        host = config.EXTENSION_HOST
+        storage_ext = (
+            cast(StorageProvider, host.get_extension(tags=["storage-provider"])) if host else None
+        )
         
         with session_scope() as session:
             BackupManager.create_backup_tarball(
@@ -59,8 +64,10 @@ def main() -> None:
     elif args.command == "restore":
         from backend.core.database import session_scope
         from backend.core.backup_manager import BackupManager
-        host = getattr(config, "EXTENSION_HOST", None)
-        storage_ext = host.get_extension(tags=["storage-provider"]) if host else None
+        host = config.EXTENSION_HOST
+        storage_ext = (
+            cast(StorageProvider, host.get_extension(tags=["storage-provider"])) if host else None
+        )
         
         with session_scope() as session:
             BackupManager.restore_backup_tarball(

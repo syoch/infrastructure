@@ -31,7 +31,6 @@ class StorageManagerExtension(BaseExtension):
             self.uploads_dir = os.path.join(self.config.PORTAL_DIR, "uploads")
             
         logger.info(f"StorageManager initialized with uploads_dir: {self.uploads_dir}")
-        self.router = APIRouter()
         self.setup_routes()
 
     def setup(self) -> None:
@@ -123,7 +122,9 @@ class StorageManagerExtension(BaseExtension):
         return os.path.join(self.uploads_dir, f"{file_hash}.apk")
 
     def setup_routes(self) -> None:
-        @self.router.get("/api/storage/files")
+        router = APIRouter()
+        self.router = router
+        @router.get("/api/storage/files")
         def serve_files_list() -> list[dict[str, Any]]:
             """GET /api/storage/files - Lists all stored files in CAS with their size."""
             files: list[dict[str, Any]] = []
@@ -139,7 +140,7 @@ class StorageManagerExtension(BaseExtension):
                             pass
             return files
 
-        @self.router.post("/api/storage/files")
+        @router.post("/api/storage/files")
         async def handle_upload(file: UploadFile = File(...)) -> dict[str, Any]:
             """POST /api/storage/files - Uploads a file, hashes it, and saves it in CAS."""
             try:
@@ -159,7 +160,7 @@ class StorageManagerExtension(BaseExtension):
                 logger.exception("Internal error during file upload")
                 raise HTTPException(status_code=500, detail=f"Upload error: {str(e)}")
 
-        @self.router.get("/api/storage/files/{file_hash}")
+        @router.get("/api/storage/files/{file_hash}")
         def serve_download(file_hash: str, filename: Optional[str] = Query(None)) -> FileResponse:
             """GET /api/storage/files/[file_hash] - Streams a file with dynamic friendly filename."""
             filepath = self.get_file_path(file_hash)
@@ -176,7 +177,7 @@ class StorageManagerExtension(BaseExtension):
                 filename=filename
             )
 
-        @self.router.delete("/api/storage/files/{file_hash}")
+        @router.delete("/api/storage/files/{file_hash}")
         def handle_delete(file_hash: str) -> dict[str, Any]:
             """DELETE /api/storage/files/[file_hash] - Physically deletes the file if unreferenced."""
             filepath = self.get_file_path(file_hash)

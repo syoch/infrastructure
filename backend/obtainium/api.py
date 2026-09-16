@@ -9,7 +9,10 @@ import logging
 import os
 import time
 import urllib.parse
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
+
+if TYPE_CHECKING:
+    from .main import ObtainiumRepoExtension
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
@@ -47,7 +50,7 @@ class AppDeleteModel(BaseModel):
     id: str
 
 
-def build_router(ext: Any) -> APIRouter:
+def build_router(ext: "ObtainiumRepoExtension") -> APIRouter:
     router = APIRouter()
 
     @router.get("/obtainium-export.json")

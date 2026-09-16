@@ -52,16 +52,14 @@ def main() -> None:
         logger.info("Loading extension: %s...", ext.__class__.__name__)
         ext.setup()
         server.register_extension(ext)
-        if hasattr(ext, "install_event_loop_capture"):
-            ext.install_event_loop_capture(server.app)
+        ext.install_event_loop_capture(server.app)
 
     local_ip = get_local_ip()
     logger.info("Available Portal Access URLs:")
     logger.info("  Local Portal UI:  http://%s:%s/", local_ip, config.DEFAULT_PORT)
     for ext in extensions:
-        if hasattr(ext, "get_startup_info"):
-            for line in ext.get_startup_info(local_ip):
-                logger.info("  %s", line)
+        for line in ext.get_startup_info(local_ip):
+            logger.info("  %s", line)
 
     server.start()
 

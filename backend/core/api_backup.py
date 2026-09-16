@@ -7,7 +7,7 @@ import logging
 import os
 import tempfile
 import time
-from typing import Any
+from typing import Any, Optional, cast
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Header, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from backend.core import config
 from backend.core.database import get_db
+from backend.core.protocols import StorageProvider
 
 logger = logging.getLogger(__name__)
 
@@ -39,11 +40,11 @@ def require_admin_device(
     return device
 
 
-def _storage_extension() -> Any:
-    host = getattr(config, "EXTENSION_HOST", None)
+def _storage_extension() -> Optional[StorageProvider]:
+    host = config.EXTENSION_HOST
     if host is None:
         return None
-    return host.get_extension(tags=["storage-provider"])
+    return cast(StorageProvider, host.get_extension(tags=["storage-provider"]))
 
 
 def _remove_quietly(path: str) -> None:

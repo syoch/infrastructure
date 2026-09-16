@@ -4,8 +4,9 @@ HTTP routes live in :mod:`backend.obtainium.api`; this module keeps the
 extension class plus its backup/restore and CLI hooks.
 """
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
+from backend.core.protocols import StorageProvider
 from backend.extensions.base import BaseExtension
 from .models import App, Category, LocalAppAPK, Setting
 from .compiler import ObtainiumConfigCompiler
@@ -27,8 +28,9 @@ class ObtainiumRepoExtension(BaseExtension):
         super().__init__(core_config)
         self.ext_config = ext_config or {}
         self.tags = ["index-compiler"]
-        self.compiler: Optional[ObtainiumConfigCompiler] = None
-        self.cli_manager: Optional[ObtainiumRepoManagerCLI] = None
+        self.compiler: ObtainiumConfigCompiler
+        self.cli_manager: ObtainiumRepoManagerCLI
+        self.storage_ext: StorageProvider
         self.router = build_router(self)
 
     def setup(self) -> None:
@@ -36,7 +38,7 @@ class ObtainiumRepoExtension(BaseExtension):
         provider_id = self.ext_config.get("storage_provider", "storage")
         if self.host is None:
             raise RuntimeError("extension host is not initialized")
-        self.storage_ext = self.host.get_extension(provider_id, tags=["storage-provider"])
+        self.storage_ext = cast(StorageProvider, self.host.get_extension(provider_id, tags=["storage-provider"]))
 
         self.compiler = ObtainiumConfigCompiler(self.config)
         self.cli_manager = ObtainiumRepoManagerCLI(self.config, self.compiler)

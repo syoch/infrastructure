@@ -6,14 +6,16 @@ import tarfile
 import tempfile
 import time
 import logging
-from typing import Any
+from typing import Any, Optional
 from backend.core.database import Base
+from backend.core.protocols import StorageProvider
+from backend.extensions.base import BaseExtension
 
 logger = logging.getLogger(__name__)
 
 class BackupManager:
     @staticmethod
-    def _get_extensions() -> list[Any]:
+    def _get_extensions() -> list[BaseExtension]:
         from backend.core import config
         host = getattr(config, "EXTENSION_HOST", None)
         if not host:
@@ -63,7 +65,7 @@ class BackupManager:
         session.flush()
 
     @classmethod
-    def create_backup_tarball(cls, out_path: str, session: Any, storage_ext: Any = None, include_apks: bool = True) -> None:
+    def create_backup_tarball(cls, out_path: str, session: Any, storage_ext: Optional[StorageProvider] = None, include_apks: bool = True) -> None:
         """Generates a compressed tarball containing database serialization and physical assets."""
         logger.info(f"Starting backup. Export path: {out_path}")
         
@@ -116,7 +118,7 @@ class BackupManager:
         logger.info("Backup created successfully.")
 
     @classmethod
-    def restore_backup_tarball(cls, in_path: str, session: Any, storage_ext: Any = None, strategy: str = "overwrite") -> None:
+    def restore_backup_tarball(cls, in_path: str, session: Any, storage_ext: Optional[StorageProvider] = None, strategy: str = "overwrite") -> None:
         """Extracts and applies backup tarball content dynamically."""
         logger.info(f"Starting restoration from: {in_path} using strategy: {strategy}")
         
@@ -180,8 +182,7 @@ class BackupManager:
             # 3. Trigger post-restore callback on extensions
             for ext in cls._get_extensions():
                 try:
-                    if hasattr(ext, "post_restore"):
-                        ext.post_restore(strategy=strategy)
+                    ext.post_restore(strategy=strategy)
                 except Exception as e:
                     logger.warning(f"post_restore hook failed for extension '{ext.__class__.__name__}': {e}")
 

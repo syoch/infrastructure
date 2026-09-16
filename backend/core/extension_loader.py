@@ -3,6 +3,7 @@ import sys
 from typing import Any, Optional
 
 from backend.core.extensions import load_extension_class
+from backend.extensions.base import BaseExtension
 
 logger = logging.getLogger(__name__)
 
@@ -12,10 +13,10 @@ class ExtensionHost:
     Registry host that acts as the service locator for loaded extensions.
     Extensions are keyed by their stable ID and can also be looked up by tag.
     """
-    def __init__(self, extensions_dict: dict[str, Any]):
+    def __init__(self, extensions_dict: dict[str, BaseExtension]) -> None:
         self._extensions = extensions_dict
 
-    def get_extension(self, name: Optional[str] = None, tags: Optional[list[str]] = None) -> object:
+    def get_extension(self, name: Optional[str] = None, tags: Optional[list[str]] = None) -> BaseExtension:
         if not name and not tags:
             raise ValueError("Either extension name or tags must be specified.")
         tags = tags or []
@@ -32,7 +33,7 @@ class ExtensionHost:
             return ext
 
         # Match purely by tags
-        matched_exts: list[Any] = []
+        matched_exts: list[BaseExtension] = []
         for ext in self._extensions.values():
             ext_tags = getattr(ext, "tags", [])
             if all(tag in ext_tags for tag in tags):
@@ -49,7 +50,7 @@ class ExtensionHost:
         return matched_exts[0]
 
 
-def load_extensions(core_config: Any, host: Optional[ExtensionHost] = None) -> list[Any]:
+def load_extensions(core_config: Any, host: Optional[ExtensionHost] = None) -> list[BaseExtension]:
     """
     Loads the extensions listed in ``core_config.EXTENSIONS`` by ID.
 
@@ -61,8 +62,8 @@ def load_extensions(core_config: Any, host: Optional[ExtensionHost] = None) -> l
     if core_config.ROOT_DIR not in sys.path:
         sys.path.insert(0, core_config.ROOT_DIR)
 
-    loaded: dict[str, object] = {}
-    extensions: list[Any] = []
+    loaded: dict[str, BaseExtension] = {}
+    extensions: list[BaseExtension] = []
 
     for entry in getattr(core_config, "EXTENSIONS", []):
         extension_id: Optional[str]

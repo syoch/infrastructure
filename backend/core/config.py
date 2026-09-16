@@ -1,7 +1,12 @@
 import os
 import sys
 import json
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
+
+from backend.extensions.base import BaseExtension
+
+if TYPE_CHECKING:
+    from backend.core.extension_loader import ExtensionHost
 
 # Base Directories
 CORE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -22,8 +27,8 @@ EXTENSIONS = [
 # The SPA is built by Vite into frontend/dist; that directory is what gets served.
 PUBLIC_DIR = os.path.join(PORTAL_DIR, "frontend", "dist")
 
-LOADED_EXTENSIONS: dict[str, Any] = {}
-EXTENSION_HOST: Any = None
+LOADED_EXTENSIONS: dict[str, BaseExtension] = {}
+EXTENSION_HOST: Optional["ExtensionHost"] = None
 _config_dir: Optional[str] = None
 
 def get_config_dir() -> str:
