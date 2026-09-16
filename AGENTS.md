@@ -35,6 +35,28 @@ nix develop --command bash
 dev shell で提供される主なツール: Node.js, Python 3 (sqlalchemy, fastapi, uvicorn), mypy, Chromium, curl, jq, rsync, android-tools (adb)。
 Android root 系ツール (aapt, scrcpy, dtc, usbutils, sunxi-tools, ksud-next) は `contrib/` の flake で提供 (`nix develop ./contrib`)。
 
+### フロントエンドの開発 (dev サーバ → API)
+
+SvelteKit の dev サーバ (Vite) は同一オリジンの `/api` 等をバックエンドへプロキシします。接続先は `PORTAL_API_BASE` で指定できます。
+
+```bash
+# ローカル backend (既定: http://localhost:8000)
+cd frontend && npm run dev
+
+# 本番/リモートのポータルに対して dev する
+PORTAL_API_BASE=https://portal.syoch.org npm run dev
+
+# もしくは frontend/.env に設定 (frontend/.env.example 参照)
+#   PORTAL_API_BASE=...           接続先 API のベース URL
+#   PORTAL_API_INSECURE=1         自己署名 TLS を許容
+#   PORTAL_API_ACCESS_CLIENT_ID / PORTAL_API_ACCESS_CLIENT_SECRET
+#                                 Cloudflare Access のサービス トークンを
+#                                 プロキシに付与 (保護された本番へ届かせる)
+```
+
+- 認証はアプリ側の `Bearer <tk_...>`（localStorage）で行われるため、dev → 本番でもトークンを入れれば API を叩けます。
+- 本番が Cloudflare Access 配下の場合は上記サービス トークン（または tailnet/VPN 経由のホスト名）を使ってください。
+
 ## テスト実行
 
 ```bash
