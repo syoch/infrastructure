@@ -124,7 +124,7 @@ test.describe('Device Agent Integration', () => {
     ), { timeout: 20000 }).toBe(true);
 
     // 5. Navigate to WebUI and Bootstrap it
-    await page.goto('/#/control');
+    await page.goto('/control/devices');
     await page.waitForLoadState('networkidle');
 
     await expect(page.locator('#bootstrap-form')).toBeVisible();
@@ -154,7 +154,7 @@ test.describe('Device Agent Integration', () => {
     await expect(page.locator('h2', { hasText: 'Devices' })).toBeVisible();
 
     // 8. Create ACL to allow webui to command test-agent
-    await page.goto('/#/control/acl');
+    await page.goto('/control/acl');
     await expect(page.locator('h2', { hasText: 'ACL' })).toBeVisible();
     await expect(page.locator('#acl-form')).toBeVisible();
     await page.fill('#acl-form input[name="source_device"]', `device:webui-${uniq}`);
@@ -166,7 +166,7 @@ test.describe('Device Agent Integration', () => {
     await expect(page.locator('#acl-tbody')).toContainText(`device:webui-${uniq}`);
 
     // 9. Execute Command via Operations page
-    await page.goto('/#/operations');
+    await page.goto('/operations');
     await expect(page.locator('h2', { hasText: 'Operations' })).toBeVisible();
     const opBtn = page.locator('.provider-card button', { hasText: 'Echo Test Button' });
     await expect(opBtn).toBeVisible();

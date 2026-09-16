@@ -14,6 +14,7 @@
   } from '../api/app_portal_api.js';
   import { getToken } from '../api/control_api.js';
   import { safeURL } from '../lib/ui.js';
+  import { goto } from '$app/navigation';
 
   let { slug = '' }: { slug?: string } = $props();
 
@@ -30,7 +31,7 @@
     const s = slug;
     untrack(() => {
       if (!getToken()) {
-        window.location.hash = '#/control';
+        void goto('/control/devices');
         return;
       }
       void load(s);
@@ -55,7 +56,7 @@
   }
 
   function openApp(a: WebApp): void {
-    window.location.hash = `#/apps/${encodeURIComponent(a.slug)}`;
+    void goto(`/apps/${encodeURIComponent(a.slug)}`);
   }
 
   async function onCreate(e: SubmitEvent): Promise<void> {
@@ -123,7 +124,7 @@
     if (!confirm(`アプリ ${app.slug} を削除しますか?`)) return;
     try {
       await deleteWebApp(app.slug);
-      window.location.hash = '#/apps';
+      void goto('/apps');
     } catch (err) {
       alert(err instanceof Error ? err.message : String(err));
     }

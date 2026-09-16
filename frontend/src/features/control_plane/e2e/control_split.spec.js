@@ -73,7 +73,7 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
       localStorage.removeItem('syoch_control_token');
       localStorage.removeItem('syoch_control_device_id');
     });
-    await page.goto('/#/control');
+    await page.goto('/control/devices');
     await page.waitForLoadState('networkidle');
     await expect(page.locator('#bootstrap-form')).toBeVisible();
   });
@@ -85,7 +85,7 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
     await page.evaluate(() => {
       localStorage.setItem('syoch_control_token', 'dummy-before-bootstrap');
     });
-    await page.goto('/#/control');
+    await page.goto('/control/devices');
     await expect(page.locator('#bootstrap-form')).toBeVisible();
     await page.fill('input[name="device_id"]', devId);
     await page.fill('input[name="display_name"]', 'Playwright WebUI');
@@ -105,10 +105,10 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
       localStorage.setItem('syoch_control_device_id', 'nonadmin');
     }, regResult.bearer_token);
 
-    await page.goto('/#/control/devices');
+    await page.goto('/control/devices');
     await expect(page.locator('h2', { hasText: 'Devices' })).toBeVisible();
 
-    await page.goto('/#/control/acl');
+    await page.goto('/control/acl');
     await page.waitForLoadState('networkidle');
     await expect(page.locator('.control-guard')).toBeVisible();
     await expect(page.locator('#acl-form')).toHaveCount(0);
@@ -123,7 +123,7 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
       localStorage.setItem('syoch_control_token', tok);
       localStorage.setItem('syoch_control_device_id', dId);
     }, { tok: regResult.bearer_token, dId: devId });
-    await page.goto('/#/control/acl');
+    await page.goto('/control/acl');
     await page.waitForLoadState('networkidle');
     const isForm = await page.locator('#acl-form').count();
     const isGuard = await page.locator('.control-guard').count();
@@ -150,7 +150,7 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
       await route.fulfill({ body: 'retry: 10000\n\n', contentType: 'text/event-stream' });
     });
 
-    await page.goto('/#/operations');
+    await page.goto('/operations');
     await page.waitForLoadState('networkidle');
     await expect(page.locator('h2', { hasText: 'Operations' })).toBeVisible();
     await expect(page.locator('.control-tab.active', { hasText: 'Operations' })).toBeVisible();
@@ -178,7 +178,7 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
     await page.route('**/api/control/events*', async route => {
       await route.fulfill({ body: 'retry: 10000\n\n', contentType: 'text/event-stream' });
     });
-    await page.goto('/#/operations');
+    await page.goto('/operations');
     await page.waitForLoadState('networkidle');
     await page.locator('.control-tab', { hasText: 'Commands' }).click();
     await expect(page.locator('#cmds-filter-status')).toBeVisible();
@@ -208,7 +208,7 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
     await page.route('**/api/control/events*', async route => {
       await route.fulfill({ body: 'retry: 10000\n\n', contentType: 'text/event-stream' });
     });
-    await page.goto('/#/operations');
+    await page.goto('/operations');
     await page.waitForLoadState('networkidle');
     await page.locator('.control-tab', { hasText: 'Commands' }).click();
     await page.selectOption('#cmds-filter-status', 'succeeded');
@@ -235,7 +235,7 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
     await page.route('**/api/control/events*', async route => {
       await route.fulfill({ body: 'retry: 10000\n\n', contentType: 'text/event-stream' });
     });
-    await page.goto('/#/control/devices');
+    await page.goto('/control/devices');
     // Wait for me to be fetched
     await page.waitForResponse((r) => r.url().includes('/devices/me') && r.status() === 200);
     await page.waitForLoadState('domcontentloaded');
@@ -292,7 +292,7 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
       localStorage.setItem('syoch_control_device_id', dId);
     }, { tok: regResult.bearer_token, dId: adminId });
 
-    await page.goto('/#/control/devices');
+    await page.goto('/control/devices');
     await expect(page.locator('h2', { hasText: 'Bootstrap Tokens' })).toBeVisible();
 
     // Mock prompt for issue token

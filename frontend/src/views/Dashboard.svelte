@@ -1,6 +1,6 @@
 <script lang="ts">
   import { store, loadAllData } from '../lib/store.svelte.ts';
-  import { navigate } from '../lib/router.svelte.ts';
+  import { goto as navigate } from '$app/navigation';
   import AppModal from '../components/AppModal.svelte';
   import CategoryModal from '../components/CategoryModal.svelte';
   import {
@@ -76,7 +76,7 @@
 
   function onKeydown(e: KeyboardEvent): void {
     if (e.key !== 'Escape') return;
-    if (document.querySelector('.modal-backdrop.active')) navigate('#list');
+    if (document.querySelector('.modal-backdrop.active')) navigate('/list');
   }
 
   function onSortClick(): void {
@@ -86,11 +86,11 @@
   }
 
   function openQuickEdit(id: string): void {
-    navigate(`#edit?type=quick-app&id=${encodeURIComponent(id)}`);
+    navigate(`/edit?type=quick-app&id=${encodeURIComponent(id)}`);
   }
 
   function openCategory(name: string): void {
-    navigate(`#edit?type=category&id=${encodeURIComponent(name)}`);
+    navigate(`/edit?type=category&id=${encodeURIComponent(name)}`);
   }
 
   function sourceLabel(app: App): string {
@@ -107,7 +107,7 @@
     if (!confirm(`アプリ '${id}' を削除してもよろしいですか？`)) return;
     try {
       await deleteApp(id);
-      navigate('#list');
+      navigate('/list');
       await loadAllData();
     } catch (err) {
       console.error(err);
@@ -265,7 +265,7 @@
         <span>{importBusy ? 'インポート中...' : '📥 JSONインポート'}</span>
       </button>
       <input type="file" id="import-json-file" accept=".json" style="display:none;" bind:this={importJsonFile} onchange={onImportChange} />
-      <button id="add-app-btn" class="btn btn-secondary" style="border-color:var(--accent-secondary);color:var(--accent-secondary);" onclick={() => navigate('#new?type=app')}>
+      <button id="add-app-btn" class="btn btn-secondary" style="border-color:var(--accent-secondary);color:var(--accent-secondary);" onclick={() => navigate('/new?type=app')}>
         <span>➕ 新規アプリ登録</span>
       </button>
       <button id="compile-btn" class="btn btn-primary" bind:this={compileBtn} onclick={onCompile}>
@@ -291,7 +291,7 @@
         onclick={() => openCategory(catName)}
       >{catName}</button>
     {/each}
-    <button id="add-category-btn" class="category-tag tag-none interactive-tag" style="background:rgba(255,255,255,0.02);border-style:dashed;cursor:pointer;border-radius:var(--radius-sm);padding:4px 10px;" onclick={() => navigate('#new?type=category')}>
+    <button id="add-category-btn" class="category-tag tag-none interactive-tag" style="background:rgba(255,255,255,0.02);border-style:dashed;cursor:pointer;border-radius:var(--radius-sm);padding:4px 10px;" onclick={() => navigate('/new?type=category')}>
       ➕ 新規カテゴリ追加
     </button>
   </div>

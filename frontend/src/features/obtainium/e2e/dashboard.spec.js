@@ -33,7 +33,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     });
 
     // ページロードして一覧が準備できるのを待つ
-    await page.goto('/#/dashboard');
+    await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
     await page.waitForSelector('#dashboard-apps-list');
   });
@@ -67,7 +67,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await addAppBtn.click();
 
     // ハッシュが #new?type=app になっていること
-    await expect(page).toHaveURL(/#new\?type=app/);
+    await expect(page).toHaveURL(/\/new\?type=app/);
 
     // モーダルが表示されていること
     const appModal = page.locator('#app-modal');
@@ -87,7 +87,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
 
     // モーダルが閉じ、ハッシュが一覧に戻ること
     await expect(appModal).not.toHaveClass(/active/);
-    await expect(page).toHaveURL(/#list|#$/);
+    await expect(page).toHaveURL(/\/(list|dashboard)?$/);
 
     // テーブルにアプリが追加されていることを確認
     const newAppRow = page.locator(`#dashboard-apps-list tr:has-text("${pkgId}")`);
@@ -111,7 +111,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
 
     // モーダルが閉じ、詳細設定画面に遷移し、ハッシュが #edit?type=app&id=... になること
     await expect(appModal).not.toHaveClass(/active/);
-    await expect(page).toHaveURL(new RegExp(`#edit\\?type=app&id=${pkgId}`));
+    await expect(page).toHaveURL(new RegExp(`/edit\\?type=app&id=${pkgId}`));
 
     const editView = page.locator('#app-edit-view');
     await expect(editView).toBeVisible();
@@ -124,7 +124,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
 
     // 保存されて一覧に戻ること
     await expect(editView).not.toBeVisible();
-    await expect(page).toHaveURL(/#list|#$/);
+    await expect(page).toHaveURL(/\/(list|dashboard)?$/);
 
     // ---- 2-4. アプリの削除 ----
     // 削除処理時の confirm ダイアログを自動受託する
@@ -144,7 +144,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
 
     // 一覧に戻り、行が削除されていること
     await expect(editView).not.toBeVisible();
-    await expect(page).toHaveURL(/#list|#$/);
+    await expect(page).toHaveURL(/\/(list|dashboard)?$/);
     await expect(page.locator(`#dashboard-apps-list tr:has-text("${pkgId}")`)).not.toBeVisible();
   });
 
@@ -153,7 +153,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     const addCatBtn = page.locator('#add-category-btn');
     await addCatBtn.click();
 
-    await expect(page).toHaveURL(/#new\?type=category/);
+    await expect(page).toHaveURL(/\/new\?type=category/);
 
     const catModal = page.locator('#category-modal');
     await expect(catModal).toHaveClass(/active/);
@@ -171,7 +171,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
 
     // モーダルが閉じ、ハッシュが戻り、カテゴリバーにチップが追加されること
     await expect(catModal).not.toHaveClass(/active/);
-    await expect(page).toHaveURL(/#list|#$/);
+    await expect(page).toHaveURL(/\/(list|dashboard)?$/);
 
     const newCatChip = page.locator(`#dashboard-categories-bar .category-tag:has-text("${catName}")`);
     await expect(newCatChip).toBeVisible();
@@ -184,7 +184,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     });
 
     await newCatChip.click();
-    await expect(page).toHaveURL(new RegExp(`#edit\\?type=category&id=${catName}`));
+    await expect(page).toHaveURL(new RegExp(`/edit\\?type=category&id=${catName}`));
     await expect(catModal).toHaveClass(/active/);
     await expect(page.locator('#cat-modal-name')).toBeEnabled();
 
@@ -204,7 +204,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await addAppBtn.click();
 
     // Wait for route and modal to be ready
-    await expect(page).toHaveURL(/#new\?type=app/);
+    await expect(page).toHaveURL(/\/new\?type=app/);
     const appModal = page.locator('#app-modal');
     await expect(appModal).toHaveClass(/active/);
 
@@ -224,7 +224,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     // ---- 4-2. Go to Detailed Edit ----
     await appRow.click();
     await page.locator('#quick-detail-btn').click();
-    await expect(page).toHaveURL(new RegExp(`#edit\\?type=app&id=${pkgId}`));
+    await expect(page).toHaveURL(new RegExp(`/edit\\?type=app&id=${pkgId}`));
 
     // Verify Self-Hosted APK card is visible
     const selfHostedCard = page.locator('#self-hosted-apk-card');
@@ -270,7 +270,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await expect(link).toContainText('SelfHosted_Test_App_com.selfhosted.test_v1.0.0_arm64-v8a.apk');
 
     // ---- 4-5. Back to Edit View and Delete APK & App ----
-    await page.goto(`/#edit?type=app&id=${pkgId}`);
+    await page.goto(`/edit?type=app&id=${pkgId}`);
     await expect(selfHostedCard).toBeVisible();
 
     // Setup delete confirm handling
@@ -299,7 +299,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
 
   test('5. Import Obtainium export JSON config', async () => {
     // Navigate to dashboard
-    await page.goto('/#/dashboard');
+    await page.goto('/dashboard');
 
     const importBtn = page.locator('#import-json-btn');
     await expect(importBtn).toBeVisible();
@@ -388,7 +388,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await addAppBtn.click();
 
     // モーダルがアクティブになるのを待つ（クリア処理との競合を避ける）
-    await expect(page).toHaveURL(/#new\?type=app/);
+    await expect(page).toHaveURL(/\/new\?type=app/);
     const appModal = page.locator('#app-modal');
     await expect(appModal).toHaveClass(/active/);
 
@@ -404,7 +404,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await addCatBtn.click();
 
     // カテゴリモーダルが開くのを待つ
-    await expect(page).toHaveURL(/#new\?type=category/);
+    await expect(page).toHaveURL(/\/new\?type=category/);
     const catModal = page.locator('#category-modal');
     await expect(catModal).toHaveClass(/active/);
 
@@ -417,7 +417,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     // ---- 7-3. Edit Category to bind the App ----
     const catChip = page.locator(`#dashboard-categories-bar .category-tag:has-text("${catName}")`);
     await catChip.click();
-    await expect(page).toHaveURL(new RegExp(`#edit\\?type=category&id=${catName}`));
+    await expect(page).toHaveURL(new RegExp(`/edit\\?type=category&id=${catName}`));
 
     // Find checkbox for the app and check it
     const appCheckbox = page.locator(`#category-apps-list input[data-app-id="${pkgId}"]`);
@@ -435,7 +435,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
 
     // ---- 7-4. Edit Category to unbind the App ----
     await catChip.click();
-    await expect(page).toHaveURL(new RegExp(`#edit\\?type=category&id=${catName}`));
+    await expect(page).toHaveURL(new RegExp(`/edit\\?type=category&id=${catName}`));
     await expect(appCheckbox).toBeChecked();
     await appCheckbox.uncheck();
     await page.locator('#category-modal-form button[type="submit"]').click();
@@ -470,7 +470,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     // App A
     const addAppBtn = page.locator('#add-app-btn');
     await addAppBtn.click();
-    await expect(page).toHaveURL(/#new\?type=app/);
+    await expect(page).toHaveURL(/\/new\?type=app/);
     const appModal = page.locator('#app-modal');
     await expect(appModal).toHaveClass(/active/);
     const pkgIdA = 'com.dynamic.appa';
@@ -479,12 +479,12 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await page.fill('#quick-app-url', 'https://github.com/test/appa');
     await page.locator('#quick-save-btn').click();
     await expect(appModal).not.toHaveClass(/active/);
-    await expect(page).toHaveURL(/#list|#$/);
+    await expect(page).toHaveURL(/\/(list|dashboard)?$/);
     await page.waitForSelector(`#dashboard-apps-list tr:has-text("${pkgIdA}")`);
 
     // App B
     await addAppBtn.click();
-    await expect(page).toHaveURL(/#new\?type=app/);
+    await expect(page).toHaveURL(/\/new\?type=app/);
     await expect(appModal).toHaveClass(/active/);
     const pkgIdB = 'com.dynamic.appb';
     await page.fill('#quick-app-id', pkgIdB);
@@ -492,7 +492,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await page.fill('#quick-app-url', 'https://github.com/test/appb');
     await page.locator('#quick-save-btn').click();
     await expect(appModal).not.toHaveClass(/active/);
-    await expect(page).toHaveURL(/#list|#$/);
+    await expect(page).toHaveURL(/\/(list|dashboard)?$/);
     await page.waitForSelector(`#dashboard-apps-list tr:has-text("${pkgIdB}")`);
 
     // ---- 8-2. Edit App A to add non-existent Category 'CateA' ----
@@ -500,7 +500,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await appRowA.click();
     await expect(appModal).toHaveClass(/active/);
     await page.locator('#quick-detail-btn').click();
-    await expect(page).toHaveURL(new RegExp(`#edit\\?type=app&id=${pkgIdA}`));
+    await expect(page).toHaveURL(new RegExp(`/edit\\?type=app&id=${pkgIdA}`));
 
     const catName = 'CateA';
     await page.fill('#edit-app-categories', catName);
@@ -508,13 +508,13 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await detailedSaveBtn.click();
 
     // Verify App A has CateA category tag in the list
-    await expect(page).toHaveURL(/#list|#$/);
+    await expect(page).toHaveURL(/\/(list|dashboard)?$/);
     await expect(appRowA.locator(`.category-tag:has-text("${catName}")`)).toBeVisible();
 
     // ---- 8-3. Create Category 'CateA' (already auto-created in db, now officially configured in settings) ----
     const addCatBtn = page.locator('#add-category-btn');
     await addCatBtn.click();
-    await expect(page).toHaveURL(/#new\?type=category/);
+    await expect(page).toHaveURL(/\/new\?type=category/);
     const catModal = page.locator('#category-modal');
     await expect(catModal).toHaveClass(/active/);
 
@@ -529,7 +529,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
 
     // ---- 8-4. Edit Category 'CateA' to bind App B ----
     await catChip.click();
-    await expect(page).toHaveURL(new RegExp(`#edit\\?type=category&id=${catName}`));
+    await expect(page).toHaveURL(new RegExp(`/edit\\?type=category&id=${catName}`));
     await expect(catModal).toHaveClass(/active/);
 
     // App A should already be checked since it was associated dynamically
@@ -652,7 +652,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     // App A
     const addAppBtn = page.locator('#add-app-btn');
     await addAppBtn.click();
-    await expect(page).toHaveURL(/#new\?type=app/);
+    await expect(page).toHaveURL(/\/new\?type=app/);
     const appModal = page.locator('#app-modal');
     await expect(appModal).toHaveClass(/active/);
     const pkgIdA = 'com.renamecat.appa';
@@ -664,7 +664,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
 
     // App B
     await addAppBtn.click();
-    await expect(page).toHaveURL(/#new\?type=app/);
+    await expect(page).toHaveURL(/\/new\?type=app/);
     await expect(appModal).toHaveClass(/active/);
     const pkgIdB = 'com.renamecat.appb';
     await page.fill('#quick-app-id', pkgIdB);
@@ -676,7 +676,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     // ---- 10-2. Create Category 'OriginalCat' ----
     const addCatBtn = page.locator('#add-category-btn');
     await addCatBtn.click();
-    await expect(page).toHaveURL(/#new\?type=category/);
+    await expect(page).toHaveURL(/\/new\?type=category/);
     const catModal = page.locator('#category-modal');
     await expect(catModal).toHaveClass(/active/);
 
@@ -691,7 +691,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
 
     // ---- 10-3. Edit Category 'OriginalCat' to bind App A ----
     await catChip.click();
-    await expect(page).toHaveURL(new RegExp(`#edit\\?type=category&id=${originalCatName}`));
+    await expect(page).toHaveURL(new RegExp(`/edit\\?type=category&id=${originalCatName}`));
     await expect(catModal).toHaveClass(/active/);
 
     const appCheckboxA = page.locator(`#category-apps-list input[data-app-id="${pkgIdA}"]`);
@@ -706,7 +706,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
 
     // ---- 10-4. Rename Category 'OriginalCat' to 'RenamedCat' and also bind App B ----
     await catChip.click();
-    await expect(page).toHaveURL(new RegExp(`#edit\\?type=category&id=${originalCatName}`));
+    await expect(page).toHaveURL(new RegExp(`/edit\\?type=category&id=${originalCatName}`));
     await expect(catModal).toHaveClass(/active/);
 
     // Rename
@@ -770,7 +770,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
 
   test('11. Edit and Save Global Settings', async () => {
     // Navigate to dashboard
-    await page.goto('/#/dashboard');
+    await page.goto('/dashboard');
 
     // Fill form fields
     const themeSelect = page.locator('#global-setting-theme');

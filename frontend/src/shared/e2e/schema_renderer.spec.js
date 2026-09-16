@@ -35,7 +35,7 @@ test.describe('Schema Renderer E2E Tests', () => {
   test('all schema_renderer test cases pass', async () => {
     const responses = [];
     page.on('response', (resp) => responses.push({ status: resp.status(), url: resp.url() }));
-    await page.goto('/test_schema_renderer.html');
+    await page.goto('/test_schema_renderer');
     await page.waitForFunction(() => window.__testDone === true, { timeout: 10000 });
     const results = await page.evaluate(() => window.__testResults);
     for (const r of responses) {
@@ -53,7 +53,7 @@ test.describe('Schema Renderer E2E Tests', () => {
   });
 
   test('control plane form renders for ACL create (json widget for extra)', async () => {
-    await page.goto('/#/control/devices');
+    await page.goto('/control/devices');
     await page.waitForLoadState('networkidle');
     await expect(page.locator('#control-view')).toBeVisible();
   });
@@ -61,11 +61,11 @@ test.describe('Schema Renderer E2E Tests', () => {
   test('control <-> dashboard navigation does not crash (no stack overflow)', async () => {
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message || String(e)));
-    await page.goto('/#/control/devices');
+    await page.goto('/control/devices');
     await page.waitForLoadState('networkidle');
-    await page.goto('/#/dashboard');
+    await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
-    await page.goto('/#/control/devices');
+    await page.goto('/control/devices');
     await page.waitForLoadState('networkidle');
     await expect(page.locator('#control-view h2')).toBeVisible();
     expect(errors).toEqual([]);
@@ -138,7 +138,7 @@ test.describe('Schema Renderer E2E Tests', () => {
       localStorage.setItem('syoch_control_token', 'dummy');
     });
     // Navigate to operations page (where the buttons now live)
-    await page.goto('/#/operations');
+    await page.goto('/operations');
     await page.waitForLoadState('networkidle');
 
     // Verify button exists (provider cards populate asynchronously)

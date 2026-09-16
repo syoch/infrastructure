@@ -1,7 +1,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { auth, ensureMe } from '../lib/auth.svelte.ts';
-  import { navigate } from '../lib/router.svelte.ts';
+  import { goto as navigate } from '$app/navigation';
   import {
     getToken,
     setToken,
@@ -135,7 +135,7 @@
       setToken(result.bearer_token, result.id);
       await ensureMe(true);
       token = getToken();
-      navigate('#/control/devices');
+      navigate('/control/devices');
     } catch (err) {
       bootError = msg(err);
     } finally {
@@ -273,7 +273,7 @@
         <p>
           この画面は admin 専用です。現在のデバイス <code>{me?.id || '(unknown)'}</code> には admin 権限がありません。
         </p>
-        <a href="#/control/devices" class="btn btn-primary">Devices に戻る</a>
+        <a href="/control/devices" class="btn btn-primary">Devices に戻る</a>
       </div>
     {:else}
       <form id="acl-form" class="control-form" onsubmit={onAclSubmit}>

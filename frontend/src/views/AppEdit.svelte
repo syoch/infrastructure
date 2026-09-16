@@ -1,6 +1,6 @@
 <script lang="ts">
   import { store, loadAllData } from '../lib/store.svelte.ts';
-  import { navigate } from '../lib/router.svelte.ts';
+  import { goto as navigate } from '$app/navigation';
   import AppModal from '../components/AppModal.svelte';
   import CategoryModal from '../components/CategoryModal.svelte';
   import {
@@ -48,7 +48,7 @@
       populatedId = found.id;
       populate(found);
     } else if (!found && populatedId === null && id && store.dashboardApps.length > 0) {
-      navigate('#list');
+      navigate('/list');
     }
   });
 
@@ -145,7 +145,7 @@
     saveConfirmPending = false;
     try {
       await saveApp(payload);
-      navigate('#list');
+      navigate('/list');
       await loadAllData();
     } catch (err) {
       console.error(err);
@@ -158,7 +158,7 @@
     if (!confirm(`アプリ '${app.id}' を削除してもよろしいですか？`)) return;
     try {
       await deleteApp(app.id);
-      navigate('#list');
+      navigate('/list');
       await loadAllData();
     } catch (err) {
       console.error(err);
@@ -257,7 +257,7 @@
       <h1 id="edit-view-title">アプリ詳細設定</h1>
       <p class="hero-subtitle" style="margin:4px 0 0 0;text-align:left;">アプリの詳細なスクレイピング条件やインストール時の挙動をカスタマイズします。</p>
     </div>
-    <button id="edit-back-btn" class="btn btn-secondary" onclick={() => navigate('#list')}>
+    <button id="edit-back-btn" class="btn btn-secondary" onclick={() => navigate('/list')}>
       <span>← 一覧に戻る</span>
     </button>
   </div>

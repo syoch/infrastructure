@@ -11,7 +11,7 @@ import {
   deepClone,
   isPlainObject,
   type JSONSchema,
-} from '../lib/schema.svelte.ts';
+} from './schema.svelte.ts';
 
 export interface SchemaRenderHandle {
   el: HTMLElement;

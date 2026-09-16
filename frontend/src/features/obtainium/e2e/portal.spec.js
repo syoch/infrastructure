@@ -73,14 +73,14 @@ test.describe('Portal Public UI E2E Tests', () => {
     // Click dashboard link
     const navDashboard = page.locator('#nav-dashboard');
     await navDashboard.click();
-    await expect(page).toHaveURL(/#\/dashboard/);
+    await expect(page).toHaveURL(/\/dashboard/);
     await expect(page.locator('#dashboard-view')).toBeVisible();
     await expect(page.locator('#portal-view')).not.toBeVisible();
 
     // Click portal link
     const navPortal = page.locator('#nav-portal');
     await navPortal.click();
-    await expect(page).toHaveURL(/#\/|#$/);
+    await expect(page).toHaveURL(/\/$/);
     await expect(page.locator('#portal-view')).toBeVisible();
     await expect(page.locator('#dashboard-view')).not.toBeVisible();
   });

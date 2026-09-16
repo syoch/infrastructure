@@ -1,14 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { route } from './lib/router.svelte.ts';
-  import { ensureMe, auth } from './lib/auth.svelte.ts';
-  import { loadAllData } from './lib/store.svelte.ts';
-  import Portal from './views/Portal.svelte';
-  import Dashboard from './views/Dashboard.svelte';
-  import AppEdit from './views/AppEdit.svelte';
-  import Control from './views/Control.svelte';
-  import Operations from './views/Operations.svelte';
-  import AppPortal from './views/AppPortal.svelte';
+  import { page } from '$app/state';
+  import { ensureMe, auth } from '$lib/auth.svelte.ts';
+  import { loadAllData } from '$lib/store.svelte.ts';
+  import '../app.css';
+
+  let { children } = $props();
 
   let dropdownOpen = $state(false);
 
@@ -17,14 +14,19 @@
     ensureMe();
   });
 
-  const isControl = $derived(route.route === 'control');
-  const isOperations = $derived(route.route === 'operations');
-  const isApps = $derived(route.route === 'apps');
-  const isEditApp = $derived(route.route === 'edit' && route.params.type === 'app');
+  const path = $derived(page.url.pathname);
+  const type = $derived(page.url.searchParams.get('type') ?? '');
+
+  const isEditApp = $derived(path === '/edit' && type === 'app');
+  const isControl = $derived(path.startsWith('/control'));
+  const isOperations = $derived(path === '/operations');
+  const isApps = $derived(path.startsWith('/apps'));
   const isDashboard = $derived(
-    ['dashboard', 'list', 'new', 'edit'].includes(route.route) && !isEditApp
+    ['/dashboard', '/list', '/new', '/edit'].includes(path) && !isEditApp
   );
-  const isPortal = $derived(!isControl && !isOperations && !isApps && !isDashboard && !isEditApp);
+  const isPortal = $derived(
+    !isControl && !isOperations && !isApps && !isDashboard && !isEditApp
+  );
   const isAdmin = $derived(auth.me?.is_first_webui_device === true);
 
   function closeDropdown(): void {
@@ -51,8 +53,8 @@
     </div>
 
     <nav class="header-nav">
-      <a href="#/" class="nav-btn" id="nav-portal" class:active={isPortal}>ポータル</a>
-      <a href="#/dashboard" class="nav-btn" id="nav-dashboard" class:active={isDashboard}>ダッシュボード</a>
+      <a href="/" class="nav-btn" id="nav-portal" class:active={isPortal}>ポータル</a>
+      <a href="/dashboard" class="nav-btn" id="nav-dashboard" class:active={isDashboard}>ダッシュボード</a>
       <div class="nav-dropdown" id="control-dropdown" class:active={isControl} class:open={dropdownOpen}>
         <button
           class="nav-btn nav-dropdown-toggle"
@@ -72,9 +74,9 @@
           </svg>
         </button>
         <div class="nav-dropdown-menu" role="menu">
-          <a href="#/control/devices" class="nav-dropdown-item" role="menuitem">Devices</a>
+          <a href="/control/devices" class="nav-dropdown-item" role="menuitem">Devices</a>
           <a
-            href="#/control/acl"
+            href="/control/acl"
             class="nav-dropdown-item"
             class:hidden={!isAdmin}
             role="menuitem"
@@ -82,8 +84,8 @@
           >ACL</a>
         </div>
       </div>
-      <a href="#/operations" class="nav-btn" id="nav-operations" class:active={isOperations}>オペレーション</a>
-      <a href="#/apps" class="nav-btn" id="nav-apps" class:active={isApps}>アプリ</a>
+      <a href="/operations" class="nav-btn" id="nav-operations" class:active={isOperations}>オペレーション</a>
+      <a href="/apps" class="nav-btn" id="nav-apps" class:active={isApps}>アプリ</a>
     </nav>
 
     <div class="server-status">
@@ -94,31 +96,7 @@
 </header>
 
 <main class="container">
-  {#if isControl}
-    <div id="control-view" class="view-section active">
-      <Control sub={route.sub} />
-    </div>
-  {:else if isOperations}
-    <div id="operations-view" class="view-section active">
-      <Operations params={route.params} />
-    </div>
-  {:else if isApps}
-    <div id="apps-view" class="view-section active">
-      <AppPortal slug={route.sub} />
-    </div>
-  {:else if isEditApp}
-    <div id="app-edit-view" class="view-section active">
-      <AppEdit id={route.params.id ?? ''} />
-    </div>
-  {:else if isDashboard}
-    <div id="dashboard-view" class="view-section active">
-      <Dashboard routeName={route.route} params={route.params} />
-    </div>
-  {:else}
-    <div id="portal-view" class="view-section active">
-      <Portal />
-    </div>
-  {/if}
+  {@render children()}
 </main>
 
 <footer>

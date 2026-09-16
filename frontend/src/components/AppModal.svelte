@@ -1,6 +1,6 @@
 <script lang="ts">
   import { store, loadAllData } from '../lib/store.svelte.ts';
-  import { navigate } from '../lib/router.svelte.ts';
+  import { goto as navigate } from '$app/navigation';
   import { saveApp, type SaveAppPayload, type App } from '../api/api.js';
 
   let {
@@ -89,7 +89,7 @@
     };
     try {
       await saveApp(payload);
-      navigate('#list');
+      navigate('/list');
       await loadAllData();
     } catch (err) {
       console.error(err);
@@ -98,13 +98,13 @@
   }
 
   function onDetail(): void {
-    navigate(`#edit?type=app&id=${encodeURIComponent(pkgId)}`);
+    navigate(`/edit?type=app&id=${encodeURIComponent(pkgId)}`);
   }
 </script>
 
 <div id="app-modal" class="modal-backdrop" class:active={active}>
   <div class="modal-content">
-    <button class="modal-close-btn" id="app-modal-close" type="button" aria-label="閉じる" onclick={() => navigate('#list')}>
+    <button class="modal-close-btn" id="app-modal-close" type="button" aria-label="閉じる" onclick={() => navigate('/list')}>
       <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
         <line x1="18" y1="6" x2="6" y2="18"></line>
         <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -173,7 +173,7 @@
             : 'display:none;border-color:var(--accent-secondary);color:var(--accent-secondary);'}
           onclick={onDetail}
         >詳細設定へ ⚙️</button>
-        <button type="button" class="btn btn-secondary" id="quick-cancel-btn" onclick={() => navigate('#list')}>キャンセル</button>
+        <button type="button" class="btn btn-secondary" id="quick-cancel-btn" onclick={() => navigate('/list')}>キャンセル</button>
       </div>
     </form>
   </div>

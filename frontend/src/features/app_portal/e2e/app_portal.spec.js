@@ -75,9 +75,9 @@ test.describe('App Portal UI', () => {
       localStorage.removeItem('syoch_control_token');
       localStorage.removeItem('syoch_control_device_id');
     });
-    await page.goto('/#/apps');
+    await page.goto('/apps');
     await page.waitForLoadState('domcontentloaded');
-    await expect(page).toHaveURL(/#\/control/);
+    await expect(page).toHaveURL(/\/control/);
   });
 
   test('register app, open detail, submit feedback', async () => {
@@ -94,7 +94,7 @@ test.describe('App Portal UI', () => {
       localStorage.setItem('syoch_control_token', tok);
     }, reg.bearer_token);
 
-    await page.goto('/#/apps');
+    await page.goto('/apps');
     await expect(page.locator('#apps-view h2', { hasText: 'アプリ' })).toBeVisible();
 
     // Register an app through the UI form
@@ -151,7 +151,7 @@ test.describe('App Portal UI', () => {
     try {
       await page.goto('/');
       await page.evaluate((tok) => localStorage.setItem('syoch_control_token', tok), reg.bearer_token);
-      await page.goto(`/#/apps/${app.slug}`);
+      await page.goto(`/apps/${app.slug}`);
       await expect(page.locator('#app-edit-form')).toBeVisible();
 
       const newName = `${appName} (edited)`;

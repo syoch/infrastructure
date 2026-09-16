@@ -1,6 +1,6 @@
 <script lang="ts">
   import { store, loadAllData } from '../lib/store.svelte.ts';
-  import { navigate } from '../lib/router.svelte.ts';
+  import { goto as navigate } from '$app/navigation';
   import { saveSettings, saveApp, type SaveAppPayload } from '../api/api.js';
   import { colorIntToHex, parseHexToColorInt, getCategoryModalColorPreview } from '../lib/ui.js';
 
@@ -107,7 +107,7 @@
         if (promises.length > 0) await Promise.all(promises);
       }
 
-      navigate('#list');
+      navigate('/list');
       await loadAllData();
     } catch (err) {
       console.error(err);
@@ -127,7 +127,7 @@
       const cats = { ...(store.settings.categories || {}) };
       delete cats[categoryName];
       await saveSettings({ categories: cats });
-      navigate('#list');
+      navigate('/list');
       await loadAllData();
     } catch (err) {
       console.error(err);
@@ -138,7 +138,7 @@
 
 <div id="category-modal" class="modal-backdrop" class:active={active}>
   <div class="modal-content" style="max-width:500px;">
-    <button class="modal-close-btn" id="category-modal-close" type="button" aria-label="閉じる" onclick={() => navigate('#list')}>
+    <button class="modal-close-btn" id="category-modal-close" type="button" aria-label="閉じる" onclick={() => navigate('/list')}>
       <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
         <line x1="18" y1="6" x2="6" y2="18"></line>
         <line x1="6" y1="6" x2="18" y2="18"></line>

@@ -12,7 +12,8 @@
     type CommandRequest,
   } from '../api/control_api.js';
   import { ensureMe } from '../lib/auth.svelte.ts';
-  import { navigate, buildHash } from '../lib/router.svelte.ts';
+  import { goto } from '$app/navigation';
+  import { page } from '$app/state';
   import { SchemaNode, type JSONSchema } from '../lib/schema.svelte.ts';
   import SchemaForm from '../components/SchemaForm.svelte';
 
@@ -99,17 +100,17 @@
   }
 
   function syncHash(): void {
-    const hashParams: Record<string, string | number | undefined> = {
-      status: applied.status || undefined,
-      from: applied.from || undefined,
-      to: applied.to || undefined,
-      op: applied.op || undefined,
-      limit: applied.limit === 25 ? undefined : applied.limit,
-      offset: applied.offset > 0 ? applied.offset : undefined,
-    };
-    const newHash = buildHash('operations', '', hashParams);
-    if (window.location.hash !== newHash) {
-      window.location.replace(newHash);
+    const search = new URLSearchParams();
+    if (applied.status) search.set('status', applied.status);
+    if (applied.from) search.set('from', applied.from);
+    if (applied.to) search.set('to', applied.to);
+    if (applied.op) search.set('op', applied.op);
+    if (applied.limit !== 25) search.set('limit', String(applied.limit));
+    if (applied.offset > 0) search.set('offset', String(applied.offset));
+    const qs = search.toString();
+    const target = qs ? `/operations?${qs}` : '/operations';
+    if (`${page.url.pathname}${page.url.search}` !== target) {
+      void goto(target, { replaceState: true, noScroll: true, keepFocus: true });
     }
   }
 
@@ -122,7 +123,7 @@
 
   async function routeChanged(currentParams: Record<string, string>): Promise<void> {
     if (!getToken()) {
-      navigate('#/control');
+      void goto('/control/devices');
       return;
     }
     if (!initialized) {

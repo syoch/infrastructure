@@ -3,7 +3,11 @@ import os
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.responses import Response
+from starlette.types import Scope
 
 from backend.core import config
 from backend.extensions.base import BaseExtension
@@ -12,6 +16,28 @@ from backend.core.api_backup import require_admin_device, router as backup_route
 logger = logging.getLogger(__name__)
 
 __all__ = ["PortalServer", "require_admin_device"]
+
+
+def _is_spa_path(path: str) -> bool:
+    """True for client-side routes (no file extension, not an API call)."""
+    if path.startswith("/api/"):
+        return False
+    last_segment = path.rstrip("/").rsplit("/", 1)[-1]
+    return "." not in last_segment
+
+
+class _SPAStaticFiles(StaticFiles):
+    """StaticFiles that serves index.html for unknown client-side routes."""
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        try:
+            return await super().get_response(path, scope)
+        except StarletteHTTPException as exc:
+            if exc.status_code == 404 and _is_spa_path(str(scope.get("path", ""))):
+                index = os.path.join(config.PUBLIC_DIR, "index.html")
+                if os.path.exists(index):
+                    return FileResponse(index)
+            raise
 
 
 class PortalServer:
@@ -39,7 +65,9 @@ class PortalServer:
         # Serve static files from config.PUBLIC_DIR at the root path "/"
         # Note: StaticFiles should be mounted AFTER API routes to avoid matching api calls as static files
         if os.path.exists(config.PUBLIC_DIR):
-            self.app.mount("/", StaticFiles(directory=config.PUBLIC_DIR, html=True), name="static")
+            self.app.mount(
+                "/", _SPAStaticFiles(directory=config.PUBLIC_DIR, html=True), name="static"
+            )
             logger.info("Mounted static files directory: %s", config.PUBLIC_DIR)
         else:
             logger.warning("Static files directory %s not found.", config.PUBLIC_DIR)
