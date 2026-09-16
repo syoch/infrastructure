@@ -1,5 +1,7 @@
 """Structural protocols for cross-extension service interfaces."""
-from typing import Protocol
+from typing import Optional, Protocol
+
+from backend.extensions.base import BaseExtension
 
 
 class StorageProvider(Protocol):
@@ -15,4 +17,16 @@ class StorageProvider(Protocol):
 
     def delete_file(self, file_hash: str) -> bool:
         """Deletes a stored file if present; returns whether it was removed."""
+        ...
+
+
+class ExtensionHostProtocol(Protocol):
+    """Service locator that extensions use to find one another."""
+
+    def get_extension(
+        self, name: Optional[str] = None, tags: Optional[list[str]] = None
+    ) -> BaseExtension:
+        ...
+
+    def all_extensions(self) -> list[BaseExtension]:
         ...

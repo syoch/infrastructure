@@ -49,6 +49,9 @@ class ExtensionHost:
             )
         return matched_exts[0]
 
+    def all_extensions(self) -> list[BaseExtension]:
+        return list(self._extensions.values())
+
 
 def load_extensions(core_config: Any, host: Optional[ExtensionHost] = None) -> list[BaseExtension]:
     """

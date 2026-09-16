@@ -17,11 +17,10 @@ class BackupManager:
     @staticmethod
     def _get_extensions() -> list[BaseExtension]:
         from backend.core import config
-        host = getattr(config, "EXTENSION_HOST", None)
-        if not host:
+        host = config.EXTENSION_HOST
+        if host is None:
             return []
-        # Return all loaded extension instances
-        return list(host._extensions.values())
+        return host.all_extensions()
 
     @classmethod
     def serialize_db(cls, session: Any) -> dict[str, Any]:

@@ -79,7 +79,7 @@ class StorageManagerExtension(BaseExtension):
         """Dynamically gathers all referenced file hashes from loaded extensions."""
         referenced: set[str] = set()
         if self.host:
-            for ext in self.host._extensions.values():
+            for ext in self.host.all_extensions():
                 try:
                     ref_set = ext.get_referenced_file_hashes(session)
                     if ref_set:

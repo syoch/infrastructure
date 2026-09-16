@@ -1,6 +1,9 @@
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from fastapi import APIRouter, FastAPI
+
+if TYPE_CHECKING:
+    from backend.core.protocols import ExtensionHostProtocol
 
 
 class BaseExtension:
@@ -23,7 +26,7 @@ class BaseExtension:
         self.config = core_config
         self.ext_config = ext_config or {}
         self.tags: list[str] = []
-        self.host: Any = None
+        self.host: Optional["ExtensionHostProtocol"] = None
 
     def setup(self) -> None:
         """
