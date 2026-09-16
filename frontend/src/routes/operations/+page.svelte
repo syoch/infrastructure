@@ -7,4 +7,4 @@
   );
 </script>
 
-<div id="operations-view" class="view-section active"><Operations {params}  /></div>
+<div id="operations-view"><Operations {params}  /></div>

@@ -273,15 +273,15 @@
 </script>
 
 {#if phase === 'bootstrap'}
-  <section class="bootstrap-section mx-auto max-w-xl">
-    <h2 class="h2">WebUI セットアップ</h2>
-    <p class="bootstrap-hint mt-2 text-sm text-surface-600-400">
+  <section class="card bg-surface-100-900 mx-auto mt-16 max-w-[30rem] p-8">
+    <h2 class="h2 mb-3">WebUI セットアップ</h2>
+    <p class="mb-3 text-sm text-surface-600-400">
       この WebUI を使うには、まずサーバー側で bootstrap トークンを発行してください:
     </p>
-    <pre class="bootstrap-pre pre mt-4">portal-manage control issue-bootstrap-token \
+    <pre class="pre mt-4 mb-6">portal-manage control issue-bootstrap-token \
   --device-id webui \
   --display-name "WebUI"</pre>
-    <form id="bootstrap-form" class="bootstrap-form mt-6 space-y-4" onsubmit={onBootstrapSubmit}>
+    <form id="bootstrap-form" class="mt-6 flex flex-col gap-3" onsubmit={onBootstrapSubmit}>
       <label class="label" for="bootstrap-device-id">
         <span class="label-text">Device ID</span>
         <input id="bootstrap-device-id" name="device_id" class="input" bind:value={bootDeviceId} required />
@@ -292,28 +292,28 @@
       </label>
       <label class="label" for="bootstrap-token">
         <span class="label-text">Bootstrap token</span>
-        <input id="bootstrap-token" name="bootstrap_token" class="input mono font-mono" bind:value={bootToken} required />
+        <input id="bootstrap-token" name="bootstrap_token" class="input font-mono" bind:value={bootToken} required />
       </label>
       <button type="submit" class="btn preset-filled-primary-500 w-full" disabled={bootBusy}>セットアップ</button>
-      <div id="bootstrap-error" class="bootstrap-error text-sm text-error-500">{bootError}</div>
+      <div id="bootstrap-error" class="text-sm text-error-500">{bootError}</div>
     </form>
   </section>
 {:else if phase === 'error'}
-  <div class="control-error text-error-500">Error: {errorMessage}</div>
+  <div class="p-10 text-center text-error-500">Error: {errorMessage}</div>
 {:else if phase === 'acl'}
-  <section class="control-section space-y-4">
-    <header class="control-section-header flex items-center justify-between gap-4">
+  <section class="card bg-surface-100-900 mb-6 space-y-4 p-6">
+    <header class="mb-4 flex flex-wrap items-center justify-between gap-2">
       <h2 class="h2">ACL</h2>
     </header>
     {#if !isAdmin}
-      <div class="control-guard card bg-surface-100-900 space-y-4 p-6">
+      <div data-testid="control-guard" class="card bg-surface-100-900 space-y-4 p-10 text-center text-surface-600-400">
         <p>
           この画面は admin 専用です。現在のデバイス <code>{me?.id || '(unknown)'}</code> には admin 権限がありません。
         </p>
         <a href="/control/devices" class="btn preset-filled-primary-500">Devices に戻る</a>
       </div>
     {:else}
-      <form id="acl-form" class="control-form grid gap-2 sm:grid-cols-2 lg:grid-cols-5" onsubmit={onAclSubmit}>
+      <form id="acl-form" class="grid gap-2 sm:grid-cols-2 lg:grid-cols-5" onsubmit={onAclSubmit}>
         <input
           name="source_device"
           class="input"
@@ -366,10 +366,10 @@
     {/if}
   </section>
 {:else if phase === 'devices'}
-  <section class="control-section space-y-4">
-    <header class="control-section-header flex items-center justify-between gap-4">
+  <section class="card bg-surface-100-900 mb-6 space-y-4 p-6">
+    <header class="mb-4 flex flex-wrap items-center justify-between gap-2">
       <h2 class="h2">Devices</h2>
-      <span class="control-section-subtitle text-sm text-surface-600-400">{me?.id || ''}{isAdmin ? ' (admin)' : ''}</span>
+      <span class="font-mono text-sm text-surface-600-400">{me?.id || ''}{isAdmin ? ' (admin)' : ''}</span>
     </header>
     <div id="devices-list" class="card bg-surface-100-900 overflow-x-auto">
       {#if devicesError}
@@ -424,8 +424,8 @@
   </section>
 
   {#if isAdmin}
-    <section class="control-section mt-10 space-y-4">
-      <header class="control-section-header flex items-center justify-between gap-4">
+    <section class="card bg-surface-100-900 mt-10 mb-6 space-y-4 p-6">
+      <header class="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 class="h2">Bootstrap Tokens</h2>
         <button type="button" class="btn preset-filled-primary-500" id="issue-token-btn" onclick={onIssueToken}>
           Issue Token

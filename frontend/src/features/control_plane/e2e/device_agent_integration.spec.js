@@ -168,7 +168,7 @@ test.describe('Device Agent Integration', () => {
     // 9. Execute Command via Operations page
     await page.goto('/operations');
     await expect(page.locator('h2', { hasText: 'Operations' })).toBeVisible();
-    const opBtn = page.locator('.provider-card button', { hasText: 'Echo Test Button' });
+    const opBtn = page.locator('[data-testid="provider-card"] button', { hasText: 'Echo Test Button' });
     await expect(opBtn).toBeVisible();
     await expect(opBtn).toBeEnabled();
 

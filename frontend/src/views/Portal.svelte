@@ -67,8 +67,8 @@
   }
 </script>
 
-<section class="hero-section mb-8">
-  <h1 class="h1">Android 端末のプロビジョニングを快適に</h1>
+<section class="mb-8 pt-16 pb-10 text-center">
+  <h1 class="h1 mb-4 bg-gradient-to-br from-white to-surface-600-400 bg-clip-text text-[3rem] font-extrabold leading-[1.15] tracking-[-1.5px] text-transparent max-md:text-[2.25rem]">Android 端末のプロビジョニングを快適に</h1>
   <p class="mt-2 text-surface-700-300">
     Obtainium を活用して、必要なアプリや自作/野良 APK を一括インストール・自動アップデート管理するためのローカルリポジトリです。
   </p>
@@ -108,7 +108,7 @@
   </div>
 </section>
 
-<section class="directory-section">
+<section class="pt-10 pb-20">
   <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
     <h2 class="h3 mb-0">登録アプリ一覧</h2>
     <div class="flex flex-wrap items-center gap-3">
@@ -116,8 +116,8 @@
         <option value="">すべてのカテゴリ</option>
         {#each categories as cat}<option value={cat}>{cat}</option>{/each}
       </select>
-      <div class="search-box">
-        <input type="text" id="app-search-input" class="input" placeholder="アプリ名で検索..." bind:value={query}>
+      <div class="flex w-[320px] items-center rounded-full border border-surface-200-800 bg-surface-100-900 px-5 py-2 transition-all focus-within:border-primary-500 focus-within:shadow-[0_0_10px_rgba(124,77,255,0.15)] max-md:w-full">
+        <input type="text" id="app-search-input" class="w-full border-none bg-transparent text-sm text-surface-900-100 outline-none placeholder:text-surface-600-400" placeholder="アプリ名で検索..." bind:value={query}>
       </div>
     </div>
   </div>
@@ -141,7 +141,7 @@
         {#if filtered.length === 0}
           <tr data-testid="empty-row">
             <td colspan="5">
-              <div class="empty-state"><p>該当するアプリが見つかりません。</p></div>
+              <div class="flex flex-col items-center justify-center py-16 text-center text-surface-700-300"><p>該当するアプリが見つかりません。</p></div>
             </td>
           </tr>
         {:else}
@@ -149,7 +149,7 @@
             {@const selfHosted = isSelfHosted(app)}
             <tr data-testid="app-row">
               <td class="col-name">
-                <div class="app-identity flex flex-col gap-1">
+                <div class="flex flex-col gap-1">
                   <span class="font-bold">{app.name}</span>
                   <span class="font-mono text-xs text-surface-600-400">{app.id}</span>
                 </div>
@@ -164,17 +164,17 @@
                 </div>
               </td>
               <td class="col-source">
-                <div class="source-identity flex items-center gap-2.5">
+                <div class="flex items-center gap-2.5">
                   <span class="badge {selfHosted ? 'preset-filled-secondary-500' : 'preset-filled-success-500'}">{selfHosted ? 'Self-Hosted' : 'Official'}</span>
-                  <span class="source-type text-sm font-medium text-surface-700-300">{app.overrideSource || 'Auto Detect'}</span>
+                  <span class="text-sm font-medium text-surface-700-300">{app.overrideSource || 'Auto Detect'}</span>
                 </div>
               </td>
-              <td class="col-version"><span class="version-text font-mono text-sm">{selfHosted && app._version ? app._version : 'Tracked on source'}</span></td>
+              <td class="col-version"><span class="rounded border border-secondary-500/10 bg-secondary-500/5 px-1.5 py-0.5 font-mono text-sm text-surface-900-100">{selfHosted && app._version ? app._version : 'Tracked on source'}</span></td>
               <td class="col-actions">
-                <div class="table-actions flex items-center gap-2">
-                  <a href={obtainiumLink(app)} class="btn preset-filled-primary-500 btn-sm"><span>Obtainium に追加</span></a>
+                <div class="flex items-center gap-2">
+                  <a href={obtainiumLink(app)} class="btn preset-filled-primary-500 [--btn-size:var(--text-sm)]"><span>Obtainium に追加</span></a>
                   {#if selfHosted}
-                    <a href={downloadUrl(app)} class="btn preset-tonal btn-sm" title="Direct APK Download">↓</a>
+                    <a href={downloadUrl(app)} class="btn preset-tonal [--btn-size:var(--text-sm)]" title="Direct APK Download">↓</a>
                   {/if}
                 </div>
               </td>

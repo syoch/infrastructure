@@ -110,7 +110,7 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
 
     await page.goto('/control/acl');
     await page.waitForLoadState('networkidle');
-    await expect(page.locator('.control-guard')).toBeVisible();
+    await expect(page.locator('[data-testid="control-guard"]')).toBeVisible();
     await expect(page.locator('#acl-form')).toHaveCount(0);
   });
 
@@ -126,7 +126,7 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
     await page.goto('/control/acl');
     await page.waitForLoadState('networkidle');
     const isForm = await page.locator('#acl-form').count();
-    const isGuard = await page.locator('.control-guard').count();
+    const isGuard = await page.locator('[data-testid="control-guard"]').count();
     expect(isForm + isGuard).toBeGreaterThan(0);
   });
 

@@ -10,7 +10,7 @@
 </script>
 
 {#if isApp}
-  <div id="app-edit-view" class="view-section active"><AppEdit {id} /></div>
+  <div id="app-edit-view"><AppEdit {id} /></div>
 {:else}
-  <div id="dashboard-view" class="view-section active"><Dashboard routeName="edit" {params} /></div>
+  <div id="dashboard-view"><Dashboard routeName="edit" {params} /></div>
 {/if}

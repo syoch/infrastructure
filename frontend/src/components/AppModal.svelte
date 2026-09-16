@@ -124,7 +124,7 @@
         class="card bg-surface-100-900 relative max-h-[90vh] w-full max-w-xl overflow-y-auto p-6 shadow-xl"
       >
         <button
-          class="btn-icon preset-tonal absolute top-3 right-3"
+          class="preset-tonal absolute top-3 right-3 h-4 w-4"
           id="app-modal-close"
           type="button"
           aria-label="閉じる"

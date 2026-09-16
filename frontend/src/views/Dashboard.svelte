@@ -340,7 +340,7 @@
               }}
             >
               <td>
-                <div class="app-identity flex flex-col gap-1">
+                <div class="flex flex-col gap-1">
                   <span class="font-bold" data-testid="app-name-text">{app.name}</span>
                   <span class="font-mono text-xs text-surface-600-400">{app.id}</span>
                 </div>
@@ -363,10 +363,10 @@
                 {/if}
               </td>
               <td class="text-right">
-                <div class="table-actions flex items-center justify-end gap-2">
+                <div class="flex items-center justify-end gap-2">
                   <span class="badge preset-tonal">{sourceLabel(app)}</span>
-                  <button class="btn preset-tonal btn-sm quick-edit-btn" onclick={() => openQuickEdit(app.id)}>簡易編集</button>
-                  <button class="btn preset-tonal-error btn-sm delete-app-btn" onclick={() => onDeleteApp(app.id)}>削除</button>
+                  <button class="btn preset-tonal [--btn-size:var(--text-sm)] quick-edit-btn" onclick={() => openQuickEdit(app.id)}>簡易編集</button>
+                  <button class="btn preset-tonal-error [--btn-size:var(--text-sm)] delete-app-btn" onclick={() => onDeleteApp(app.id)}>削除</button>
                 </div>
               </td>
             </tr>

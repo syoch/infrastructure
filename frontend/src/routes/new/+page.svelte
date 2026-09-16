@@ -6,4 +6,4 @@
   const params = $derived<Record<string, string>>({ type });
 </script>
 
-<div id="dashboard-view" class="view-section active"><Dashboard routeName="new" {params}  /></div>
+<div id="dashboard-view"><Dashboard routeName="new" {params}  /></div>

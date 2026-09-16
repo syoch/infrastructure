@@ -4,5 +4,3 @@
 @import '@skeletonlabs/skeleton-svelte';
 @import '@skeletonlabs/skeleton/themes/cerberus';
 
-/* Legacy stylesheet, kept while views are migrated to Skeleton components. */
-@import '../style.css';

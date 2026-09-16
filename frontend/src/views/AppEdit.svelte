@@ -254,7 +254,7 @@
   </div>
 </section>
 
-<div class="dashboard-card card mx-auto max-w-3xl bg-surface-100-900 border border-surface-200-800 p-8 backdrop-blur">
+<div class="card mx-auto max-w-3xl bg-surface-100-900 border border-surface-200-800 p-8 backdrop-blur">
   <form id="detailed-app-form" onsubmit={onSubmit}>
     <input type="hidden" id="edit-app-id-hidden" value={app?.id ?? ''} />
 
@@ -347,7 +347,7 @@
   </form>
 </div>
 
-<div id="self-hosted-apk-card" class="dashboard-card apk-management-card card mx-auto mt-6 max-w-3xl bg-surface-100-900 border border-surface-200-800 p-8 backdrop-blur {isSelfHosted ? '' : 'hidden'}">
+<div id="self-hosted-apk-card" class="card mx-auto mt-8 max-w-3xl bg-surface-100-900 border border-surface-200-800 p-8 backdrop-blur {isSelfHosted ? '' : 'hidden'}">
   <h2 class="h4">セルフホスト APK 管理 (Self-Hosted APKs)</h2>
   <p class="mt-1 text-sm text-surface-600-400">このアプリに関連付けられているセルフホスト APK ファイルを管理します。</p>
 
@@ -362,9 +362,9 @@
       >
         <FileUpload.Dropzone class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-container border-2 border-dashed border-surface-300-700 bg-surface-100-900 p-8 text-center transition-colors hover:bg-surface-200-800 data-[dragging]:border-primary-500 data-[dragging]:bg-primary-500/10">
           <span class="text-3xl">📥</span>
-          <span class="upload-dropzone-text" id="apk-dropzone-text">
+          <span class="text-sm text-surface-700-300" id="apk-dropzone-text">
             {#if apkFile}
-              選択されたファイル: <span class="upload-dropzone-filename font-medium">{apkFile.name}</span> ({(apkFile.size / (1024 * 1024)).toFixed(2)} MB)
+              選択されたファイル: <span class="break-all font-semibold text-success-500">{apkFile.name}</span> ({(apkFile.size / (1024 * 1024)).toFixed(2)} MB)
             {:else}
               ここに APK ファイルをドラッグ＆ドロップするか、クリックしてファイルを選択
             {/if}
@@ -403,7 +403,7 @@
 
   <h3 class="h5 mb-3">登録済み APK 一覧</h3>
   <div class="overflow-x-auto">
-    <table class="table apk-table">
+    <table class="table mt-4 text-sm">
       <thead>
         <tr>
           <th>バージョン</th>
@@ -422,9 +422,9 @@
             <tr>
               <td>{apk.version}</td>
               <td>{apk.architecture || '指定なし/自動'}</td>
-              <td class="apk-hash-text font-mono text-xs" title={apk.file_hash}>{apk.file_hash.substring(0, 16)}...</td>
+              <td class="font-mono text-xs text-surface-600-400" title={apk.file_hash}>{apk.file_hash.substring(0, 16)}...</td>
               <td class="text-right">
-                <button class="btn preset-tonal-error btn-sm delete-apk-btn" onclick={() => onDeleteApk(apk.id)}>削除</button>
+                <button class="btn preset-tonal-error [--btn-size:var(--text-sm)]" data-testid="apk-delete-btn" onclick={() => onDeleteApk(apk.id)}>削除</button>
               </td>
             </tr>
           {/each}

@@ -2,4 +2,4 @@
   import Control from '../../../views/Control.svelte';
 </script>
 
-<div id="control-view" class="view-section active"><Control sub="devices"  /></div>
+<div id="control-view"><Control sub="devices"  /></div>

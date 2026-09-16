@@ -266,7 +266,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await expect(selfHostedCard).toBeVisible();
 
     // Setup delete confirm handling
-    const deleteApkBtn = page.locator('#apk-list-tbody .delete-apk-btn');
+    const deleteApkBtn = page.locator('#apk-list-tbody [data-testid="apk-delete-btn"]');
     await deleteApkBtn.click();
     await expect(page.getByTestId('confirm-dialog')).toContainText('削除');
     await page.getByTestId('confirm-dialog-confirm').click();

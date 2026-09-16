@@ -230,7 +230,7 @@
           </div>
           <button
             type="button"
-            class="btn btn-secondary"
+            class="btn preset-tonal"
             style="flex: 0 0 auto;"
             onclick={() => removeProperty(name)}
           >
@@ -241,7 +241,7 @@
     </div>
     <button
       type="button"
-      class="btn btn-secondary"
+      class="btn preset-tonal"
       style="align-self: flex-start;"
       onclick={addProperty}
     >
@@ -278,7 +278,7 @@
               />
               <button
                 type="button"
-                class="btn btn-secondary"
+                class="btn preset-tonal"
                 onclick={() => removeEnumValue(index)}
               >
                 ×
@@ -288,7 +288,7 @@
         </div>
         <button
           type="button"
-          class="btn btn-secondary"
+          class="btn preset-tonal"
           style="align-self: flex-start;"
           onclick={addEnumValue}
         >

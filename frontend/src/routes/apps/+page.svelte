@@ -2,4 +2,4 @@
   import AppPortal from '../../views/AppPortal.svelte';
 </script>
 
-<div id="apps-view" class="view-section active"><AppPortal slug=""  /></div>
+<div id="apps-view"><AppPortal slug=""  /></div>

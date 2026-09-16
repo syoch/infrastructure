@@ -2,4 +2,4 @@
   import Dashboard from '../../views/Dashboard.svelte';
 </script>
 
-<div id="dashboard-view" class="view-section active"><Dashboard routeName="list"  /></div>
+<div id="dashboard-view"><Dashboard routeName="list"  /></div>

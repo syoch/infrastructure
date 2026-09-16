@@ -142,7 +142,7 @@ test.describe('Schema Renderer E2E Tests', () => {
     await page.waitForLoadState('networkidle');
 
     // Verify button exists (provider cards populate asynchronously)
-    const btn = page.locator('.provider-card button', { hasText: 'Test Op' });
+    const btn = page.locator('[data-testid="provider-card"] button', { hasText: 'Test Op' });
     await expect(btn).toBeVisible();
 
     // Click it
@@ -161,7 +161,7 @@ test.describe('Schema Renderer E2E Tests', () => {
     await expect(modal).toBeHidden();
 
     // Now test the Add Operation form with schema_editor
-    const addBtn = page.locator('.provider-card button', { hasText: 'Add Operation' });
+    const addBtn = page.locator('[data-testid="provider-card"] button', { hasText: 'Add Operation' });
     await expect(addBtn).toBeVisible();
     await addBtn.click();
 

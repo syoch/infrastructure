@@ -61,7 +61,7 @@
   </div>
 {:else if node.kind === 'array'}
   <div class="schema-array" style="display: flex; flex-direction: column; gap: 6px;">
-    <button type="button" class="btn btn-secondary" style="align-self: flex-start;" onclick={addItem}>
+    <button type="button" class="btn preset-tonal" style="align-self: flex-start;" onclick={addItem}>
       + Add
     </button>
     <div class="schema-array-items" style="display: flex; flex-direction: column; gap: 4px;">
@@ -73,7 +73,7 @@
           <SchemaForm node={item} />
           <button
             type="button"
-            class="btn btn-secondary"
+            class="btn preset-tonal"
             style="flex: 0 0 auto;"
             onclick={() => removeItem(index)}
           >

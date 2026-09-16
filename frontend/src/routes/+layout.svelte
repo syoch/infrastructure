@@ -180,3 +180,51 @@
 
 <ConfirmDialog />
 <PromptDialog />
+
+<style>
+  .blob-container {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.15;
+    mix-blend-mode: screen;
+    animation: float 25s infinite alternate;
+  }
+  .blob-1 {
+    width: 500px;
+    height: 500px;
+    background: #7c4dff;
+    top: -10%;
+    right: -5%;
+    animation-duration: 20s;
+  }
+  .blob-2 {
+    width: 400px;
+    height: 400px;
+    background: #00e5ff;
+    bottom: 10%;
+    left: -5%;
+    animation-duration: 25s;
+  }
+  .blob-3 {
+    width: 300px;
+    height: 300px;
+    background: #ff4081;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation-duration: 30s;
+  }
+  @keyframes float {
+    0% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(5%, 10%) scale(1.1); }
+    100% { transform: translate(-5%, -5%) scale(0.9); }
+  }
+</style>

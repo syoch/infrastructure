@@ -330,10 +330,10 @@
   }
 </script>
 
-<section class="control-section space-y-4">
-  <header class="control-section-header flex items-center justify-between gap-4">
+<section class="card bg-surface-100-900 mb-6 space-y-4 p-6">
+  <header class="mb-4 flex flex-wrap items-center justify-between gap-2">
     <h2 class="h2">Operations</h2>
-    <span class="control-section-subtitle text-sm text-surface-600-400">{me?.id || ''}</span>
+    <span class="font-mono text-sm text-surface-600-400">{me?.id || ''}</span>
   </header>
 
   <Tabs
@@ -355,16 +355,16 @@
       {:else}
         {#each providerEntries as [provider, providerOps] (provider)}
           {@const isOnline = onlineProviders.has(provider)}
-          <div class="provider-card card bg-surface-100-900 mb-4 p-4">
-            <div class="provider-card-header mb-3 flex items-center gap-2 text-base font-semibold">
+          <div data-testid="provider-card" class="card bg-surface-100-900 mb-4 p-4">
+            <div class="mb-3 flex items-center gap-2 text-base font-semibold">
               {provider}
               <span
-                class="provider-status {isOnline ? 'badge preset-filled-success-500' : 'badge preset-tonal-surface'}"
+                class={isOnline ? 'badge preset-filled-success-500' : 'badge preset-tonal-surface'}
               >
                 {isOnline ? 'online' : 'offline'}
               </span>
             </div>
-            <div class="provider-card-buttons flex flex-wrap gap-2">
+            <div class="flex flex-wrap gap-2">
               {#each providerOps as op (op.id)}
                 <button
                   type="button"
@@ -383,7 +383,7 @@
     </Tabs.Content>
 
     <Tabs.Content value="cmds" id="cmds-pane" data-testid="cmds-pane">
-      <div class="control-filter-bar card bg-surface-100-900 mb-4 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="card bg-surface-100-900 mb-4 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
         <label class="label" for="cmds-filter-status">
           <span class="label-text">Status</span>
           <select id="cmds-filter-status" class="select" bind:value={formStatus}>
@@ -440,7 +440,7 @@
             {:else}
               {#each cmds as command (command.id)}
                 <tr>
-                  <td><code class="mono font-mono">{command.id.substring(0, 8)}</code></td>
+                  <td><code class="font-mono">{command.id.substring(0, 8)}</code></td>
                   <td>{command.operation_id}</td>
                   <td>{command.source_device_id}</td>
                   <td>{command.target_device_id}</td>
@@ -452,7 +452,7 @@
                   <td>{(command.created_at || '').toString().substring(0, 19)}</td>
                   <td>{(command.finished_at || '').toString().substring(0, 19)}</td>
                   <td>
-                    <code class="mono font-mono">
+                    <code class="font-mono">
                       {JSON.stringify(command.result || command.error || '').substring(0, 60)}
                     </code>
                   </td>
@@ -463,8 +463,8 @@
         </table>
       </div>
 
-      <div class="control-pagination mt-4 flex flex-wrap items-center gap-4">
-        <span class="control-pagination-info text-sm text-surface-600-400">Showing {pageFrom}-{pageTo} of {total}</span>
+      <div class="mt-4 flex flex-wrap items-center gap-4">
+        <span class="text-sm text-surface-600-400">Showing {pageFrom}-{pageTo} of {total}</span>
         <Pagination
           count={total}
           pageSize={applied.limit}
@@ -497,12 +497,12 @@
         >
           <Dialog.Title>
             {#snippet element(attributes)}
-              <h2 {...attributes} id="op-modal-title" class="card-title">
+              <h2 {...attributes} id="op-modal-title" class="mb-3 text-xl font-bold">
                 {modalTitle}
               </h2>
             {/snippet}
           </Dialog.Title>
-          <p class="card-subtitle mb-4 text-surface-600-400">
+          <p class="mb-4 text-sm text-surface-600-400">
             {modalDescription}
           </p>
           <form id="op-form" class="flex flex-col gap-3" onsubmit={onModalSubmit}>
@@ -512,7 +512,7 @@
             {#if modalError}
               <div class="text-sm text-error-500">Error: {modalError}</div>
             {/if}
-            <div class="form-actions mt-4 flex gap-2">
+            <div class="mt-6 flex gap-2">
               <button type="submit" class="btn preset-filled-primary-500 flex-[2]" disabled={modalBusy}>
                 {modalBusy ? '送信中…' : '実行'}
               </button>

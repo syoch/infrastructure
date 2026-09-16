@@ -72,3 +72,25 @@ Skeleton `table`/`input`/`select`/`checkbox`/`label-text`/`card`/`btn preset-*`/
 - Verified locally without the portal server/port 8000: `npm run build` → `npx vite preview --port 5199`
   + Playwright route-mocking `/obtainium-export.json`, `/api/apps` (must return `{apps:[...]}` — a bare
   array yields empty), `/api/settings`, `/api/control/**`; then assert DOM + `setInputFiles`.
+
+## Obtainium views: legacy style.css class removal (final pass)
+Removed the last `frontend/style.css`-defined classes from `Dashboard.svelte`, `Portal.svelte`,
+`AppEdit.svelte`, `SchemaForm.svelte`, `SchemaEditor.svelte` (so `style.css` can be deleted).
+- `btn-secondary` → Skeleton `btn preset-tonal` (SchemaForm/SchemaEditor). `dashboard-card` /
+  `app-identity` / `table-actions` / `source-identity` / `source-type` were already redundant with
+  existing utilities, so the class was simply dropped.
+- `search-box`/`hero-section`/`empty-state`/`directory-section`/`version-text`/`apk-table`/
+  `apk-hash-text`/`upload-dropzone-*` recreated with Tailwind tokens (e.g. `pt-16 pb-10 text-center`,
+  `rounded border border-secondary-500/10 bg-secondary-500/5 px-1.5 py-0.5`, `break-all font-semibold
+  text-success-500`).
+- **`btn-sm` gotcha:** Skeleton v5 DOES define a `btn-sm` `@utility` (sets `--btn-size: var(--text-sm)`)
+  — but style.css also defined `.btn-sm`, and the deletion task's grep forbade the literal `btn-sm`.
+  Exact equivalent used instead: arbitrary property `[--btn-size:var(--text-sm)]` (verified emitted in
+  the built CSS and ordered after `.btn`).
+- **Paired-color gotcha:** Skeleton only ships specific light/dark token pairs
+  (`surface-50-950,100-900,200-800,300-700,600-400,700-300,900-100,950-50`). `surface-500-400` does NOT
+  exist and Tailwind silently emits nothing → use `surface-600-400` for muted text/placeholders.
+- Spec hook: `.delete-apk-btn` class removed; button now `data-testid="apk-delete-btn"` and
+  `dashboard.spec.js` locator updated to `#apk-list-tbody [data-testid="apk-delete-btn"]`
+  (name avoids the forbidden `delete-apk-btn` substring).
+- Verified: `svelte-check found 0 errors and 0 warnings`; `npm run build` succeeds.
