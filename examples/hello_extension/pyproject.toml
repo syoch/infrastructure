@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "portal-hello-extension"
+version = "0.1.0"
+description = "Example out-of-tree portal extension"
+# Depends on the portal distribution for the BaseExtension interface.
+dependencies = [
+    "portal",
+    "fastapi",
+]
+
+[project.entry-points."portal.extensions"]
+hello = "hello_extension.extension:HelloExtension"
+
+[tool.setuptools]
+packages = ["hello_extension"]

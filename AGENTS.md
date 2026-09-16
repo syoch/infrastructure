@@ -18,6 +18,8 @@ Obtainium と連携し、APK の配信・更新管理を行う。
 | `backend/obtainium/tests/avd/` | Obtainium 統合試験 (AVD 使用) |
 | `nixos/` | NixOS モジュール (`portal-service.nix`, `portal-device-agent.nix`) |
 | `contrib/` | 非ポータル資産 (gamemcbe, tailscale, Android root ツール) と専用 flake |
+| `docs/` | ドキュメント (外部拡張の追加方法は `docs/external-extensions.md`) |
+| `examples/` | 外部拡張のサンプル (`hello_extension`) |
 | `.opencode/control-plane/` | Control plane 設計ドキュメント (Phase 1-12) |
 
 ## 開発環境

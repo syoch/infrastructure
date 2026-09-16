@@ -32,6 +32,7 @@ test-backend:
 	@echo "Running backend tests..."
 	python3 backend/core/tests/test_backup_restore.py
 	python3 backend/core/tests/verify_roundtrip.py
+	python3 backend/core/tests/test_external_extension.py
 	python3 backend/obtainium/tests/test_export_schema.py
 	python3 backend/obtainium/tests/test_obtainium_compiler.py
 	python3 backend/control_plane/tests/test_control_plane.py
