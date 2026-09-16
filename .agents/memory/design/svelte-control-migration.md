@@ -1,4 +1,4 @@
-# Svelte Control Plane + JSON Schema migration (portal/public/src)
+# Svelte Control Plane + JSON Schema migration (frontend/src)
 
 Migrated the control-plane area from vanilla `js/control_*.ts` to Svelte 5:
 - `src/views/Control.svelte` (bootstrap form / Devices / ACL; admin visibility from `auth.me.is_first_webui_device`)
@@ -27,5 +27,5 @@ Deleted: control_bootstrap/devices/acl/operations/op_renderer + schema_renderer/
 5. Vue of `#cmds-pane td:nth-child(5)` = status, `td:nth-child(8)` = result (kept column order).
 
 ## Verification (all pass)
-- `nix develop --command bash -c "cd portal/public && npm run build"` (no new a11y warnings)
+- `nix develop --command bash -c "cd frontend && npm run build"` (no new a11y warnings)
 - Playwright: control_split.spec.js + schema_renderer.spec.js + device_agent_integration.spec.js = 16 passed.

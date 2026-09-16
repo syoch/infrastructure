@@ -28,3 +28,4 @@ __pycache__
 update-ip.sh
 init-cert.sh
 setup.sh
+tests/node_modules

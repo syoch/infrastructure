@@ -11,18 +11,18 @@ Covers dashboard CRUD, category management, APK upload, import, and portal publi
 ## When to use me
 
 Use this after modifying any of:
-- `portal/public/js/dashboard.js`
-- `portal/public/js/portal.js`
-- `portal/public/js/ui.js`
-- `portal/public/js/api.js`
-- `portal/public/index.html`
-- `portal/public/style.css`
+- `frontend/js/dashboard.js`
+- `frontend/js/portal.js`
+- `frontend/js/ui.js`
+- `frontend/js/api.js`
+- `frontend/index.html`
+- `frontend/style.css`
 
 ## Command
 
 ```bash
 # pwd MUST be the repository root (/home/syoch/ghq/github.com/syoch/infrastructure)
-nix develop --command bash -c "cd portal/tests && npx playwright test --reporter=list"
+nix develop --command bash -c "cd tests && npx playwright test --reporter=list"
 ```
 
 Or via Make:
@@ -43,9 +43,9 @@ make test-e2e
 
 ## Test structure
 
-- `portal/tests/dashboard.spec.js` — Dashboard UI tests (12 tests)
-- `portal/tests/portal.spec.js` — Public portal UI tests (6 tests)
-- `portal/tests/playwright.config.js` — Config (baseURL: `http://localhost:8000`)
+- `tests/dashboard.spec.js` — Dashboard UI tests (12 tests)
+- `tests/portal.spec.js` — Public portal UI tests (6 tests)
+- `tests/playwright.config.js` — Config (baseURL: `http://localhost:8000`)
 
 ## Notes
 

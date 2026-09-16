@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "portal"
+version = "0.1.0"
+description = "Android Device Provisioning Portal"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "sqlalchemy",
+    "pydantic",
+    "python-multipart",
+    "psycopg2",
+    "jsonschema",
+    "websockets"
+]
+
+[project.scripts]
+portal-server = "backend.app:main"
+portal-manage = "backend.manage:main"
+portal-control-bridge = "backend.control_plane.bridge:main"
+portal-device-agent = "device_agent.agent:main"
+portal-opencode-tool = "backend.app_portal.opencode_tool:main"
+
+[tool.setuptools]
+packages = ["backend", "backend.core", "backend.utils", "backend.extensions", "backend.obtainium", "backend.storage", "backend.control_plane", "backend.app_portal", "device_agent"]
+
+[tool.setuptools.package-data]
+"*" = ["**/*"]
+
+[tool.setuptools.exclude-package-data]
+"*" = ["**/__pycache__/*", "**/*.pyc"]
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "."
+explicit_package_bases = true
+namespace_packages = true
+ignore_missing_imports = true
+follow_imports = "silent"
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = false
+show_error_codes = true
+plugins = ["sqlalchemy.ext.mypy.plugin"]
+exclude = ["tests/", "build/"]
+

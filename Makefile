@@ -15,42 +15,42 @@ help:
 	@echo "  make clean                 - Remove test artifacts (SQLite databases, uploads)"
 
 typecheck:
-	cd portal/public && npm run typecheck
-	cd portal && mypy backend servers agents manage.py
+	cd frontend && npm run typecheck
+	mypy backend device_agent
 
 install-hooks:
 	git config core.hooksPath .githooks
 	@echo "core.hooksPath set to .githooks"
 
 install-deps:
-	cd portal/tests && npm install
+	cd tests && npm install
 
 test-seed:
-	python3 portal/manage.py --config portal/tests/config.test.json restore --in portal/tests/bootstrap/seed_backup.tar.gz
+	python3 backend/manage.py --config tests/config.test.json restore --in tests/bootstrap/seed_backup.tar.gz
 
 test-backend:
 	@echo "Running backend tests..."
-	python3 portal/tests/backend/test_backup_restore.py
-	python3 portal/tests/backend/verify_roundtrip.py
-	python3 portal/tests/backend/test_obtainium_compiler.py
-	python3 portal/tests/backend/test_control_plane.py
-	python3 portal/tests/backend/test_control_plane_core.py
-	python3 portal/tests/backend/test_control_plane_backup.py
-	python3 portal/tests/backend/test_control_plane_ws.py
-	python3 portal/tests/backend/test_app_portal.py
-	python3 portal/tests/backend/test_opencode_tool.py
-	python3 portal/tests/backend/test_app_portal_delivery_e2e.py
-	python3 portal/tests/backend/test_device_agent.py
+	python3 tests/backend/test_backup_restore.py
+	python3 tests/backend/verify_roundtrip.py
+	python3 tests/backend/test_obtainium_compiler.py
+	python3 tests/backend/test_control_plane.py
+	python3 tests/backend/test_control_plane_core.py
+	python3 tests/backend/test_control_plane_backup.py
+	python3 tests/backend/test_control_plane_ws.py
+	python3 tests/backend/test_app_portal.py
+	python3 tests/backend/test_opencode_tool.py
+	python3 tests/backend/test_app_portal_delivery_e2e.py
+	python3 tests/backend/test_device_agent.py
 
-test-e2e: portal/tests/node_modules
+test-e2e: tests/node_modules
 	@echo "Building frontend..."
-	cd portal/public && npm install && npm run build
+	cd frontend && npm install && npm run build
 	@echo "Running Playwright E2E tests..."
-	cd portal/tests && npx playwright test
+	cd tests && npx playwright test
 
-test-e2e-ui: portal/tests/node_modules
+test-e2e-ui: tests/node_modules
 	@echo "Running Playwright E2E tests in UI mode..."
-	cd portal/tests && npx playwright test --ui
+	cd tests && npx playwright test --ui
 
 test: test-backend test-e2e
 
@@ -59,24 +59,24 @@ test-obtainium:
 		echo "Usage: make test-obtainium BACKUP=path/to/backup-XXXX.tgz" >&2; \
 		exit 2; \
 	fi
-	nix develop -c ./portal/tests/obtainium-integration/obtainium-integration --backup-tarball "$(BACKUP)"
+	nix develop -c ./tests/obtainium-integration/obtainium-integration --backup-tarball "$(BACKUP)"
 
 test-obtainium-smoke:
 	@if [[ -z "$(BACKUP)" ]]; then \
 		echo "Usage: make test-obtainium-smoke BACKUP=path/to/backup-XXXX.tgz" >&2; \
 		exit 2; \
 	fi
-	nix develop -c ./portal/tests/obtainium-integration/obtainium-integration \
+	nix develop -c ./tests/obtainium-integration/obtainium-integration \
 		--backup-tarball "$(BACKUP)" \
 		--apps 3 \
-		--output-dir ./portal/tests/obtainium-integration/results/smoke-$$(date +%s)
+		--output-dir ./tests/obtainium-integration/results/smoke-$$(date +%s)
 
-portal/tests/node_modules: portal/tests/package.json
-	cd portal/tests && npm install
-	touch portal/tests/node_modules
+tests/node_modules: tests/package.json
+	cd tests && npm install
+	touch tests/node_modules
 
 clean:
-	rm -f portal/tests/portal_test.db*
-	rm -rf portal/tests/uploads/*
-	rm -rf portal/tests/test-results
-	rm -rf portal/tests/obtainium-integration/results/*
+	rm -f tests/portal_test.db*
+	rm -rf tests/uploads/*
+	rm -rf tests/test-results
+	rm -rf tests/obtainium-integration/results/*

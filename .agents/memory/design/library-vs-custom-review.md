@@ -35,7 +35,7 @@ runtime-provided JSON Schemas). Prefer internal dedup over new deps.
   bulk_download_all). Consolidate; delete.
 - Playwright: 10× `page.waitForTimeout` + `networkidle` violate the repo no-sleep rule → use
   `expect`/`expect.poll`/`waitForResponse`.
-- Nix: python dep list duplicated ~5× (pyproject, portal/default.nix, flake.nix ×3) — centralize.
+- Nix: python dep list duplicated ~5× (pyproject, default.nix, flake.nix ×3) — centralize.
 
 ## Do NOT add
 python-socketio, pluggy/stevedore, pydantic-settings/dynaconf, sse-starlette,

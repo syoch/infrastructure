@@ -15,16 +15,16 @@ Run the full Obtainium integration test suite that verifies:
 ## When to use me
 
 Use this after modifying:
-- `portal/servers/obtainium_repo/compiler.py`
-- `portal/servers/obtainium_repo/main.py`
-- `portal/servers/obtainium_repo/models.py`
-- `portal/servers/obtainium_repo/utils.py`
+- `backend/obtainium/compiler.py`
+- `backend/obtainium/main.py`
+- `backend/obtainium/models.py`
+- `backend/obtainium/utils.py`
 
 ## Command
 
 ```bash
 # pwd MUST be the repository root
-nix develop -c ./portal/tests/obtainium-integration/obtainium-integration \
+nix develop -c ./tests/obtainium-integration/obtainium-integration \
   --backup-tarball /path/to/backup.tgz
 ```
 

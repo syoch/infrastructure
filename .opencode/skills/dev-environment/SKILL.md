@@ -58,6 +58,6 @@ make install-hooks     # Enable pre-commit secret scanner
 ## Notes
 
 - Pre-commit hook scans for secrets (Tailscale auth keys, etc.)
-- Test DB is SQLite at `portal/tests/portal_test.db`
-- Uploads go to `portal/tests/uploads/`
+- Test DB is SQLite at `tests/portal_test.db`
+- Uploads go to `tests/uploads/`
 - `nix develop` may take首次 ~30s to build the dev shell

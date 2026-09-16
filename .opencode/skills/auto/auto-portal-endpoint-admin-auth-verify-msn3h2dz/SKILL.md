@@ -16,11 +16,11 @@ When an existing (or new) portal backend endpoint needs admin-only authenticatio
 ### Frontend (TypeScript)
 1. Reuse the token helper: dynamically `const { getToken } = await import('./control_api.js')`, read `getToken()`, and only set `Authorization: Bearer <token>` when a token exists. **Gotcha:** dynamic import avoids circular-dependency import cycles; never statically import control_api in api.ts.
 2. For blob downloads (backup), `fetch` with `{ headers }`, check `res.ok`, then `res.blob()` + `URL.createObjectURL` + synthetic `<a download>` click.
-3. Rebuild the frontend: `cd portal/public && npm run build`.
+3. Rebuild the frontend: `cd frontend && npm run build`.
 
 ### Runtime verification via curl (status-code differential)
-1. Clean state: `pkill -9 -f "manage.py|backend.main|uvicorn|_control_plane"; sleep 1; rm -f portal/tests/portal_test.db*`; reseed: `python3 portal/manage.py --config portal/tests/config.test.json restore --in portal/tests/bootstrap/seed_backup.tar.gz`.
-2. Start server: `cd portal/tests && python3 ../backend/main.py --config config.test.json > /tmp/server.log 2>&1 &`; confirm `ss -ltnp | grep :8000`.
+1. Clean state: `pkill -9 -f "manage.py|backend.app|uvicorn|_control_plane"; sleep 1; rm -f tests/portal_test.db*`; reseed: `python3 backend/manage.py --config tests/config.test.json restore --in tests/bootstrap/seed_backup.tar.gz`.
+2. Start server: `cd tests && python3 ../backend/main.py --config config.test.json > /tmp/server.log 2>&1 &`; confirm `ss -ltnp | grep :8000`.
 3. Expect **401/redirect without creds**: `curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/backup`.
 4. Issue token: `python3 manage.py --config config.test.json control issue-bootstrap-token --device-id admin-dev --display-name "Admin Dev"`. Register: `POST /api/control/devices/register` with `{device_id, display_name, bootstrap_token}`; extract `bearer_token` via `python3 -c "import sys,json; print(json.load(sys.stdin)['bearer_token'])"`. Promote: `python3 manage.py --config <cfg> control set-admin --device-id admin-dev`.
 5. Admin bearer must return **200**; register a second device, leave it non-admin, and confirm **403**.
@@ -30,6 +30,6 @@ When an existing (or new) portal backend endpoint needs admin-only authenticatio
 
 ## Pitfalls
 - `pkill` may not free port 8000 immediately; use `kill -9 <pid>` and re-check with `ss` before starting the server.
-- Always reset the DB (`rm -f portal/tests/portal_test.db*`) between runs to avoid stale admin/device state.
+- Always reset the DB (`rm -f tests/portal_test.db*`) between runs to avoid stale admin/device state.
 - Non-admin devices still receive a valid bearer token — 403, not 401, is the correct differential.
 - Don't send an empty `Authorization` header when no token exists; header-less requests hit the 401 path.

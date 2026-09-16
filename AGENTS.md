@@ -10,11 +10,11 @@ Obtainium と連携し、APK の配信・更新管理を行う。
 | ディレクトリ | 役割 |
 |-------------|------|
 | `portal/` | Python/FastAPI ベースの Portal Web アプリ |
-| `portal/backend/` | コアサーバー (extension loader, backup manager, database) |
+| `backend/` | コアサーバー (extension loader, backup manager, database) |
 | `portal/servers/` | エクステンション (StorageManager, ObtainiumRepo, **ControlPlane**) |
-| `portal/public/` | フロントエンド (SPA, vanilla JS) |
-| `portal/tests/` | E2E テスト (Playwright) + バックエンドテスト |
-| `portal/tests/obtainium-integration/` | Obtainium 統合試験 (AVD 使用) |
+| `frontend/` | フロントエンド (SPA, vanilla JS) |
+| `tests/` | E2E テスト (Playwright) + バックエンドテスト |
+| `tests/obtainium-integration/` | Obtainium 統合試験 (AVD 使用) |
 | `nixos/` | NixOS モジュール (portal-service, web-infrastructure) |
 | `tailscale/` | Tailscale VPN 設定テンプレート |
 | `gamemcbe/` | Minecraft Bedrock Dedicated Server |
@@ -45,7 +45,7 @@ make test-backend
 # Playwright E2E テスト (pwd はリポジトリルート必須)
 make test-e2e
 # または
-nix develop --command bash -c "cd portal/tests && npx playwright test --reporter=list"
+nix develop --command bash -c "cd tests && npx playwright test --reporter=list"
 
 # Obtainium 統合試験 (AVD 起動中 + バックアップ tarball 必須)
 make test-obtainium BACKUP=path/to/backup.tgz
@@ -85,19 +85,19 @@ make test-obtainium-smoke BACKUP=path/to/backup.tgz
 ## ポートとプロセス
 
 - Portal サーバー: `http://localhost:8000` (テスト時)
-- テスト DB: `portal/tests/portal_test.db` (SQLite, WAL モード)
-- テスト設定: `portal/tests/config.test.json`
+- テスト DB: `tests/portal_test.db` (SQLite, WAL モード)
+- テスト設定: `tests/config.test.json`
 - Control plane REST: `/api/control/{devices,acls,operations,commands,events}`
 - Control plane WS: `/api/control/devices/{device_id}/ws?token=tk_xxx`
 - Control plane bridge: `portal-control-bridge --server-url <...> --bootstrap-token <...>`
 - Device agent: `portal-device-agent --config /path/to/config.json` (generic shell-command-based)
 - Device dogfooding: `bridge.py` が `acl.*` / `device_admin.*` を advertise
 - WebUI: `#/control` ルート (Phase 12 で分割: `#/control/devices`, `#/control/acl`, `#/operations`)
-- Control JS モジュール: `portal/public/js/control_{router,bootstrap,devices,acl,operations,api}.js`
+- Control JS モジュール: `frontend/js/control_{router,bootstrap,devices,acl,operations,api}.js`
 - Operations クエリ: `#/operations?status=&from=&to=&op=&limit=&offset=`
 - 管理者昇格 CLI: `python3 manage.py --config <cfg> control set-admin --device-id <id>`
-- Schema renderer: `portal/public/js/schema_renderer.js` (JSON Schema → form, `ui_hint.widget: json|textarea|password`)
-- Schema editor: `portal/public/js/schema_editor.js` (visual JSON Schema editor)
+- Schema renderer: `frontend/js/schema_renderer.js` (JSON Schema → form, `ui_hint.widget: json|textarea|password`)
+- Schema editor: `frontend/js/schema_editor.js` (visual JSON Schema editor)
 - 設計: `.opencode/control-plane/PHASE{1..12}.md` を参照
 ## 注意事項
 

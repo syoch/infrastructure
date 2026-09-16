@@ -84,7 +84,7 @@ The WS lives on the main event loop. The dispatcher captures the main loop via
 ## Files
 
 ```
-portal/servers/control_plane/
+backend/control_plane/
   __init__.py
   main.py        # ControlPlaneExtension (BaseExtension)
   models.py      # 5 tables
@@ -123,8 +123,8 @@ portal-control-bridge \
 
 ## Tests
 
-- `portal/tests/backend/test_control_plane.py` (24 REST tests, no nix-only deps)
-- `portal/tests/backend/test_control_plane_ws.py` (5 WS tests, requires `nix develop`)
+- `tests/backend/test_control_plane.py` (24 REST tests, no nix-only deps)
+- `tests/backend/test_control_plane_ws.py` (5 WS tests, requires `nix develop`)
 
 Run all backend tests: `make test-backend`
 

@@ -4,7 +4,7 @@ with lib;
 
 let
   cfg = config.services.syoch-portal;
-  portalPkg = pkgs.python3Packages.callPackage ../portal { };
+  portalPkg = pkgs.python3Packages.callPackage ../default.nix { };
 in
 {
   options.services.syoch-portal = {

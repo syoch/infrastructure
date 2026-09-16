@@ -1,4 +1,4 @@
-# Svelte 5 Dashboard migration (portal/public/src)
+# Svelte 5 Dashboard migration (frontend/src)
 
 Dashboard + app-edit views migrated from vanilla `js/dashboard.ts` to:
 - `src/views/Dashboard.svelte` (list, categories bar, global settings, backup/restore, route-driven modals)
@@ -29,8 +29,8 @@ Dashboard + app-edit views migrated from vanilla `js/dashboard.ts` to:
    `allowImportingTsExtensions` errors for all migrated files. This is pre-existing; not fixed.
 
 5. `npm run typecheck` is not part of required verification; the gate is
-   `nix develop --command bash -c "cd portal/public && npm run build"` then Playwright
-   `dashboard.spec.js` (12 tests). Server serves `portal/public/dist`.
+   `nix develop --command bash -c "cd frontend && npm run build"` then Playwright
+   `dashboard.spec.js` (12 tests). Server serves `frontend/dist`.
 
 ## Verification result (2026-09-15)
 - `npm run build`: OK, no new a11y warnings (16 pre-existing AppPortal label warnings remain).

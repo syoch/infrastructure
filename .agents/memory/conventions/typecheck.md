@@ -2,12 +2,12 @@
 
 ## Gate
 `make typecheck` runs both:
-1. `cd portal/public && npm run typecheck` (svelte-check; `tsconfig.json` needs `noEmit: true` + `allowImportingTsExtensions: true` for `.svelte.ts` imports)
+1. `cd frontend && npm run typecheck` (svelte-check; `tsconfig.json` needs `noEmit: true` + `allowImportingTsExtensions: true` for `.svelte.ts` imports)
 2. `cd portal && mypy backend servers agents manage.py`
 
 Run inside `nix develop` (devShell now provides `mypy`; the devShell python also has sqlalchemy so the plugin is importable).
 
-## mypy config (`portal/pyproject.toml [tool.mypy]`)
+## mypy config (`pyproject.toml [tool.mypy]`)
 `python_version=3.12`, `mypy_path="."`, `explicit_package_bases`, `namespace_packages`, `ignore_missing_imports`, `follow_imports="silent"`, `check_untyped_defs`, `no_implicit_optional`, `plugins=["sqlalchemy.ext.mypy.plugin"]`, `exclude=["tests/","build/"]`.
 
 ## Pitfalls

@@ -37,9 +37,9 @@ curl -s -o /dev/null -w "%{http_code} %{content_type} %{size_download}" \
 ```bash
 # pwd MUST be the repository root
 nix develop --command bash -c \
-  "python3 portal/manage.py --config portal/tests/config.test.json restore \
-   --in portal/tests/bootstrap/seed_backup.tar.gz && \
-   python3 portal/backend/main.py --config portal/tests/config.test.json"
+  "python3 backend/manage.py --config tests/config.test.json restore \
+   --in tests/bootstrap/seed_backup.tar.gz && \
+   python3 backend/app.py --config tests/config.test.json"
 ```
 
 ## Expected results

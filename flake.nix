@@ -17,7 +17,7 @@
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        portalPython = pkgs.python3.withPackages (ps: import ./portal/python-deps.nix ps);
+        portalPython = pkgs.python3.withPackages (ps: import ./python-deps.nix ps);
       in
       rec {
         packages = {
@@ -74,7 +74,7 @@
                 chmod +x $out/bin/ksud-next
               '';
             };
-          portal = pkgs.python3Packages.callPackage ./portal {
+          portal = pkgs.python3Packages.callPackage ./default.nix {
             buildNpmPackage = pkgs.buildNpmPackage;
             python3Packages = pkgs.python3Packages;
           };
@@ -85,16 +85,16 @@
               PROJECT_ROOT=$(git rev-parse --show-toplevel)
               cd "$PROJECT_ROOT"
               echo "=== Running Python Backend Tests ==="
-              python3 portal/tests/backend/test_backup_restore.py
-              python3 portal/tests/backend/verify_roundtrip.py
-              python3 portal/tests/backend/test_obtainium_compiler.py
-              python3 portal/tests/backend/test_control_plane.py
-              python3 portal/tests/backend/test_control_plane_backup.py
-              python3 portal/tests/backend/test_control_plane_ws.py
-              python3 portal/tests/backend/test_app_portal.py
-              python3 portal/tests/backend/test_opencode_tool.py
-              python3 portal/tests/backend/test_app_portal_delivery_e2e.py
-              python3 portal/tests/backend/test_device_agent.py
+              python3 tests/backend/test_backup_restore.py
+              python3 tests/backend/verify_roundtrip.py
+              python3 tests/backend/test_obtainium_compiler.py
+              python3 tests/backend/test_control_plane.py
+              python3 tests/backend/test_control_plane_backup.py
+              python3 tests/backend/test_control_plane_ws.py
+              python3 tests/backend/test_app_portal.py
+              python3 tests/backend/test_opencode_tool.py
+              python3 tests/backend/test_app_portal_delivery_e2e.py
+              python3 tests/backend/test_device_agent.py
             '';
           };
           test-e2e = pkgs.writeShellApplication {
@@ -109,9 +109,9 @@
               PROJECT_ROOT=$(git rev-parse --show-toplevel)
               cd "$PROJECT_ROOT"
               echo "=== Building portal frontend (Vite) ==="
-              (cd portal/public && npm install && npm run build)
+              (cd frontend && npm install && npm run build)
               echo "=== Running Playwright E2E Tests ==="
-              cd portal/tests
+              cd tests
               if [ ! -d node_modules ]; then
                 npm install
               fi
