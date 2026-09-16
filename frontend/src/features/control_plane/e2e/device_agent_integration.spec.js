@@ -1,8 +1,8 @@
-const { test, expect, chromium } = require('@playwright/test');
-const { spawn, execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+import { test, expect, chromium } from '@playwright/test';
+import { spawn, execSync } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 
 test.describe('Device Agent Integration', () => {
   test.setTimeout(60000);
@@ -57,7 +57,7 @@ test.describe('Device Agent Integration', () => {
   function issueToken(deviceId, displayName) {
     const out = execSync(
       `python3 backend/manage.py --config tests/config.test.json control issue-bootstrap-token --device-id ${deviceId} --display-name "${displayName}"`,
-      { cwd: path.join(__dirname, '..') }
+      { cwd: process.env.REPO_ROOT }
     ).toString();
     const m = out.match(/Bootstrap token: ([\w-]+)/);
     if (!m) throw new Error(`bootstrap token not found in: ${out}`);
@@ -67,14 +67,14 @@ test.describe('Device Agent Integration', () => {
   function promoteToAdmin(deviceId) {
     return execSync(
       `python3 backend/manage.py --config tests/config.test.json control set-admin --device-id ${deviceId}`,
-      { cwd: path.join(__dirname, '..') }
+      { cwd: process.env.REPO_ROOT }
     ).toString();
   }
 
   function listDevicesOutput() {
     return execSync(
       `python3 backend/manage.py --config tests/config.test.json control list-devices`,
-      { cwd: path.join(__dirname, '..') }
+      { cwd: process.env.REPO_ROOT }
     ).toString();
   }
 
@@ -111,7 +111,7 @@ test.describe('Device Agent Integration', () => {
 
     // 4. Start Agent (cwd = repo root so the device_agent finds the right DB module path)
     agentProcess = spawn('python3', ['-m', 'device_agent.agent', '--config', agentConfigPath], {
-      cwd: path.join(__dirname, '..'),
+      cwd: process.env.REPO_ROOT,
       stdio: 'pipe',
       env: { ...process.env, PYTHONPATH: '.' }
     });

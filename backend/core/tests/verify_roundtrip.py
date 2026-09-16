@@ -4,9 +4,9 @@ import json
 
 # Ensure portal root is in Python Path
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-TESTS_DIR = os.path.dirname(SCRIPT_DIR)
-PORTAL_DIR = os.path.dirname(TESTS_DIR)
-ROOT_DIR = os.path.dirname(PORTAL_DIR)
+PORTAL_DIR = os.path.dirname(os.path.dirname(os.path.dirname(SCRIPT_DIR)))
+TESTS_DIR = os.path.join(PORTAL_DIR, "tests")
+ROOT_DIR = PORTAL_DIR
 
 if PORTAL_DIR not in sys.path:
     sys.path.insert(0, PORTAL_DIR)
@@ -59,7 +59,7 @@ def canonicalize_settings(settings):
 
 def run_verification():
     # 1. Load original export file
-    export_path = os.path.join(PORTAL_DIR, 'tests', 'backend', 'baseline_obtainium-export.json')
+    export_path = os.path.join(SCRIPT_DIR, 'baseline_obtainium-export.json')
     if not os.path.exists(export_path):
         print(f"Error: {export_path} not found.")
         sys.exit(1)

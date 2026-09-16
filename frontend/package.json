@@ -9,11 +9,14 @@
     "watch": "vite build --watch",
     "preview": "vite preview",
     "typecheck": "svelte-check --tsconfig ./tsconfig.json",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
     "lint": "eslint . --ext .ts,.js",
     "format": "prettier --write .",
     "clean": "rm -rf dist"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "@types/node": "^22.0.0",
     "eslint": "^9.0.0",

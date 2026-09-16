@@ -1,6 +1,6 @@
-const { test, expect, chromium, request } = require('@playwright/test');
-const { execSync } = require('child_process');
-const path = require('path');
+import { test, expect, chromium, request } from '@playwright/test';
+import { execSync } from 'node:child_process';
+import path from 'node:path';
 
 test.describe('App Portal UI', () => {
   let browser;
@@ -43,7 +43,7 @@ test.describe('App Portal UI', () => {
   function issueToken(deviceId, displayName) {
     const out = execSync(
       `python3 backend/manage.py --config tests/config.test.json control issue-bootstrap-token --device-id ${deviceId} --display-name "${displayName}"`,
-      { cwd: path.join(__dirname, '..') }
+      { cwd: process.env.REPO_ROOT }
     ).toString();
     const m = out.match(/Bootstrap token: ([\w-]+)/);
     if (!m) throw new Error(`bootstrap token not found in: ${out}`);
@@ -53,7 +53,7 @@ test.describe('App Portal UI', () => {
   function promoteToAdmin(deviceId) {
     execSync(
       `python3 backend/manage.py --config tests/config.test.json control set-admin --device-id ${deviceId}`,
-      { cwd: path.join(__dirname, '..') }
+      { cwd: process.env.REPO_ROOT }
     );
   }
 

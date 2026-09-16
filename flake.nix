@@ -85,16 +85,18 @@
               PROJECT_ROOT=$(git rev-parse --show-toplevel)
               cd "$PROJECT_ROOT"
               echo "=== Running Python Backend Tests ==="
-              python3 tests/backend/test_backup_restore.py
-              python3 tests/backend/verify_roundtrip.py
-              python3 tests/backend/test_obtainium_compiler.py
-              python3 tests/backend/test_control_plane.py
-              python3 tests/backend/test_control_plane_backup.py
-              python3 tests/backend/test_control_plane_ws.py
-              python3 tests/backend/test_app_portal.py
-              python3 tests/backend/test_opencode_tool.py
-              python3 tests/backend/test_app_portal_delivery_e2e.py
-              python3 tests/backend/test_device_agent.py
+              python3 backend/core/tests/test_backup_restore.py
+              python3 backend/core/tests/verify_roundtrip.py
+              python3 backend/obtainium/tests/test_export_schema.py
+              python3 backend/obtainium/tests/test_obtainium_compiler.py
+              python3 backend/control_plane/tests/test_control_plane.py
+              python3 backend/control_plane/tests/test_control_plane_core.py
+              python3 backend/control_plane/tests/test_control_plane_backup.py
+              python3 backend/control_plane/tests/test_control_plane_ws.py
+              python3 backend/control_plane/tests/test_device_agent.py
+              python3 backend/app_portal/tests/test_app_portal.py
+              python3 backend/app_portal/tests/test_opencode_tool.py
+              python3 backend/app_portal/tests/test_app_portal_delivery_e2e.py
             '';
           };
           test-e2e = pkgs.writeShellApplication {
@@ -111,7 +113,7 @@
               echo "=== Building portal frontend (Vite) ==="
               (cd frontend && npm install && npm run build)
               echo "=== Running Playwright E2E Tests ==="
-              cd tests
+              cd frontend
               if [ ! -d node_modules ]; then
                 npm install
               fi

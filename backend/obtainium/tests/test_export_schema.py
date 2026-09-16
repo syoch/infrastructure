@@ -16,9 +16,9 @@ import tempfile
 import zipfile
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-TESTS_DIR = os.path.dirname(SCRIPT_DIR)
-PORTAL_DIR = os.path.dirname(TESTS_DIR)
-ROOT_DIR = os.path.dirname(PORTAL_DIR)
+PORTAL_DIR = os.path.dirname(os.path.dirname(os.path.dirname(SCRIPT_DIR)))
+TESTS_DIR = os.path.join(PORTAL_DIR, "tests")
+ROOT_DIR = PORTAL_DIR
 BACKUP_DIR = os.path.join(TESTS_DIR, 'bootstrap')
 
 if PORTAL_DIR not in sys.path:

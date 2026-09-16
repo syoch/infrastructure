@@ -6,7 +6,7 @@ from datetime import datetime
 
 # Set up paths
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PORTAL_DIR = os.path.dirname(os.path.dirname(SCRIPT_DIR))
+PORTAL_DIR = os.path.dirname(os.path.dirname(os.path.dirname(SCRIPT_DIR)))
 if PORTAL_DIR not in sys.path:
     sys.path.insert(0, PORTAL_DIR)
 

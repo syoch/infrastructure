@@ -23,34 +23,35 @@ install-hooks:
 	@echo "core.hooksPath set to .githooks"
 
 install-deps:
-	cd tests && npm install
+	cd frontend && npm install
 
 test-seed:
 	python3 backend/manage.py --config tests/config.test.json restore --in tests/bootstrap/seed_backup.tar.gz
 
 test-backend:
 	@echo "Running backend tests..."
-	python3 tests/backend/test_backup_restore.py
-	python3 tests/backend/verify_roundtrip.py
-	python3 tests/backend/test_obtainium_compiler.py
-	python3 tests/backend/test_control_plane.py
-	python3 tests/backend/test_control_plane_core.py
-	python3 tests/backend/test_control_plane_backup.py
-	python3 tests/backend/test_control_plane_ws.py
-	python3 tests/backend/test_app_portal.py
-	python3 tests/backend/test_opencode_tool.py
-	python3 tests/backend/test_app_portal_delivery_e2e.py
-	python3 tests/backend/test_device_agent.py
+	python3 backend/core/tests/test_backup_restore.py
+	python3 backend/core/tests/verify_roundtrip.py
+	python3 backend/obtainium/tests/test_export_schema.py
+	python3 backend/obtainium/tests/test_obtainium_compiler.py
+	python3 backend/control_plane/tests/test_control_plane.py
+	python3 backend/control_plane/tests/test_control_plane_core.py
+	python3 backend/control_plane/tests/test_control_plane_backup.py
+	python3 backend/control_plane/tests/test_control_plane_ws.py
+	python3 backend/control_plane/tests/test_device_agent.py
+	python3 backend/app_portal/tests/test_app_portal.py
+	python3 backend/app_portal/tests/test_opencode_tool.py
+	python3 backend/app_portal/tests/test_app_portal_delivery_e2e.py
 
-test-e2e: tests/node_modules
+test-e2e: frontend/node_modules
 	@echo "Building frontend..."
 	cd frontend && npm install && npm run build
 	@echo "Running Playwright E2E tests..."
-	cd tests && npx playwright test
+	cd frontend && npx playwright test
 
-test-e2e-ui: tests/node_modules
+test-e2e-ui: frontend/node_modules
 	@echo "Running Playwright E2E tests in UI mode..."
-	cd tests && npx playwright test --ui
+	cd frontend && npx playwright test --ui
 
 test: test-backend test-e2e
 
@@ -71,9 +72,9 @@ test-obtainium-smoke:
 		--apps 3 \
 		--output-dir ./tests/obtainium-integration/results/smoke-$$(date +%s)
 
-tests/node_modules: tests/package.json
-	cd tests && npm install
-	touch tests/node_modules
+frontend/node_modules: frontend/package.json
+	cd frontend && npm install
+	touch frontend/node_modules
 
 clean:
 	rm -f tests/portal_test.db*

@@ -1,4 +1,4 @@
-const { test, expect, chromium } = require('@playwright/test');
+import { test, expect, chromium } from '@playwright/test';
 
 test.describe('Dashboard Refactored UI E2E Tests', () => {
   let browser;
