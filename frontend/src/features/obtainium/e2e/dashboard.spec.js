@@ -46,7 +46,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
 
   test('1. Initial layout check', async () => {
     // 1カラムのテーブルが存在することを確認
-    const listSection = page.locator('.dashboard-list-section');
+    const listSection = page.locator('[data-testid="dashboard-list-section"]');
     await expect(listSection).toBeVisible();
 
     // 2カラムだった時の古いフォームや設定カードが存在しないこと
@@ -92,7 +92,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     // テーブルにアプリが追加されていることを確認
     const newAppRow = page.locator(`#dashboard-apps-list tr:has-text("${pkgId}")`);
     await expect(newAppRow).toBeVisible();
-    await expect(newAppRow.locator('.app-name-text')).toContainText('Playwright Test App');
+    await expect(newAppRow.locator('[data-testid="app-name-text"]')).toContainText('Playwright Test App');
 
     // ---- 2-2. アプリ名クリックで簡易編集モーダル起動 ----
     // 行をクリック
@@ -169,7 +169,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await expect(catModal).toBeHidden();
     await expect(page).toHaveURL(/\/(list|dashboard)?$/);
 
-    const newCatChip = page.locator(`#dashboard-categories-bar .category-tag:has-text("${catName}")`);
+    const newCatChip = page.locator(`#dashboard-categories-bar [data-testid="category-tag"]:has-text("${catName}")`);
     await expect(newCatChip).toBeVisible();
 
     // ---- 3-2. カテゴリチップクリックで編集モーダル起動 & 削除 ----
@@ -187,7 +187,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
 
     // モーダルが閉じ、チップが消えること
     await expect(catModal).toBeHidden();
-    await expect(page.locator(`#dashboard-categories-bar .category-tag:has-text("${catName}")`)).not.toBeVisible();
+    await expect(page.locator(`#dashboard-categories-bar [data-testid="category-tag"]:has-text("${catName}")`)).not.toBeVisible();
   });
 
   test('4. Self-hosted APK upload, auto-fill, list check, scrape index and delete', async () => {
@@ -332,7 +332,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await expect(importedRow).toContainText('Mock Imported App');
 
     // Confirm category chip is added
-    const categoryChip = page.locator('#dashboard-categories-bar .category-tag:has-text("imported")');
+    const categoryChip = page.locator('#dashboard-categories-bar [data-testid="category-tag"]:has-text("imported")');
     await expect(categoryChip).toBeVisible();
 
     // Clean up: delete the imported app
@@ -395,10 +395,10 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await page.fill('#cat-modal-name', catName);
     await page.fill('#cat-modal-color', '#ff55aa11');
     await page.locator('#category-modal-form button[type="submit"]').click();
-    await page.waitForSelector(`#dashboard-categories-bar .category-tag:has-text("${catName}")`);
+    await page.waitForSelector(`#dashboard-categories-bar [data-testid="category-tag"]:has-text("${catName}")`);
 
     // ---- 7-3. Edit Category to bind the App ----
-    const catChip = page.locator(`#dashboard-categories-bar .category-tag:has-text("${catName}")`);
+    const catChip = page.locator(`#dashboard-categories-bar [data-testid="category-tag"]:has-text("${catName}")`);
     await catChip.click();
     await expect(page).toHaveURL(new RegExp(`/edit\\?type=category&id=${catName}`));
 
@@ -414,7 +414,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
 
     // Verify category tag is shown in the app row on the dashboard list
     const appRow = page.locator(`#dashboard-apps-list tr:has-text("${pkgId}")`);
-    await expect(appRow.locator(`.category-tag:has-text("${catName}")`)).toBeVisible();
+    await expect(appRow.locator(`[data-testid="category-tag"]:has-text("${catName}")`)).toBeVisible();
 
     // ---- 7-4. Edit Category to unbind the App ----
     await catChip.click();
@@ -425,7 +425,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await expect(page.locator('#category-modal')).toBeHidden();
 
     // Verify category tag is removed from the app row
-    await expect(appRow.locator(`.category-tag:has-text("${catName}")`)).not.toBeVisible();
+    await expect(appRow.locator(`[data-testid="category-tag"]:has-text("${catName}")`)).not.toBeVisible();
 
     // ---- 7-5. Cleanup (Delete App & Delete Category) ----
     // Delete App
@@ -441,7 +441,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await page.locator('#cat-modal-delete').click();
     await expect(page.getByTestId('confirm-dialog')).toContainText(catName);
     await page.getByTestId('confirm-dialog-confirm').click();
-    await expect(page.locator(`#dashboard-categories-bar .category-tag:has-text("${catName}")`)).not.toBeVisible();
+    await expect(page.locator(`#dashboard-categories-bar [data-testid="category-tag"]:has-text("${catName}")`)).not.toBeVisible();
   });
 
   test('8. Category auto-creation on app edit, then declare category and bind another app', async () => {
@@ -488,7 +488,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
 
     // Verify App A has CateA category tag in the list
     await expect(page).toHaveURL(/\/(list|dashboard)?$/);
-    await expect(appRowA.locator(`.category-tag:has-text("${catName}")`)).toBeVisible();
+    await expect(appRowA.locator(`[data-testid="category-tag"]:has-text("${catName}")`)).toBeVisible();
 
     // ---- 8-3. Create Category 'CateA' (already auto-created in db, now officially configured in settings) ----
     const addCatBtn = page.locator('#add-category-btn');
@@ -503,7 +503,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await expect(catModal).toBeHidden();
 
     // Verify category chip is shown in category bar
-    const catChip = page.locator(`#dashboard-categories-bar .category-tag:has-text("${catName}")`);
+    const catChip = page.locator(`#dashboard-categories-bar [data-testid="category-tag"]:has-text("${catName}")`);
     await expect(catChip).toBeVisible();
 
     // ---- 8-4. Edit Category 'CateA' to bind App B ----
@@ -527,9 +527,9 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await expect(catModal).toBeHidden();
 
     // ---- 8-5. Verify both App A and App B have CateA category tag ----
-    await expect(appRowA.locator(`.category-tag:has-text("${catName}")`)).toBeVisible();
+    await expect(appRowA.locator(`[data-testid="category-tag"]:has-text("${catName}")`)).toBeVisible();
     const appRowB = page.locator(`#dashboard-apps-list tr:has-text("${pkgIdB}")`);
-    await expect(appRowB.locator(`.category-tag:has-text("${catName}")`)).toBeVisible();
+    await expect(appRowB.locator(`[data-testid="category-tag"]:has-text("${catName}")`)).toBeVisible();
 
     // ---- 8-6. Cleanup (Delete App A, App B & Category) ----
     // Delete App A
@@ -553,7 +553,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await page.locator('#cat-modal-delete').click();
     await expect(page.getByTestId('confirm-dialog')).toContainText(catName);
     await page.getByTestId('confirm-dialog-confirm').click();
-    await expect(page.locator(`#dashboard-categories-bar .category-tag:has-text("${catName}")`)).not.toBeVisible();
+    await expect(page.locator(`#dashboard-categories-bar [data-testid="category-tag"]:has-text("${catName}")`)).not.toBeVisible();
   });
 
   test('9. Save app with overrideSource set to null via API (Pydantic validation check)', async ({ request }) => {
@@ -659,7 +659,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await page.locator('#category-modal-form button[type="submit"]').click();
     await expect(catModal).toBeHidden();
 
-    const catChip = page.locator(`#dashboard-categories-bar .category-tag:has-text("${originalCatName}")`);
+    const catChip = page.locator(`#dashboard-categories-bar [data-testid="category-tag"]:has-text("${originalCatName}")`);
     await expect(catChip).toBeVisible();
 
     // ---- 10-3. Edit Category 'OriginalCat' to bind App A ----
@@ -675,7 +675,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
 
     // Verify App A is bound to OriginalCat
     const appRowA = page.locator(`#dashboard-apps-list tr:has-text("${pkgIdA}")`);
-    await expect(appRowA.locator(`.category-tag:has-text("${originalCatName}")`)).toBeVisible();
+    await expect(appRowA.locator(`[data-testid="category-tag"]:has-text("${originalCatName}")`)).toBeVisible();
 
     // ---- 10-4. Rename Category 'OriginalCat' to 'RenamedCat' and also bind App B ----
     await catChip.click();
@@ -697,18 +697,18 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
 
     // ---- 10-5. Verify old category is gone and new category is bound to both A and B ----
     // Category bar checks
-    const oldCatChip = page.locator(`#dashboard-categories-bar .category-tag:has-text("${originalCatName}")`);
+    const oldCatChip = page.locator(`#dashboard-categories-bar [data-testid="category-tag"]:has-text("${originalCatName}")`);
     await expect(oldCatChip).not.toBeVisible();
-    const newCatChip = page.locator(`#dashboard-categories-bar .category-tag:has-text("${renamedCatName}")`);
+    const newCatChip = page.locator(`#dashboard-categories-bar [data-testid="category-tag"]:has-text("${renamedCatName}")`);
     await expect(newCatChip).toBeVisible();
 
     // App A checks (should lose OriginalCat, get RenamedCat)
-    await expect(appRowA.locator(`.category-tag:has-text("${originalCatName}")`)).not.toBeVisible();
-    await expect(appRowA.locator(`.category-tag:has-text("${renamedCatName}")`)).toBeVisible();
+    await expect(appRowA.locator(`[data-testid="category-tag"]:has-text("${originalCatName}")`)).not.toBeVisible();
+    await expect(appRowA.locator(`[data-testid="category-tag"]:has-text("${renamedCatName}")`)).toBeVisible();
 
     // App B checks (should get RenamedCat)
     const appRowB = page.locator(`#dashboard-apps-list tr:has-text("${pkgIdB}")`);
-    await expect(appRowB.locator(`.category-tag:has-text("${renamedCatName}")`)).toBeVisible();
+    await expect(appRowB.locator(`[data-testid="category-tag"]:has-text("${renamedCatName}")`)).toBeVisible();
 
     // ---- 10-6. Cleanup (Delete App A, App B, Category) ----
     // Delete App A
@@ -732,7 +732,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await page.locator('#cat-modal-delete').click();
     await expect(page.getByTestId('confirm-dialog')).toContainText(renamedCatName);
     await page.getByTestId('confirm-dialog-confirm').click();
-    await expect(page.locator(`#dashboard-categories-bar .category-tag:has-text("${renamedCatName}")`)).not.toBeVisible();
+    await expect(page.locator(`#dashboard-categories-bar [data-testid="category-tag"]:has-text("${renamedCatName}")`)).not.toBeVisible();
   });
 
   test('11. Edit and Save Global Settings', async () => {

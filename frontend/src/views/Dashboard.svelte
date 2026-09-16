@@ -260,108 +260,113 @@
   }
 </script>
 
-<section class="dashboard-header-section">
-  <div class="dashboard-title-row">
+<section class="dashboard-header-section mb-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
     <div>
-      <h1>アプリ管理ダッシュボード</h1>
-      <p class="hero-subtitle" style="margin:4px 0 0 0;text-align:left;">リポジトリ内のアプリ追加・編集・削除および設定のコンパイルを行います。</p>
+      <h1 class="h2">アプリ管理ダッシュボード</h1>
+      <p class="mt-1 text-sm text-surface-700-300">リポジトリ内のアプリ追加・編集・削除および設定のコンパイルを行います。</p>
     </div>
 
-    <div class="dashboard-header-actions" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-      <button id="import-json-btn" class="btn btn-secondary" style="border-color:var(--accent-primary);color:var(--accent-primary);" disabled={importBusy} onclick={onImportClick}>
+    <div class="flex flex-wrap items-center gap-3">
+      <button id="import-json-btn" class="btn preset-tonal-primary-500" disabled={importBusy} onclick={onImportClick}>
         <span>{importBusy ? 'インポート中...' : '📥 JSONインポート'}</span>
       </button>
-      <input type="file" id="import-json-file" accept=".json" style="display:none;" bind:this={importJsonFile} onchange={onImportChange} />
-      <button id="add-app-btn" class="btn btn-secondary" style="border-color:var(--accent-secondary);color:var(--accent-secondary);" onclick={() => navigate('/new?type=app')}>
+      <input type="file" id="import-json-file" accept=".json" class="hidden" bind:this={importJsonFile} onchange={onImportChange} />
+      <button id="add-app-btn" class="btn preset-tonal-secondary-500" onclick={() => navigate('/new?type=app')}>
         <span>➕ 新規アプリ登録</span>
       </button>
-      <button id="compile-btn" class="btn btn-primary" bind:this={compileBtn} onclick={onCompile}>
+      <button id="compile-btn" class="btn preset-filled-primary-500" bind:this={compileBtn} onclick={onCompile}>
         <span>設定をコンパイルして反映</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="btn-icon" style="width:16px;height:16px;color:#000;">
-          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" fill="none"/>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="size-4">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" fill="none" />
         </svg>
       </button>
     </div>
   </div>
 </section>
 
-<section class="categories-bar-section" style="margin-bottom:32px;background:var(--bg-card);padding:20px;border:1px solid var(--border-color);border-radius:var(--radius-lg);backdrop-filter:blur(20px);">
-  <h3 style="font-size:0.85rem;color:var(--color-text-secondary);margin-bottom:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">カテゴリ一覧と編集</h3>
-  <div id="dashboard-categories-bar" class="category-tags" style="gap:8px;display:flex;flex-wrap:wrap;align-items:center;">
-    {#each Object.entries(categories) as [catName, colorCode] (catName)}
-      <button
-        type="button"
-        class="category-tag interactive-tag"
-        data-name={catName}
-        style={getCategoryColorStyle(colorCode)}
-        onclick={() => openCategory(catName)}
-      >{catName}</button>
-    {/each}
-    <button id="add-category-btn" class="category-tag tag-none interactive-tag" style="background:rgba(255,255,255,0.02);border-style:dashed;cursor:pointer;border-radius:var(--radius-sm);padding:4px 10px;" onclick={() => navigate('/new?type=category')}>
-      ➕ 新規カテゴリ追加
-    </button>
+<section class="categories-bar-section mb-8">
+  <div class="card bg-surface-100-900 border border-surface-200-800 p-5 backdrop-blur">
+    <h3 class="label-text mb-3 uppercase tracking-wide text-surface-700-300">カテゴリ一覧と編集</h3>
+    <div id="dashboard-categories-bar" class="flex flex-wrap items-center gap-2">
+      {#each Object.entries(categories) as [catName, colorCode] (catName)}
+        <button
+          type="button"
+          class="chip cursor-pointer"
+          data-testid="category-tag"
+          data-name={catName}
+          style={getCategoryColorStyle(colorCode)}
+          onclick={() => openCategory(catName)}
+        >{catName}</button>
+      {/each}
+      <button id="add-category-btn" class="chip cursor-pointer border border-dashed border-surface-300-700" onclick={() => navigate('/new?type=category')}>
+        ➕ 新規カテゴリ追加
+      </button>
+    </div>
   </div>
 </section>
 
-<section class="dashboard-list-section">
-  <h2 class="section-title">登録アプリ一覧</h2>
-  <div class="apps-table-container">
-    <table class="apps-table">
+<section class="dashboard-list-section mb-8" data-testid="dashboard-list-section">
+  <h2 class="h3 mb-4">登録アプリ一覧</h2>
+  <div class="table-wrap card bg-surface-100-900 border border-surface-200-800">
+    <table class="table">
       <thead>
         <tr>
           <th>アプリ名 / ID</th>
-          <!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_click_events_have_key_events -->
-          <th id="dashboard-sort-category" class="sortable" style="cursor:pointer;user-select:none;" onclick={onSortClick}>
-            カテゴリ <span id="dashboard-sort-icon" class="sort-icon" style="opacity:0.6;margin-left:4px;">{sortDirection === 'asc' ? '▲' : sortDirection === 'desc' ? '▼' : '↕'}</span>
+          <th>
+            <button id="dashboard-sort-category" type="button" class="flex cursor-pointer items-center gap-1" onclick={onSortClick}>
+              カテゴリ <span id="dashboard-sort-icon" class="opacity-60">{sortDirection === 'asc' ? '▲' : sortDirection === 'desc' ? '▼' : '↕'}</span>
+            </button>
           </th>
           <th>ソースURL</th>
-          <th style="text-align:right;padding-right:32px;">操作</th>
+          <th class="pr-8 text-right">操作</th>
         </tr>
       </thead>
       <tbody id="dashboard-apps-list">
         {#if sortedApps.length === 0}
-          <tr>
-            <td colspan="4" style="text-align:center;padding:32px;color:var(--color-text-muted);">登録されているアプリがありません。新規アプリ登録から追加してください。</td>
+          <tr data-testid="empty-row">
+            <td colspan="4" class="p-8 text-center text-surface-600-400">登録されているアプリがありません。新規アプリ登録から追加してください。</td>
           </tr>
         {:else}
           {#each sortedApps as app (app.id)}
             <!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_click_events_have_key_events -->
             <tr
-              class="app-row"
+              class="cursor-pointer"
+              data-testid="app-row"
               onclick={(e) => {
                 const target = e.target as HTMLElement;
-                if (target.closest('button') || target.closest('.category-tag')) return;
+                if (target.closest('button') || target.closest('[data-testid="category-tag"]')) return;
                 openQuickEdit(app.id);
               }}
             >
               <td>
-                <div class="app-identity">
-                  <span class="app-name-text">{app.name}</span>
-                  <span class="app-package-text">{app.id}</span>
+                <div class="app-identity flex flex-col gap-1">
+                  <span class="font-bold" data-testid="app-name-text">{app.name}</span>
+                  <span class="font-mono text-xs text-surface-600-400">{app.id}</span>
                 </div>
               </td>
               <td>
-                <div class="category-tags">
+                <div class="flex flex-wrap gap-1.5" data-testid="category-tags">
                   {#if app.categories && app.categories.length > 0}
                     {#each app.categories as cat (cat)}
-                      <button type="button" class="category-tag" data-cat={cat} style={getCategoryColorStyle(categories[cat])} onclick={() => openCategory(cat)}>{cat}</button>
+                      <button type="button" class="chip cursor-pointer" data-testid="category-tag" data-cat={cat} style={getCategoryColorStyle(categories[cat])} onclick={() => openCategory(cat)}>{cat}</button>
                     {/each}
                   {:else}
-                    <span class="color-text-muted">-</span>
+                    <span class="text-surface-600-400">-</span>
                   {/if}
                 </div>
               </td>
-              <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                <span style="color:var(--accent-secondary);font-size:0.85rem;">{app.url}</span>
+              <td class="max-w-[300px] overflow-hidden text-ellipsis whitespace-nowrap">
+                <span class="text-sm text-secondary-500">{app.url}</span>
                 {#if sourceWarning(app)}
-                  <div class="app-warning-text" title={sourceWarning(app)}>{sourceWarning(app)}</div>
+                  <div class="text-xs text-warning-500" title={sourceWarning(app)}>{sourceWarning(app)}</div>
                 {/if}
               </td>
-              <td style="text-align:right;">
-                <div class="table-actions" style="justify-content:flex-end;gap:8px;">
-                  <span class="app-source-badge">{sourceLabel(app)}</span>
-                  <button class="btn btn-secondary btn-sm quick-edit-btn" onclick={() => openQuickEdit(app.id)}>簡易編集</button>
-                  <button class="btn btn-secondary btn-sm delete-app-btn" style="color:#ff5252;border-color:rgba(255,82,82,0.2);" onclick={() => onDeleteApp(app.id)}>削除</button>
+              <td class="text-right">
+                <div class="table-actions flex items-center justify-end gap-2">
+                  <span class="badge preset-tonal">{sourceLabel(app)}</span>
+                  <button class="btn preset-tonal btn-sm quick-edit-btn" onclick={() => openQuickEdit(app.id)}>簡易編集</button>
+                  <button class="btn preset-tonal-error btn-sm delete-app-btn" onclick={() => onDeleteApp(app.id)}>削除</button>
                 </div>
               </td>
             </tr>
@@ -372,75 +377,79 @@
   </div>
 </section>
 
-<section class="dashboard-settings-section" style="margin-top:32px;background:var(--bg-card);padding:24px;border:1px solid var(--border-color);border-radius:var(--radius-lg);backdrop-filter:blur(20px);">
-  <h3 style="font-size:0.85rem;color:var(--color-text-secondary);margin-bottom:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Obtainium グローバル設定 (Global Settings)</h3>
-  <p class="hero-subtitle" style="margin:0 0 20px 0;text-align:left;font-size:0.85rem;color:var(--color-text-muted);">Obtainium アプリ全体の共通動作や表示テーマなどの設定を管理します。</p>
+<section class="dashboard-settings-section mt-8">
+  <div class="card bg-surface-100-900 border border-surface-200-800 p-6 backdrop-blur">
+    <h3 class="label-text mb-3 uppercase tracking-wide text-surface-700-300">Obtainium グローバル設定 (Global Settings)</h3>
+    <p class="mb-5 text-sm text-surface-600-400">Obtainium アプリ全体の共通動作や表示テーマなどの設定を管理します。</p>
 
-  <form id="global-settings-form" onsubmit={onSettingsSubmit}>
-    <div class="form-row" style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
-      <div class="form-group" style="flex:1;min-width:200px;">
-        <label for="global-setting-theme" style="display:block;font-size:0.8rem;font-weight:600;margin-bottom:6px;color:var(--color-text-secondary);">テーマ (theme)</label>
-        <select id="global-setting-theme" class="filter-select" style="width:100%;background:rgba(255,255,255,0.05);color:var(--color-text-primary);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:8px 12px;outline:none;cursor:pointer;transition:var(--transition-smooth);" bind:value={theme}>
-          <option value="system">システム同期 (system)</option>
-          <option value="dark">ダークモード (dark)</option>
-          <option value="light">ライトモード (light)</option>
-        </select>
+    <form id="global-settings-form" onsubmit={onSettingsSubmit}>
+      <div class="mb-4 flex flex-wrap gap-4">
+        <div class="min-w-[200px] flex-1">
+          <label for="global-setting-theme" class="label-text mb-1.5">テーマ (theme)</label>
+          <select id="global-setting-theme" class="select" bind:value={theme}>
+            <option value="system">システム同期 (system)</option>
+            <option value="dark">ダークモード (dark)</option>
+            <option value="light">ライトモード (light)</option>
+          </select>
+        </div>
+
+        <div class="min-w-[200px] flex-1">
+          <label for="global-setting-check-interval" class="label-text mb-1.5">アップデートチェック間隔 (checkInterval / 時間)</label>
+          <input type="number" id="global-setting-check-interval" class="input" min="0" placeholder="例: 24" bind:value={checkInterval} />
+        </div>
       </div>
 
-      <div class="form-group" style="flex:1;min-width:200px;">
-        <label for="global-setting-check-interval" style="display:block;font-size:0.8rem;font-weight:600;margin-bottom:6px;color:var(--color-text-secondary);">アップデートチェック間隔 (checkInterval / 時間)</label>
-        <input type="number" id="global-setting-check-interval" min="0" placeholder="例: 24" style="width:100%;background:rgba(255,255,255,0.05);color:var(--color-text-primary);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:8px 12px;outline:none;transition:var(--transition-smooth);" bind:value={checkInterval} />
+      <div class="mb-6 grid gap-4" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr));">
+        <label class="flex cursor-pointer items-center gap-2 text-sm text-surface-700-300">
+          <input type="checkbox" id="global-setting-check-on-startup" class="checkbox" bind:checked={checkOnStartup} />
+          <span>起動時にアップデート確認 (checkOnStartup)</span>
+        </label>
+
+        <label class="flex cursor-pointer items-center gap-2 text-sm text-surface-700-300">
+          <input type="checkbox" id="global-setting-prerelease" class="checkbox" bind:checked={prerelease} />
+          <span>プレリリース版を含める (includePreReleases)</span>
+        </label>
+
+        <label class="flex cursor-pointer items-center gap-2 text-sm text-surface-700-300">
+          <input type="checkbox" id="global-setting-allow-source-change" class="checkbox" bind:checked={allowSourceChange} />
+          <span>ソース元の変更を許可 (allowSourceChange)</span>
+        </label>
+
+        <label class="flex cursor-pointer items-center gap-2 text-sm text-surface-700-300">
+          <input type="checkbox" id="global-setting-restrict-notification" class="checkbox" bind:checked={restrictNotification} />
+          <span>バックグラウンド制限警告を表示 (backgroundRestrictedNotification)</span>
+        </label>
       </div>
-    </div>
 
-    <div class="checkbox-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-bottom:24px;">
-      <label class="checkbox-label" style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer;color:var(--color-text-secondary);">
-        <input type="checkbox" id="global-setting-check-on-startup" style="cursor:pointer;" bind:checked={checkOnStartup} />
-        <span>起動時にアップデート確認 (checkOnStartup)</span>
-      </label>
-
-      <label class="checkbox-label" style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer;color:var(--color-text-secondary);">
-        <input type="checkbox" id="global-setting-prerelease" style="cursor:pointer;" bind:checked={prerelease} />
-        <span>プレリリース版を含める (includePreReleases)</span>
-      </label>
-
-      <label class="checkbox-label" style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer;color:var(--color-text-secondary);">
-        <input type="checkbox" id="global-setting-allow-source-change" style="cursor:pointer;" bind:checked={allowSourceChange} />
-        <span>ソース元の変更を許可 (allowSourceChange)</span>
-      </label>
-
-      <label class="checkbox-label" style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer;color:var(--color-text-secondary);">
-        <input type="checkbox" id="global-setting-restrict-notification" style="cursor:pointer;" bind:checked={restrictNotification} />
-        <span>バックグラウンド制限警告を表示 (backgroundRestrictedNotification)</span>
-      </label>
-    </div>
-
-    <div style="display:flex;justify-content:flex-end;">
-      <button type="submit" class="btn btn-primary" disabled={savingSettings}>
-        <span>{savingSettings ? '保存中...' : 'グローバル設定を保存'}</span>
-      </button>
-    </div>
-  </form>
+      <div class="flex justify-end">
+        <button type="submit" class="btn preset-filled-primary-500" disabled={savingSettings}>
+          <span>{savingSettings ? '保存中...' : 'グローバル設定を保存'}</span>
+        </button>
+      </div>
+    </form>
+  </div>
 </section>
 
-<section class="dashboard-system-section" style="margin-top:32px;background:var(--bg-card);padding:24px;border:1px solid var(--border-color);border-radius:var(--radius-lg);backdrop-filter:blur(20px);">
-  <h3 style="font-size:0.85rem;color:var(--color-text-secondary);margin-bottom:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">システムバックアップ / リストア</h3>
-  <p class="hero-subtitle" style="margin:0 0 16px 0;text-align:left;font-size:0.85rem;color:var(--color-text-muted);">データベースのレコードおよびアップロードされた APK ファイルを一括してバックアップ・復元します。</p>
+<section class="dashboard-system-section mt-8">
+  <div class="card bg-surface-100-900 border border-surface-200-800 p-6 backdrop-blur">
+    <h3 class="label-text mb-3 uppercase tracking-wide text-surface-700-300">システムバックアップ / リストア</h3>
+    <p class="mb-4 text-sm text-surface-600-400">データベースのレコードおよびアップロードされた APK ファイルを一括してバックアップ・復元します。</p>
 
-  <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
-    <a href="/api/backup" id="download-backup-btn" class="btn btn-secondary" style="border-color:var(--accent-primary);color:var(--accent-primary);text-decoration:none;display:inline-flex;align-items:center;" onclick={onDownloadBackup}>
-      <span>📤 バックアップをダウンロード</span>
-    </a>
+    <div class="flex flex-wrap items-center gap-4">
+      <a href="/api/backup" id="download-backup-btn" class="btn preset-tonal-primary-500" onclick={onDownloadBackup}>
+        <span>📤 バックアップをダウンロード</span>
+      </a>
 
-    <div style="display:flex;align-items:center;gap:8px;border-left:1px solid var(--border-color);padding-left:16px;flex-wrap:wrap;">
-      <select id="restore-strategy" class="filter-select" style="background:rgba(255,255,255,0.05);color:var(--color-text-primary);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:8px 12px;outline:none;cursor:pointer;height:38px;" bind:value={restoreStrategy}>
-        <option value="overwrite">上書き復元 (Overwrite)</option>
-        <option value="merge">マージ復元 (Merge)</option>
-      </select>
-      <button id="restore-btn" class="btn btn-secondary" style="border-color:var(--accent-secondary);color:var(--accent-secondary);height:38px;" disabled={restoreBusy} onclick={onRestoreClick}>
-        <span>{restoreBusy ? 'リストア中...' : '📥 バックアップからリストア'}</span>
-      </button>
-      <input type="file" id="restore-file-input" accept=".tar.gz" style="display:none;" bind:this={restoreFileInput} onchange={onRestoreChange} />
+      <div class="flex flex-wrap items-center gap-2 border-l border-surface-200-800 pl-4">
+        <select id="restore-strategy" class="select w-auto" bind:value={restoreStrategy}>
+          <option value="overwrite">上書き復元 (Overwrite)</option>
+          <option value="merge">マージ復元 (Merge)</option>
+        </select>
+        <button id="restore-btn" class="btn preset-tonal-secondary-500" disabled={restoreBusy} onclick={onRestoreClick}>
+          <span>{restoreBusy ? 'リストア中...' : '📥 バックアップからリストア'}</span>
+        </button>
+        <input type="file" id="restore-file-input" accept=".tar.gz" class="hidden" bind:this={restoreFileInput} onchange={onRestoreChange} />
+      </div>
     </div>
   </div>
 </section>

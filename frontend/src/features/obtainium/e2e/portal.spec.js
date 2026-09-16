@@ -66,7 +66,7 @@ test.describe('Portal Public UI E2E Tests', () => {
     await expect(page.locator('#portal-category-filter')).toBeVisible();
 
     // Check apps table
-    await expect(page.locator('#portal-view .apps-table')).toBeVisible();
+    await expect(page.locator('#portal-view [data-testid="apps-table"]')).toBeVisible();
   });
 
   test('2. Navigation routing to dashboard and back', async () => {
@@ -95,7 +95,7 @@ test.describe('Portal Public UI E2E Tests', () => {
 
     // Type a non-existent app name
     await searchInput.fill('nonexistent-app-xyz');
-    await expect(tableBody.locator('tr.empty-row')).toBeVisible();
+    await expect(tableBody.locator('tr[data-testid="empty-row"]')).toBeVisible();
     await expect(tableBody).toContainText('該当するアプリが見つかりません。');
   });
 
@@ -106,9 +106,9 @@ test.describe('Portal Public UI E2E Tests', () => {
     const options = await filterSelect.locator('option').allTextContents();
     if (options.includes('Game')) {
       await filterSelect.selectOption('Game');
-      const tableRows = await page.locator('#apps-table-body tr.app-row').all();
+      const tableRows = await page.locator('#apps-table-body tr[data-testid="app-row"]').all();
       for (const row of tableRows) {
-        await expect(row.locator('.category-tags')).toContainText('Game');
+        await expect(row.locator('[data-testid="category-tags"]')).toContainText('Game');
       }
     }
   });

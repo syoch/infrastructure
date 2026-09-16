@@ -176,7 +176,7 @@ test.describe('Device Agent Integration', () => {
     await opBtn.click();
 
     // Wait for the form modal to open
-    const modal = page.locator('.modal-backdrop.active');
+    const modal = page.getByTestId('op-modal');
     await expect(modal).toBeVisible();
 
     // Submit form to execute the command
@@ -184,7 +184,7 @@ test.describe('Device Agent Integration', () => {
 
     // 10. Verify Command Execution
     // Should auto-switch to Commands tab
-    await expect(page.locator('.control-tab.active', { hasText: 'Commands' })).toBeVisible();
+    await expect(page.getByTestId('tab-cmds')).toHaveAttribute('aria-selected', 'true');
     const cmdsListFirstRow = page.locator('#cmds-pane tbody tr').first();
     await expect(cmdsListFirstRow).toBeVisible();
 

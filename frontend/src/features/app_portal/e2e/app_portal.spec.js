@@ -108,7 +108,7 @@ test.describe('App Portal UI', () => {
     await page.fill('#app-register-form input[name="tags"]', 'e2e, web');
     await page.click('#app-register-form button[type="submit"]');
 
-    const card = page.locator('#apps-list .provider-card', { hasText: appName });
+    const card = page.locator('#apps-list [data-testid="app-card"]', { hasText: appName });
     await expect(card).toBeVisible();
 
     // Open detail

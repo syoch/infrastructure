@@ -149,7 +149,7 @@ test.describe('Schema Renderer E2E Tests', () => {
     await btn.click();
 
     // Verify modal appears
-    const modal = page.locator('.modal-backdrop.active');
+    const modal = page.getByTestId('op-modal');
     await expect(modal).toBeVisible();
 
     // Verify form content

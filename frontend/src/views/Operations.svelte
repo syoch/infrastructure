@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
+  import { Dialog, Pagination, Portal, Tabs } from '@skeletonlabs/skeleton-svelte';
   import {
     getToken,
     fetchDevices,
@@ -229,17 +230,23 @@
 
   const pageFrom = $derived(total === 0 ? 0 : applied.offset + 1);
   const pageTo = $derived(Math.min(applied.offset + applied.limit, total));
+  const paginationPage = $derived(Math.floor(applied.offset / applied.limit) + 1);
+  const modalTitle = $derived(modalOp ? modalOp.ui_hint?.label || modalOp.name : '');
+  const modalDescription = $derived(
+    modalOp ? modalOp.description || `Operation: ${modalOp.name}` : ''
+  );
 
-  function statusColor(status: string): string {
-    const colors: Record<string, string> = {
-      pending: '#f0a020',
-      claimed: '#2080f0',
-      succeeded: '#20a020',
-      failed: '#ff5252',
-      timeout: '#888',
-      cancelled: '#888',
+  function statusBadge(status: string): string {
+    const cls: Record<string, string> = {
+      pending: 'badge preset-filled-warning-500',
+      claimed: 'badge preset-filled-primary-500',
+      running: 'badge preset-filled-primary-500',
+      succeeded: 'badge preset-filled-success-500',
+      failed: 'badge preset-filled-error-500',
+      timeout: 'badge preset-tonal-surface',
+      cancelled: 'badge preset-tonal-surface',
     };
-    return colors[status] || '#888';
+    return cls[status] || 'badge preset-tonal-surface';
   }
 
   function openOpForm(op: OperationSpec, provider: string): void {
@@ -314,213 +321,208 @@
     void refreshAll();
   }
 
-  function previousPage(): void {
-    if (applied.offset === 0) return;
-    applied = { ...applied, offset: Math.max(0, applied.offset - applied.limit) };
-    syncHash();
-    void refreshAll();
-  }
-
-  function nextPage(): void {
-    if (pageTo >= total) return;
-    applied = { ...applied, offset: applied.offset + applied.limit };
+  function onPageChange(details: { page: number }): void {
+    const offset = Math.max(0, (details.page - 1) * applied.limit);
+    if (offset === applied.offset) return;
+    applied = { ...applied, offset };
     syncHash();
     void refreshAll();
   }
 </script>
 
-<section class="control-section">
-  <header class="control-section-header">
-    <h2>Operations</h2>
-    <span class="control-section-subtitle">{me?.id || ''}</span>
+<section class="control-section space-y-4">
+  <header class="control-section-header flex items-center justify-between gap-4">
+    <h2 class="h2">Operations</h2>
+    <span class="control-section-subtitle text-sm text-surface-600-400">{me?.id || ''}</span>
   </header>
 
-  <div class="control-tabs" role="tablist">
-    <button
-      type="button"
-      class="control-tab"
-      class:active={activeTab === 'ops'}
-      role="tab"
-      aria-selected={activeTab === 'ops'}
-      onclick={() => (activeTab = 'ops')}
-    >
-      Operations
-    </button>
-    <button
-      type="button"
-      class="control-tab"
-      class:active={activeTab === 'cmds'}
-      role="tab"
-      aria-selected={activeTab === 'cmds'}
-      onclick={() => (activeTab = 'cmds')}
-    >
-      Commands
-    </button>
-  </div>
+  <Tabs
+    value={activeTab}
+    onValueChange={(details) => {
+      if (details.value === 'ops' || details.value === 'cmds') activeTab = details.value;
+    }}
+    data-testid="operations-tabs"
+  >
+    <Tabs.List>
+      <Tabs.Trigger value="ops" data-testid="tab-ops">Operations</Tabs.Trigger>
+      <Tabs.Trigger value="cmds" data-testid="tab-cmds">Commands</Tabs.Trigger>
+      <Tabs.Indicator />
+    </Tabs.List>
 
-  <div id="ops-pane" class="control-tab-pane" role="tabpanel" style={activeTab === 'ops' ? '' : 'display: none;'}>
-    {#if ops.length === 0}
-      <p style="color: #888;">No operations available.</p>
-    {:else}
-      {#each providerEntries as [provider, providerOps] (provider)}
-        {@const isOnline = onlineProviders.has(provider)}
-        <div class="provider-card">
-          <div class="provider-card-header">
-            {provider}
-            <span class="provider-status" style="color: {isOnline ? '#20a020' : '#888'};">
-              {isOnline ? 'online' : 'offline'}
-            </span>
-          </div>
-          <div class="provider-card-buttons">
-            {#each providerOps as op (op.id)}
-              <button
-                type="button"
-                class="btn btn-primary"
-                title={op.description || op.name}
-                disabled={!isOnline}
-                onclick={() => openOpForm(op, provider)}
+    <Tabs.Content value="ops" id="ops-pane" data-testid="ops-pane">
+      {#if ops.length === 0}
+        <p class="text-surface-600-400">No operations available.</p>
+      {:else}
+        {#each providerEntries as [provider, providerOps] (provider)}
+          {@const isOnline = onlineProviders.has(provider)}
+          <div class="provider-card card bg-surface-100-900 mb-4 p-4">
+            <div class="provider-card-header mb-3 flex items-center gap-2 text-base font-semibold">
+              {provider}
+              <span
+                class="provider-status {isOnline ? 'badge preset-filled-success-500' : 'badge preset-tonal-surface'}"
               >
-                {op.ui_hint?.label || op.name}
-              </button>
-            {/each}
+                {isOnline ? 'online' : 'offline'}
+              </span>
+            </div>
+            <div class="provider-card-buttons flex flex-wrap gap-2">
+              {#each providerOps as op (op.id)}
+                <button
+                  type="button"
+                  class="btn preset-filled-primary-500"
+                  title={op.description || op.name}
+                  disabled={!isOnline}
+                  onclick={() => openOpForm(op, provider)}
+                >
+                  {op.ui_hint?.label || op.name}
+                </button>
+              {/each}
+            </div>
           </div>
+        {/each}
+      {/if}
+    </Tabs.Content>
+
+    <Tabs.Content value="cmds" id="cmds-pane" data-testid="cmds-pane">
+      <div class="control-filter-bar card bg-surface-100-900 mb-4 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+        <label class="label" for="cmds-filter-status">
+          <span class="label-text">Status</span>
+          <select id="cmds-filter-status" class="select" bind:value={formStatus}>
+            <option value="">all</option>
+            <option value="pending">pending</option>
+            <option value="claimed">claimed</option>
+            <option value="succeeded">succeeded</option>
+            <option value="failed">failed</option>
+            <option value="timeout">timeout</option>
+            <option value="cancelled">cancelled</option>
+          </select>
+        </label>
+        <label class="label" for="cmds-filter-from">
+          <span class="label-text">From</span>
+          <input type="datetime-local" id="cmds-filter-from" class="input" bind:value={formFrom} />
+        </label>
+        <label class="label" for="cmds-filter-to">
+          <span class="label-text">To</span>
+          <input type="datetime-local" id="cmds-filter-to" class="input" bind:value={formTo} />
+        </label>
+        <label class="label" for="cmds-filter-op">
+          <span class="label-text">Op</span>
+          <input type="text" id="cmds-filter-op" class="input" placeholder="e.g. config" bind:value={formOp} />
+        </label>
+        <label class="label" for="cmds-filter-limit">
+          <span class="label-text">Page size</span>
+          <select id="cmds-filter-limit" class="select" bind:value={formLimit}>
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+          </select>
+        </label>
+        <div class="flex items-end gap-2">
+          <button type="button" class="btn preset-filled-primary-500" id="cmds-filter-apply" onclick={applyFilter}>
+            適用
+          </button>
+          <button type="button" class="btn preset-tonal" id="cmds-filter-reset" onclick={resetFilter}>
+            リセット
+          </button>
         </div>
-      {/each}
-    {/if}
-  </div>
+      </div>
 
-  <div id="cmds-pane" class="control-tab-pane" role="tabpanel" style={activeTab === 'cmds' ? '' : 'display: none;'}>
-    <div class="control-filter-bar">
-      <label for="cmds-filter-status">
-        Status
-        <select id="cmds-filter-status" bind:value={formStatus}>
-          <option value="">all</option>
-          <option value="pending">pending</option>
-          <option value="claimed">claimed</option>
-          <option value="succeeded">succeeded</option>
-          <option value="failed">failed</option>
-          <option value="timeout">timeout</option>
-          <option value="cancelled">cancelled</option>
-        </select>
-      </label>
-      <label for="cmds-filter-from">
-        From
-        <input type="datetime-local" id="cmds-filter-from" bind:value={formFrom} />
-      </label>
-      <label for="cmds-filter-to">
-        To
-        <input type="datetime-local" id="cmds-filter-to" bind:value={formTo} />
-      </label>
-      <label for="cmds-filter-op">
-        Op
-        <input type="text" id="cmds-filter-op" placeholder="e.g. config" bind:value={formOp} />
-      </label>
-      <label for="cmds-filter-limit">
-        Page size
-        <select id="cmds-filter-limit" bind:value={formLimit}>
-          <option value={10}>10</option>
-          <option value={25}>25</option>
-          <option value={50}>50</option>
-        </select>
-      </label>
-      <button type="button" class="btn btn-primary" id="cmds-filter-apply" onclick={applyFilter}>
-        適用
-      </button>
-      <button type="button" class="btn btn-secondary" id="cmds-filter-reset" onclick={resetFilter}>
-        リセット
-      </button>
-    </div>
-
-    <table class="control-table">
-      <thead>
-        <tr>
-          <th>ID</th><th>Op</th><th>Source</th><th>Target</th>
-          <th>Status</th><th>Created</th><th>Completed</th><th>Result</th>
-        </tr>
-      </thead>
-      <tbody>
-        {#if cmds.length === 0}
-          <tr><td colspan="8" style="color: #888;">No commands yet.</td></tr>
-        {:else}
-          {#each cmds as command (command.id)}
+      <div class="table-wrap card bg-surface-100-900 overflow-x-auto">
+        <table class="table">
+          <thead>
             <tr>
-              <td><code class="mono">{command.id.substring(0, 8)}</code></td>
-              <td>{command.operation_id}</td>
-              <td>{command.source_device_id}</td>
-              <td>{command.target_device_id}</td>
-              <td>
-                <span style="color: {statusColor(command.status)}; font-weight: 600;">
-                  {command.status}
-                </span>
-              </td>
-              <td>{(command.created_at || '').toString().substring(0, 19)}</td>
-              <td>{(command.finished_at || '').toString().substring(0, 19)}</td>
-              <td>
-                <code class="mono">
-                  {JSON.stringify(command.result || command.error || '').substring(0, 60)}
-                </code>
-              </td>
+              <th>ID</th><th>Op</th><th>Source</th><th>Target</th>
+              <th>Status</th><th>Created</th><th>Completed</th><th>Result</th>
             </tr>
-          {/each}
-        {/if}
-      </tbody>
-    </table>
+          </thead>
+          <tbody>
+            {#if cmds.length === 0}
+              <tr><td colspan="8" class="text-surface-600-400">No commands yet.</td></tr>
+            {:else}
+              {#each cmds as command (command.id)}
+                <tr>
+                  <td><code class="mono font-mono">{command.id.substring(0, 8)}</code></td>
+                  <td>{command.operation_id}</td>
+                  <td>{command.source_device_id}</td>
+                  <td>{command.target_device_id}</td>
+                  <td>
+                    <span class={statusBadge(command.status)}>
+                      {command.status}
+                    </span>
+                  </td>
+                  <td>{(command.created_at || '').toString().substring(0, 19)}</td>
+                  <td>{(command.finished_at || '').toString().substring(0, 19)}</td>
+                  <td>
+                    <code class="mono font-mono">
+                      {JSON.stringify(command.result || command.error || '').substring(0, 60)}
+                    </code>
+                  </td>
+                </tr>
+              {/each}
+            {/if}
+          </tbody>
+        </table>
+      </div>
 
-    <div class="control-pagination">
-      <span class="control-pagination-info">Showing {pageFrom}-{pageTo} of {total}</span>
-      <button
-        type="button"
-        class="btn btn-secondary"
-        id="cmds-page-prev"
-        disabled={applied.offset === 0}
-        onclick={previousPage}
-      >
-        前へ
-      </button>
-      <button
-        type="button"
-        class="btn btn-secondary"
-        id="cmds-page-next"
-        disabled={pageTo >= total}
-        onclick={nextPage}
-      >
-        次へ
-      </button>
-    </div>
-  </div>
+      <div class="control-pagination mt-4 flex flex-wrap items-center gap-4">
+        <span class="control-pagination-info text-sm text-surface-600-400">Showing {pageFrom}-{pageTo} of {total}</span>
+        <Pagination
+          count={total}
+          pageSize={applied.limit}
+          page={paginationPage}
+          onPageChange={(details) => onPageChange(details)}
+        >
+          <Pagination.PrevTrigger id="cmds-page-prev">前へ</Pagination.PrevTrigger>
+          <Pagination.NextTrigger id="cmds-page-next">次へ</Pagination.NextTrigger>
+        </Pagination>
+      </div>
+    </Tabs.Content>
+  </Tabs>
 </section>
 
 {#if modalOp && modalNode}
-  <div class="modal-backdrop active" style="display: flex;">
-    <div class="modal-content" style="max-width: 560px;">
-      <h2>{modalOp.ui_hint?.label || modalOp.name}</h2>
-      <p style="color: var(--text-secondary, #888);">
-        {modalOp.description || `Operation: ${modalOp.name}`}
-      </p>
-      <form
-        style="display: flex; flex-direction: column; gap: 12px;"
-        onsubmit={onModalSubmit}
-      >
-        <div class="schema-form-body">
-          <SchemaForm node={modalNode} />
-        </div>
-        {#if modalError}
-          <div style="color: #ff5252; font-size: 0.9em;">Error: {modalError}</div>
-        {/if}
-        <div class="form-actions" style="margin-top: 16px; display: flex; gap: 8px;">
-          <button
-            type="submit"
-            class="btn btn-primary"
-            disabled={modalBusy}
-            style="flex: 2;"
-          >
-            {modalBusy ? '送信中…' : '実行'}
-          </button>
-          <button type="button" class="btn btn-secondary" style="flex: 1;" onclick={closeModal}>
-            キャンセル
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
+  <Dialog
+    open={true}
+    aria-label={modalTitle}
+    onOpenChange={(details) => {
+      if (!details.open) closeModal();
+    }}
+  >
+    <Portal>
+      <Dialog.Backdrop class="fixed inset-0 z-[80] bg-surface-950/60" />
+      <Dialog.Positioner class="fixed inset-0 z-[90] flex items-center justify-center p-4">
+        <Dialog.Content
+          id="op-modal"
+          data-testid="op-modal"
+          class="card bg-surface-100-900 relative max-h-[90vh] w-full max-w-xl overflow-y-auto p-6 shadow-xl"
+        >
+          <Dialog.Title>
+            {#snippet element(attributes)}
+              <h2 {...attributes} id="op-modal-title" class="card-title">
+                {modalTitle}
+              </h2>
+            {/snippet}
+          </Dialog.Title>
+          <p class="card-subtitle mb-4 text-surface-600-400">
+            {modalDescription}
+          </p>
+          <form id="op-form" class="flex flex-col gap-3" onsubmit={onModalSubmit}>
+            <div class="schema-form-body">
+              <SchemaForm node={modalNode} />
+            </div>
+            {#if modalError}
+              <div class="text-sm text-error-500">Error: {modalError}</div>
+            {/if}
+            <div class="form-actions mt-4 flex gap-2">
+              <button type="submit" class="btn preset-filled-primary-500 flex-[2]" disabled={modalBusy}>
+                {modalBusy ? '送信中…' : '実行'}
+              </button>
+              <button type="button" class="btn preset-tonal flex-1" onclick={closeModal}>
+                キャンセル
+              </button>
+            </div>
+          </form>
+        </Dialog.Content>
+      </Dialog.Positioner>
+    </Portal>
+  </Dialog>
 {/if}

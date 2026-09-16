@@ -182,16 +182,16 @@
 
         <Dialog.Title>
           {#snippet element(attributes)}
-            <h2 {...attributes} id="category-modal-title" class="card-title">
+            <h2 {...attributes} id="category-modal-title" class="h4">
               {isEdit ? `カテゴリ "${categoryName}" を編集` : 'カテゴリを作成'}
             </h2>
           {/snippet}
         </Dialog.Title>
-        <p class="card-subtitle">カテゴリ名とARGBカラーコードを設定します。10進数です。</p>
+        <p class="mt-1 text-sm text-surface-600-400">カテゴリ名とARGBカラーコードを設定します。10進数です。</p>
 
-        <form id="category-modal-form" onsubmit={onSubmit}>
-          <div class="form-group">
-            <label for="cat-modal-name">カテゴリ名</label>
+        <form id="category-modal-form" onsubmit={onSubmit} class="mt-4">
+          <div class="mb-4">
+            <label for="cat-modal-name" class="label-text mb-1.5">カテゴリ名</label>
             <input
               type="text"
               id="cat-modal-name"
@@ -202,8 +202,8 @@
             />
           </div>
 
-          <div class="form-group">
-            <label for="cat-modal-color">カラーコード (Hex ARGB / RGB)</label>
+          <div class="mb-4">
+            <label for="cat-modal-color" class="label-text mb-1.5">カラーコード (Hex ARGB / RGB)</label>
             <div class="flex items-center gap-3">
               <input
                 type="text"
@@ -222,11 +222,11 @@
             </div>
           </div>
 
-          <div class="form-group mt-5">
+          <div class="mt-5">
             <span class="label-text mb-3 font-semibold">このカテゴリに所属させるアプリを選択</span>
             <div
               id="category-apps-list"
-              class="flex max-h-[220px] flex-col gap-2 overflow-y-auto rounded border border-surface-200-800 bg-surface-950/20 p-2"
+              class="flex max-h-[220px] flex-col gap-2 overflow-y-auto rounded-container border border-surface-200-800 bg-surface-950/20 p-2"
             >
               {#if !isEdit}
                 <div class="py-3 text-xs text-surface-600-400">
@@ -256,7 +256,7 @@
             </div>
           </div>
 
-          <div class="form-actions mt-6">
+          <div class="mt-6 flex gap-3">
             <button type="submit" class="btn preset-filled-primary-500 flex-[2]">保存する</button>
             <button
               type="button"

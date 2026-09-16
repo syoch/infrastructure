@@ -2,6 +2,7 @@
   import { untrack } from 'svelte';
   import { auth, ensureMe } from '../lib/auth.svelte.ts';
   import { goto as navigate } from '$app/navigation';
+  import { Switch } from '@skeletonlabs/skeleton-svelte';
   import {
     getToken,
     setToken,
@@ -145,23 +146,17 @@
     }
   }
 
-  async function onAdminToggle(device: Device, e: Event): Promise<void> {
-    const input = e.currentTarget as HTMLInputElement;
-    const value = input.checked;
+  async function onAdminToggle(device: Device, value: boolean): Promise<void> {
     const prompt = value
       ? `${device.id} を admin に昇格しますか?`
       : `${device.id} から admin を剥奪しますか?`;
     const confirmed = await confirmDialog({ title: 'Admin 権限の変更', message: prompt });
-    if (!confirmed) {
-      input.checked = !value;
-      return;
-    }
+    if (!confirmed) return;
     try {
       await setAdmin(device.id, value);
       await refreshDevices();
     } catch (err) {
       showCustomToast(msg(err), 'error');
-      input.checked = !value;
     }
   }
 
@@ -259,10 +254,10 @@
     }
   }
 
-  function wsColor(state: string | undefined): string {
-    if (state === 'online') return '#20a020';
-    if (state === 'offline') return '#888';
-    return '#f0a020';
+  function wsBadge(state: string | undefined): string {
+    if (state === 'online') return 'badge preset-filled-success-500';
+    if (state === 'offline') return 'badge preset-tonal-surface';
+    return 'badge preset-filled-warning-500';
   }
 
   function formatDate(value: string | null | undefined): string {
@@ -270,47 +265,58 @@
     return value.toString().replace('T', ' ').substring(0, 19);
   }
 
-  function tokenStatus(t: BootstrapToken): { label: string; color: string } {
-    if (t.consumed_at) return { label: 'Consumed', color: '#888' };
-    if (new Date(t.expires_at) < new Date()) return { label: 'Expired', color: '#ff5252' };
-    return { label: 'Pending', color: '#20a020' };
+  function tokenStatus(t: BootstrapToken): { label: string; cls: string } {
+    if (t.consumed_at) return { label: 'Consumed', cls: 'badge preset-tonal-surface' };
+    if (new Date(t.expires_at) < new Date()) return { label: 'Expired', cls: 'badge preset-filled-error-500' };
+    return { label: 'Pending', cls: 'badge preset-filled-success-500' };
   }
 </script>
 
 {#if phase === 'bootstrap'}
-  <section class="bootstrap-section">
-    <h2>WebUI セットアップ</h2>
-    <p class="bootstrap-hint">この WebUI を使うには、まずサーバー側で bootstrap トークンを発行してください:</p>
-    <pre class="bootstrap-pre">portal-manage control issue-bootstrap-token \
+  <section class="bootstrap-section mx-auto max-w-xl">
+    <h2 class="h2">WebUI セットアップ</h2>
+    <p class="bootstrap-hint mt-2 text-sm text-surface-600-400">
+      この WebUI を使うには、まずサーバー側で bootstrap トークンを発行してください:
+    </p>
+    <pre class="bootstrap-pre pre mt-4">portal-manage control issue-bootstrap-token \
   --device-id webui \
   --display-name "WebUI"</pre>
-    <form id="bootstrap-form" class="bootstrap-form" onsubmit={onBootstrapSubmit}>
-      <label for="bootstrap-device-id">Device ID</label>
-      <input id="bootstrap-device-id" name="device_id" bind:value={bootDeviceId} required />
-      <label for="bootstrap-display-name">Display name</label>
-      <input id="bootstrap-display-name" name="display_name" bind:value={bootDisplayName} required />
-      <label for="bootstrap-token">Bootstrap token</label>
-      <input id="bootstrap-token" name="bootstrap_token" class="mono" bind:value={bootToken} required />
-      <button type="submit" class="btn btn-primary" disabled={bootBusy}>セットアップ</button>
-      <div id="bootstrap-error" class="bootstrap-error">{bootError}</div>
+    <form id="bootstrap-form" class="bootstrap-form mt-6 space-y-4" onsubmit={onBootstrapSubmit}>
+      <label class="label" for="bootstrap-device-id">
+        <span class="label-text">Device ID</span>
+        <input id="bootstrap-device-id" name="device_id" class="input" bind:value={bootDeviceId} required />
+      </label>
+      <label class="label" for="bootstrap-display-name">
+        <span class="label-text">Display name</span>
+        <input id="bootstrap-display-name" name="display_name" class="input" bind:value={bootDisplayName} required />
+      </label>
+      <label class="label" for="bootstrap-token">
+        <span class="label-text">Bootstrap token</span>
+        <input id="bootstrap-token" name="bootstrap_token" class="input mono font-mono" bind:value={bootToken} required />
+      </label>
+      <button type="submit" class="btn preset-filled-primary-500 w-full" disabled={bootBusy}>セットアップ</button>
+      <div id="bootstrap-error" class="bootstrap-error text-sm text-error-500">{bootError}</div>
     </form>
   </section>
 {:else if phase === 'error'}
-  <div class="control-error">Error: {errorMessage}</div>
+  <div class="control-error text-error-500">Error: {errorMessage}</div>
 {:else if phase === 'acl'}
-  <section class="control-section">
-    <header class="control-section-header"><h2>ACL</h2></header>
+  <section class="control-section space-y-4">
+    <header class="control-section-header flex items-center justify-between gap-4">
+      <h2 class="h2">ACL</h2>
+    </header>
     {#if !isAdmin}
-      <div class="control-guard">
+      <div class="control-guard card bg-surface-100-900 space-y-4 p-6">
         <p>
           この画面は admin 専用です。現在のデバイス <code>{me?.id || '(unknown)'}</code> には admin 権限がありません。
         </p>
-        <a href="/control/devices" class="btn btn-primary">Devices に戻る</a>
+        <a href="/control/devices" class="btn preset-filled-primary-500">Devices に戻る</a>
       </div>
     {:else}
-      <form id="acl-form" class="control-form" onsubmit={onAclSubmit}>
+      <form id="acl-form" class="control-form grid gap-2 sm:grid-cols-2 lg:grid-cols-5" onsubmit={onAclSubmit}>
         <input
           name="source_device"
+          class="input"
           placeholder="device:source-*"
           pattern="^device:.+"
           bind:value={aclSource}
@@ -318,58 +324,60 @@
         />
         <input
           name="target_device"
+          class="input"
           placeholder="device:target-*"
           pattern="^device:.+"
           bind:value={aclTarget}
           required
         />
-        <input name="operation" placeholder="op regex (e.g. .*)" bind:value={aclOp} required />
-        <input name="extra" placeholder="extra (optional)" bind:value={aclExtra} />
-        <button type="submit" class="btn btn-primary">追加</button>
+        <input name="operation" class="input" placeholder="op regex (e.g. .*)" bind:value={aclOp} required />
+        <input name="extra" class="input" placeholder="extra (optional)" bind:value={aclExtra} />
+        <button type="submit" class="btn preset-filled-primary-500">追加</button>
       </form>
       {#if aclError}
-        <p style="color: #ff5252;">Error: {aclError}</p>
+        <p class="text-error-500">Error: {aclError}</p>
       {/if}
-      <table class="control-table">
-        <thead>
-          <tr><th>Source</th><th>Target</th><th>Op</th><th>Extra</th><th></th></tr>
-        </thead>
-        <tbody id="acl-tbody">
-          {#each acls as acl (acl.id)}
-            <tr>
-              <td><code>{acl.source_device}</code></td>
-              <td><code>{acl.target_device}</code></td>
-              <td><code>{acl.operation}</code></td>
-              <td><code>{acl.extra || ''}</code></td>
-              <td>
-                <button
-                  type="button"
-                  class="btn btn-secondary"
-                  style="color: #ff5252;"
-                  onclick={() => onAclDelete(acl.id)}
-                >
-                  削除
-                </button>
-              </td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
+      <div class="table-wrap card bg-surface-100-900 overflow-x-auto">
+        <table class="table">
+          <thead>
+            <tr><th>Source</th><th>Target</th><th>Op</th><th>Extra</th><th></th></tr>
+          </thead>
+          <tbody id="acl-tbody">
+            {#each acls as acl (acl.id)}
+              <tr>
+                <td><code>{acl.source_device}</code></td>
+                <td><code>{acl.target_device}</code></td>
+                <td><code>{acl.operation}</code></td>
+                <td><code>{acl.extra || ''}</code></td>
+                <td>
+                  <button
+                    type="button"
+                    class="btn preset-tonal-error"
+                    onclick={() => onAclDelete(acl.id)}
+                  >
+                    削除
+                  </button>
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
     {/if}
   </section>
 {:else if phase === 'devices'}
-  <section class="control-section">
-    <header class="control-section-header">
-      <h2>Devices</h2>
-      <span class="control-section-subtitle">{me?.id || ''}{isAdmin ? ' (admin)' : ''}</span>
+  <section class="control-section space-y-4">
+    <header class="control-section-header flex items-center justify-between gap-4">
+      <h2 class="h2">Devices</h2>
+      <span class="control-section-subtitle text-sm text-surface-600-400">{me?.id || ''}{isAdmin ? ' (admin)' : ''}</span>
     </header>
-    <div id="devices-list">
+    <div id="devices-list" class="card bg-surface-100-900 overflow-x-auto">
       {#if devicesError}
-        <p style="color: #ff5252;">Error: {devicesError}</p>
+        <p class="p-4 text-error-500">Error: {devicesError}</p>
       {:else if devices.length === 0}
-        <p style="color: #888;">No devices registered.</p>
+        <p class="p-4 text-surface-600-400">No devices registered.</p>
       {:else}
-        <table class="control-table">
+        <table class="table">
           <thead>
             <tr>
               <th>ID</th><th>Display</th><th>WS</th><th>Last seen</th>
@@ -382,24 +390,25 @@
                 <td><code>{device.id}</code></td>
                 <td>{device.display_name || ''}</td>
                 <td>
-                  <span style="color: {wsColor(device.ws_state)};">
+                  <span class={wsBadge(device.ws_state)}>
                     {device.ws_state || 'never_connected'}
                   </span>
                 </td>
                 <td>{formatDate(device.last_seen)}</td>
                 {#if isAdmin}
                   <td>
-                    <input
-                      type="checkbox"
+                    <Switch
+                      label={`Admin ${device.id}`}
                       checked={device.is_first_webui_device}
-                      onchange={(e) => onAdminToggle(device, e)}
-                    />
+                      onCheckedChange={(details) => onAdminToggle(device, details.checked)}
+                    >
+                      <Switch.Control><Switch.Thumb /></Switch.Control>
+                    </Switch>
                   </td>
                   <td>
                     <button
                       type="button"
-                      class="btn btn-secondary"
-                      style="color: #ff5252;"
+                      class="btn preset-tonal-error"
                       onclick={() => onDeleteDevice(device)}
                     >
                       Delete
@@ -415,20 +424,20 @@
   </section>
 
   {#if isAdmin}
-    <section class="control-section" style="margin-top: 40px;">
-      <header class="control-section-header">
-        <h2>Bootstrap Tokens</h2>
-        <button type="button" class="btn btn-primary" id="issue-token-btn" onclick={onIssueToken}>
+    <section class="control-section mt-10 space-y-4">
+      <header class="control-section-header flex items-center justify-between gap-4">
+        <h2 class="h2">Bootstrap Tokens</h2>
+        <button type="button" class="btn preset-filled-primary-500" id="issue-token-btn" onclick={onIssueToken}>
           Issue Token
         </button>
       </header>
-      <div id="tokens-list">
+      <div id="tokens-list" class="card bg-surface-100-900 overflow-x-auto">
         {#if tokensError}
-          <p style="color: #ff5252;">Error: {tokensError}</p>
+          <p class="p-4 text-error-500">Error: {tokensError}</p>
         {:else if tokens.length === 0}
-          <p style="color: #888;">No bootstrap tokens issued.</p>
+          <p class="p-4 text-surface-600-400">No bootstrap tokens issued.</p>
         {:else}
-          <table class="control-table">
+          <table class="table">
             <thead>
               <tr><th>Token</th><th>Target Device</th><th>Expires</th><th>Status</th><th></th></tr>
             </thead>
@@ -438,16 +447,15 @@
                 <tr>
                   <td><code>{bootstrapToken.id.substring(0, 8)}...</code></td>
                   <td>
-                    <div style="font-weight: 500;">{bootstrapToken.device_id}</div>
-                    <div style="font-size: 0.8em; color: #888;">{bootstrapToken.display_name}</div>
+                    <div class="font-medium">{bootstrapToken.device_id}</div>
+                    <div class="text-xs text-surface-600-400">{bootstrapToken.display_name}</div>
                   </td>
                   <td>{formatDate(bootstrapToken.expires_at)}</td>
-                  <td><span style="color: {status.color};">{status.label}</span></td>
+                  <td><span class={status.cls}>{status.label}</span></td>
                   <td>
                     <button
                       type="button"
-                      class="btn btn-secondary"
-                      style="color: #ff5252;"
+                      class="btn preset-tonal-error"
                       onclick={() => onRevokeToken(bootstrapToken.id)}
                     >
                       Revoke

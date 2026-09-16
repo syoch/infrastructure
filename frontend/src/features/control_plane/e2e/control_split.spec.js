@@ -153,11 +153,11 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
     await page.goto('/operations');
     await page.waitForLoadState('networkidle');
     await expect(page.locator('h2', { hasText: 'Operations' })).toBeVisible();
-    await expect(page.locator('.control-tab.active', { hasText: 'Operations' })).toBeVisible();
-    const cmdsTab = page.locator('.control-tab', { hasText: 'Commands' });
+    await expect(page.getByTestId('tab-ops')).toHaveAttribute('aria-selected', 'true');
+    const cmdsTab = page.getByTestId('tab-cmds');
     await expect(cmdsTab).toBeVisible();
     await cmdsTab.click();
-    await expect(page.locator('.control-tab.active', { hasText: 'Commands' })).toBeVisible();
+    await expect(cmdsTab).toHaveAttribute('aria-selected', 'true');
   });
 
   test('operations page: filter and pagination controls are present', async () => {
@@ -180,7 +180,7 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
     });
     await page.goto('/operations');
     await page.waitForLoadState('networkidle');
-    await page.locator('.control-tab', { hasText: 'Commands' }).click();
+    await page.getByTestId('tab-cmds').click();
     await expect(page.locator('#cmds-filter-status')).toBeVisible();
     await expect(page.locator('#cmds-filter-from')).toBeVisible();
     await expect(page.locator('#cmds-filter-to')).toBeVisible();
@@ -210,7 +210,7 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
     });
     await page.goto('/operations');
     await page.waitForLoadState('networkidle');
-    await page.locator('.control-tab', { hasText: 'Commands' }).click();
+    await page.getByTestId('tab-cmds').click();
     await page.selectOption('#cmds-filter-status', 'succeeded');
     await page.selectOption('#cmds-filter-limit', '10');
     await page.click('#cmds-filter-apply');

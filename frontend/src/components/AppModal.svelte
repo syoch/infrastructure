@@ -147,20 +147,20 @@
 
         <Dialog.Title>
           {#snippet element(attributes)}
-            <h2 {...attributes} id="app-modal-title" class="card-title">
+            <h2 {...attributes} id="app-modal-title" class="h4">
               {editMode ? 'アプリ簡易編集' : 'アプリを登録する'}
             </h2>
           {/snippet}
         </Dialog.Title>
-        <p class="card-subtitle" id="app-modal-subtitle">
+        <p class="mt-1 text-sm text-surface-600-400" id="app-modal-subtitle">
           {editMode ? `パッケージ ID: ${pkgId}` : 'アプリの基本情報を入力してください。'}
         </p>
 
-        <form id="quick-app-form" onsubmit={onSubmit}>
+        <form id="quick-app-form" onsubmit={onSubmit} class="mt-4">
           <input type="hidden" id="quick-app-edit-mode" value={editMode ? 'true' : 'false'} />
 
-          <div class="form-group">
-            <label for="quick-app-id">パッケージID (Package ID) <span class="required">*</span></label>
+          <div class="mb-4">
+            <label for="quick-app-id" class="label-text mb-1.5">パッケージID (Package ID) <span class="text-error-500">*</span></label>
             <input
               type="text"
               id="quick-app-id"
@@ -172,8 +172,8 @@
             />
           </div>
 
-          <div class="form-group">
-            <label for="quick-app-name">アプリ名 (App Name) <span class="required">*</span></label>
+          <div class="mb-4">
+            <label for="quick-app-name" class="label-text mb-1.5">アプリ名 (App Name) <span class="text-error-500">*</span></label>
             <input
               type="text"
               id="quick-app-name"
@@ -184,8 +184,8 @@
             />
           </div>
 
-          <div class="form-group">
-            <label for="quick-app-url">ソースURL (GitHub / スクラップ対象) <span class="required">*</span></label>
+          <div class="mb-4">
+            <label for="quick-app-url" class="label-text mb-1.5">ソースURL (GitHub / スクラップ対象) <span class="text-error-500">*</span></label>
             <input
               type="text"
               id="quick-app-url"
@@ -197,9 +197,9 @@
             />
           </div>
 
-          <div class="form-row">
-            <div class="form-group col-6">
-              <label for="quick-app-source">ソース元タイプ</label>
+          <div class="flex flex-wrap gap-4">
+            <div class="min-w-[180px] flex-1">
+              <label for="quick-app-source" class="label-text mb-1.5">ソース元タイプ</label>
               <select id="quick-app-source" class="select" value={appSource} onchange={onSourceChange}>
                 <option value="GitHub">GitHub</option>
                 <option value="HTML">HTML (Self-Hosted / WebScrape)</option>
@@ -207,11 +207,11 @@
                 <option value="GitLab">GitLab</option>
               </select>
             </div>
-            <div class="form-group col-6">
-              <span class="label-text">カテゴリの選択</span>
+            <div class="min-w-[180px] flex-1">
+              <span class="label-text mb-1.5">カテゴリの選択</span>
               <div
                 id="quick-categories-checkboxes"
-                class="my-2 flex max-h-[120px] flex-col gap-1.5 overflow-y-auto rounded border border-surface-200-800 bg-surface-950/20 p-2"
+                class="my-2 flex max-h-[120px] flex-col gap-1.5 overflow-y-auto rounded-container border border-surface-200-800 bg-surface-950/20 p-2"
               >
                 {#if categories.length === 0}
                   <div class="py-1 text-xs text-surface-600-400">登録済みのカテゴリがありません。</div>
@@ -233,14 +233,14 @@
               <input
                 type="text"
                 id="quick-app-categories"
-                class="input"
+                class="input field-sm"
                 placeholder="新規追加（カンマ区切り）"
                 bind:value={customCategories}
               />
             </div>
           </div>
 
-          <div class="form-actions mt-6">
+          <div class="mt-6 flex gap-3">
             <button type="submit" class="btn preset-filled-primary-500" id="quick-save-btn">
               保存する
             </button>
