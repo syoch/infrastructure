@@ -14,7 +14,7 @@ Use this after modifying any of:
 - `frontend/src/features/obtainium/**` (dashboard, public portal, app/category modals)
 - `frontend/src/shared/**` (schema renderer/form/editor)
 - `frontend/src/app/**` (shell, router, toast)
-- `frontend/js/api.ts`, `frontend/js/ui.ts`
+- `frontend/src/api/`, `frontend/src/lib/ui.ts`
 
 ## Command
 

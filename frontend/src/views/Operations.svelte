@@ -10,7 +10,7 @@
     type Device,
     type OperationSpec,
     type CommandRequest,
-  } from '../../js/control_api.js';
+  } from '../api/control_api.js';
   import { ensureMe } from '../lib/auth.svelte.ts';
   import { navigate, buildHash } from '../lib/router.svelte.ts';
   import { SchemaNode, type JSONSchema } from '../lib/schema.svelte.ts';

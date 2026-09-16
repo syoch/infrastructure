@@ -1,4 +1,4 @@
-import { fetchMe, getToken, type Device } from '../../js/control_api.js';
+import { fetchMe, getToken, type Device } from '../api/control_api.js';
 
 export const auth = $state({
   me: null as Device | null,

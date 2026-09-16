@@ -1,7 +1,7 @@
 <script lang="ts">
   import { store, loadAllData } from '../lib/store.svelte.ts';
   import { navigate } from '../lib/router.svelte.ts';
-  import { saveApp, type SaveAppPayload, type App } from '../../js/api.js';
+  import { saveApp, type SaveAppPayload, type App } from '../api/api.js';
 
   let {
     active = false,

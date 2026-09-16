@@ -10,8 +10,8 @@
     importObtainiumConfig,
     restoreBackup,
     type App,
-  } from '../../js/api.js';
-  import { showToast, getCategoryColorStyle, validateUrlSourceMatch } from '../../js/ui.js';
+  } from '../api/api.js';
+  import { showToast, getCategoryColorStyle, validateUrlSourceMatch } from '../lib/ui.js';
   import { showCustomToast } from '../lib/toast.ts';
   import { compareAppsByCategory } from '../lib/sort.ts';
 
@@ -197,7 +197,7 @@
   async function onDownloadBackup(e: MouseEvent): Promise<void> {
     e.preventDefault();
     try {
-      const { getToken } = await import('../../js/control_api.js');
+      const { getToken } = await import('../api/control_api.js');
       const token = getToken();
       const headers: Record<string, string> = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;

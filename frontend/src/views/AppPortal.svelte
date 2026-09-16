@@ -11,9 +11,9 @@
     type WebApp,
     type WebAppDetail,
     type AppFeedback,
-  } from '../../js/app_portal_api.js';
-  import { getToken } from '../../js/control_api.js';
-  import { safeURL } from '../../js/ui.js';
+  } from '../api/app_portal_api.js';
+  import { getToken } from '../api/control_api.js';
+  import { safeURL } from '../lib/ui.js';
 
   let { slug = '' }: { slug?: string } = $props();
 

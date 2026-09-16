@@ -3,15 +3,15 @@
 // Bundled by Vite to dist/js/schema_api.js. The actual implementation lives
 // in the Svelte components under src/components.
 import { mount, flushSync } from 'svelte';
-import SchemaForm from '../src/components/SchemaForm.svelte';
-import SchemaEditor from '../src/components/SchemaEditor.svelte';
+import SchemaForm from '../components/SchemaForm.svelte';
+import SchemaEditor from '../components/SchemaEditor.svelte';
 import {
   SchemaNode,
   createEditorState,
   deepClone,
   isPlainObject,
   type JSONSchema,
-} from '../src/lib/schema.svelte.ts';
+} from '../lib/schema.svelte.ts';
 
 export interface SchemaRenderHandle {
   el: HTMLElement;

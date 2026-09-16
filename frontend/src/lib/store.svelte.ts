@@ -4,7 +4,7 @@ import {
   fetchSettings,
   type App,
   type Settings,
-} from '../../js/api.js';
+} from '../api/api.js';
 
 export const store = $state({
   allApps: [] as App[],

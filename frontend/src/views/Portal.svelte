@@ -1,7 +1,7 @@
 <script lang="ts">
   import { store } from '../lib/store.svelte.ts';
   import { compareAppsByCategory } from '../lib/sort.js';
-  import type { App } from '../../js/api.js';
+  import type { App } from '../api/api.js';
 
   type PortalApp = App & {
     _version?: string;

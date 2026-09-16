@@ -11,7 +11,7 @@ runtime-provided JSON Schemas). Prefer internal dedup over new deps.
   (`Operations.svelte` + `src/lib/schema.svelte.ts`). Effort S; requires package.json dep +
   npmDepsHash update.
 - Frontend: `openapi-typescript` (dev-only) — kill ~620 LOC of hand-written types + 3 duplicated
-  fetch helpers (`js/api.ts`, `js/control_api.ts`, `js/app_portal_api.ts`). Payoff limited because
+  fetch helpers (`src/api/{api,control_api,app_portal_api}.ts`). Payoff limited because
   NO endpoint uses `response_model=` (responses stay untyped) — do that first. Commit openapi.json
   for hermetic buildNpmPackage.
 - Backend tests: `pytest` + `pytest-asyncio` + `httpx` — all in the PINNED nixpkgs (25.05);

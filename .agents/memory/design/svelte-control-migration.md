@@ -5,7 +5,7 @@ Migrated the control-plane area from vanilla `js/control_*.ts` to Svelte 5:
 - `src/views/Operations.svelte` (ops + commands tabs, provider cards, filter/pagination/hash sync, SSE)
 - `src/components/SchemaForm.svelte`, `src/components/SchemaEditor.svelte` (recursive, self-import)
 - `src/lib/schema.svelte.ts` (reactive `SchemaNode` value model + editor state; runes in class fields)
-- `js/schema_api.ts` rewritten as an imperative adapter that `mount()`s the Svelte components and reads the model (`getValue`/`getSchema`)
+- `src/entries/schema_api.ts` rewritten as an imperative adapter that `mount()`s the Svelte components and reads the model (`getValue`/`getSchema`)
 Deleted: control_bootstrap/devices/acl/operations/op_renderer + schema_renderer/editor (.ts).
 `js/control_router.ts` and `app.ts` are now orphaned (not Vite inputs) but intentionally left.
 

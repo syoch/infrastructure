@@ -1,4 +1,4 @@
-import { parseHash, buildHash } from '../../js/router.js';
+import { parseHash, buildHash } from './router.js';
 
 export interface RouteState {
   route: string;

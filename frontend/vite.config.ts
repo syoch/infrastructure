@@ -18,7 +18,7 @@ export default defineConfig({
       // (/test_schema_renderer.html) can import them directly.
       input: {
         index: 'index.html',
-        'js/schema_api': 'js/schema_api.ts',
+        'js/schema_api': 'src/entries/schema_api.ts',
       },
       output: {
         entryFileNames: (chunk) =>

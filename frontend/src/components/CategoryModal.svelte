@@ -1,8 +1,8 @@
 <script lang="ts">
   import { store, loadAllData } from '../lib/store.svelte.ts';
   import { navigate } from '../lib/router.svelte.ts';
-  import { saveSettings, saveApp, type SaveAppPayload } from '../../js/api.js';
-  import { colorIntToHex, parseHexToColorInt, getCategoryModalColorPreview } from '../../js/ui.js';
+  import { saveSettings, saveApp, type SaveAppPayload } from '../api/api.js';
+  import { colorIntToHex, parseHexToColorInt, getCategoryModalColorPreview } from '../lib/ui.js';
 
   let {
     active = false,

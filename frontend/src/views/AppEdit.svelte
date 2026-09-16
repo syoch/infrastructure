@@ -10,8 +10,8 @@
     deleteLocalAPK,
     type App,
     type SaveAppPayload,
-  } from '../../js/api.js';
-  import { validateUrlSourceMatch, detectSourceFromUrl } from '../../js/ui.js';
+  } from '../api/api.js';
+  import { validateUrlSourceMatch, detectSourceFromUrl } from '../lib/ui.js';
   import { showCustomToast } from '../lib/toast.ts';
 
   let { id = '' }: { id?: string } = $props();

@@ -18,7 +18,7 @@
     type Device,
     type BootstrapToken,
     type ACL,
-  } from '../../js/control_api.js';
+  } from '../api/control_api.js';
 
   let { sub = '' }: { sub?: string } = $props();
 

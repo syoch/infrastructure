@@ -99,7 +99,7 @@ make test-obtainium-smoke BACKUP=path/to/backup.tgz
 - Control 画面: `frontend/src/features/control_plane/`
 - Operations クエリ: `#/operations?status=&from=&to=&op=&limit=&offset=`
 - 管理者昇格 CLI: `python3 backend/manage.py --config <cfg> control set-admin --device-id <id>`
-- Schema renderer: `frontend/js/schema_api.ts` + `frontend/src/shared/` (JSON Schema → form, `ui_hint.widget: json|textarea|password`)
+- Schema renderer: `frontend/src/entries/schema_api.ts` + `frontend/src/lib/schema.svelte.ts` + `frontend/src/components/Schema{Form,Editor}.svelte` (JSON Schema → form, `ui_hint.widget: json|textarea|password`)
 - 拡張機能の選択: config の `extensions` に **ID** を列挙 (`storage` / `obtainium` / `control-plane` / `app-portal`)
 - NixOS モジュール: `nixosModules.portal` / `nixosModules.portal-device-agent` (`services.portal` / `services.portal-device-agent`)
 - 設計: `.opencode/control-plane/PHASE{1..12}.md` を参照
