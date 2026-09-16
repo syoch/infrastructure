@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "portal-device-agent"
+version = "0.1.0"
+description = "Portal control-plane device agent (standalone)"
+dependencies = [
+    "websockets",
+    "jsonschema",
+]
+
+[project.scripts]
+portal-device-agent = "device_agent.agent:main"
+
+[tool.setuptools]
+packages = ["device_agent"]
+
+[tool.setuptools.package-dir]
+device_agent = "."

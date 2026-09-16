@@ -4,7 +4,7 @@ with lib;
 
 let
   cfg = config.services.portal-device-agent;
-  portalPkg = pkgs.python3Packages.callPackage ../default.nix { };
+  agentPkg = pkgs.python3Packages.callPackage ../device_agent { };
 in
 {
   options.services.portal-device-agent = {
@@ -70,7 +70,7 @@ in
         Group = cfg.group;
         StateDirectory = cfg.stateDirectory;
 
-        ExecStart = "${portalPkg}/bin/portal-device-agent --config ${cfg.configFile}";
+        ExecStart = "${agentPkg}/bin/portal-device-agent --config ${cfg.configFile}";
         Restart = "always";
         RestartSec = 5;
 

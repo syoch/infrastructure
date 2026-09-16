@@ -21,11 +21,10 @@ dependencies = [
 portal-server = "backend.app:main"
 portal-manage = "backend.manage:main"
 portal-control-bridge = "backend.control_plane.bridge:main"
-portal-device-agent = "device_agent.agent:main"
 portal-opencode-tool = "backend.app_portal.opencode_tool:main"
 
 [tool.setuptools]
-packages = ["backend", "backend.core", "backend.utils", "backend.extensions", "backend.obtainium", "backend.storage", "backend.control_plane", "backend.app_portal", "device_agent"]
+packages = ["backend", "backend.core", "backend.utils", "backend.extensions", "backend.obtainium", "backend.storage", "backend.control_plane", "backend.app_portal"]
 
 [tool.setuptools.package-data]
 "*" = ["**/*"]

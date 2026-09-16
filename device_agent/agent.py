@@ -27,7 +27,7 @@ from websockets.exceptions import (
     InvalidStatus,
     WebSocketException,
 )
-from backend.utils.agent import ReconnectBackoff, register_device
+from .utils import ReconnectBackoff, register_device
 
 from .builtin_ops import BUILTIN_OPS, is_builtin
 

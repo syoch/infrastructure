@@ -24,6 +24,7 @@
           portal = pkgs.python3Packages.callPackage ./default.nix {
             buildNpmPackage = pkgs.buildNpmPackage;
           };
+          portal-device-agent = pkgs.python3Packages.callPackage ./device_agent { };
           test-backend = pkgs.writeShellApplication {
             name = "run-backend-tests";
             runtimeInputs = [ portalPython ];
@@ -90,6 +91,10 @@
           portal-manage = {
             type = "app";
             program = "${packages.portal}/bin/portal-manage";
+          };
+          portal-device-agent = {
+            type = "app";
+            program = "${packages.portal-device-agent}/bin/portal-device-agent";
           };
           test = {
             type = "app";

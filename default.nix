@@ -27,7 +27,6 @@ buildPythonApplication {
     root = ./.;
     fileset = lib.fileset.unions [
       ./backend
-      ./device_agent
       ./frontend
       ./pyproject.toml
       ./python-deps.nix
