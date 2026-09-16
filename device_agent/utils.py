@@ -6,7 +6,7 @@ dependency and can be shipped to devices on its own.
 import json
 import urllib.error
 import urllib.request
-from typing import Optional
+from typing import Any, Optional, cast
 
 
 def register_device(
@@ -30,7 +30,7 @@ def register_device(
     )
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
-            return json.loads(resp.read())
+            return cast(dict[str, Any], json.loads(resp.read()))
     except urllib.error.HTTPError as e:
         raw = e.read().decode("utf-8", errors="replace")
         raise RuntimeError(f"register failed: HTTP {e.code} {raw}")

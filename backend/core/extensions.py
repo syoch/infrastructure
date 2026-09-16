@@ -18,7 +18,7 @@ import importlib
 import importlib.metadata
 import logging
 from functools import lru_cache
-from typing import Any, Type
+from typing import Any, Type, cast
 
 logger = logging.getLogger(__name__)
 
@@ -69,4 +69,4 @@ def load_extension_class(extension_id: str) -> Type[Any]:
         )
     module_name, _, class_name = target.partition(":")
     module = importlib.import_module(module_name)
-    return getattr(module, class_name)
+    return cast(Type[Any], getattr(module, class_name))

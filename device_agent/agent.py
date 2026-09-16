@@ -53,9 +53,9 @@ def _read_text(path: str) -> str:
         return f.read().strip()
 
 
-def _resolve_bootstrap_token(cfg: dict) -> str:
+def _resolve_bootstrap_token(cfg: dict[str, Any]) -> str:
     if cfg.get("bootstrap_token"):
-        return cfg["bootstrap_token"].strip()
+        return cast(str, cfg["bootstrap_token"]).strip()
     p = cfg.get("bootstrap_token_file")
     if not p:
         raise RuntimeError("config must define bootstrap_token or bootstrap_token_file")
@@ -67,7 +67,8 @@ def _load_credentials(path: Optional[str]) -> Optional[dict]:
         return None
     try:
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+        return data if isinstance(data, dict) else None
     except (OSError, json.JSONDecodeError) as e:
         log.warning(f"failed to read credentials from {path}: {e}")
         return None
@@ -88,7 +89,7 @@ def _save_credentials(path: str, data: dict) -> None:
 
 def load_config(path: str) -> dict:
     with open(path, "r", encoding="utf-8") as f:
-        cfg = json.load(f)
+        cfg: dict[str, Any] = json.load(f)
     jsonschema.validate(cfg, CONFIG_SCHEMA)
     if "operations" not in cfg:
         cfg["operations"] = []
@@ -357,7 +358,7 @@ class Agent:
     async def _send_claim(self, ws, command_id: str, claim_token: str) -> bool:
         await ws.send(json.dumps({"type": "claim", "command_id": command_id, "claim_token": claim_token}))
         try:
-            ack = json.loads(await asyncio.wait_for(ws.recv(), timeout=5.0))
+            ack: dict[str, Any] = json.loads(await asyncio.wait_for(ws.recv(), timeout=5.0))
         except asyncio.TimeoutError:
             return False
         return ack.get("type") == "claimed_ack"
