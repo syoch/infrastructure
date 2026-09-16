@@ -2,20 +2,22 @@ import os
 import json
 import hashlib
 import shutil
+from typing import Any, Optional, cast
 from backend.utils.network import get_local_ip
 from backend.core.database import session_scope
 from .models import App, Category, Setting, LocalAppAPK
+from .compiler import ObtainiumConfigCompiler
 
 class ObtainiumRepoManagerCLI:
     """
     Handles CLI operations (bootstrap, import, compile) for the obtainium_repo extension.
     Uses the database instead of flat files.
     """
-    def __init__(self, core_config, compiler):
+    def __init__(self, core_config: Any, compiler: ObtainiumConfigCompiler) -> None:
         self.config = core_config
         self.compiler = compiler
 
-    def register_commands(self, subparsers):
+    def register_commands(self, subparsers: Any) -> None:
         """Registers CLI arguments under obtainium-repo command."""
         # Main parser for obtainium-repo
         repo_parser = subparsers.add_parser(
@@ -37,13 +39,13 @@ class ObtainiumRepoManagerCLI:
 
         repo_parser.set_defaults(func=self.handle_cli)
  
-    def handle_cli(self, args):
+    def handle_cli(self, args: Any) -> None:
         """Dispatches commands to corresponding methods."""
         if args.subcommand == "import":
             self.import_from_file(args.file)
 
 
-    def import_app_config(self, app_data, session):
+    def import_app_config(self, app_data: dict[str, Any], session: Any) -> Optional[str]:
         """Imports an individual app configuration dictionary into database session."""
         app_id = app_data.get("id")
         if not app_id:
@@ -87,11 +89,11 @@ class ObtainiumRepoManagerCLI:
             categories.append(cat)
         app.categories = categories
 
-        return app_id
+        return cast(Optional[str], app_id)
 
 
 
-    def import_from_file(self, filepath):
+    def import_from_file(self, filepath: str) -> bool:
         """Parses a raw Obtainium export JSON and splits it into database configs."""
         if not os.path.exists(filepath):
             print(f"Error: File not found at {filepath}")

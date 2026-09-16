@@ -15,7 +15,7 @@ def register_device(
     display_name: str,
     bootstrap_token: str,
     user_agent: Optional[str] = None,
-) -> dict:
+) -> dict[str, Any]:
     headers = {"Content-Type": "application/json"}
     if user_agent:
         headers["User-Agent"] = user_agent

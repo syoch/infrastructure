@@ -18,22 +18,23 @@ import argparse
 import json
 import os
 import sys
+from typing import Any, Optional
 
 from .opencode_ops import DEFAULT_OPENCODE_URL, OpenCodeOps
 
 
-def _make_ops(args) -> OpenCodeOps:
+def _make_ops(args: Any) -> OpenCodeOps:
     opencode_url = args.opencode_url or os.environ.get("OPENCODE_URL", DEFAULT_OPENCODE_URL)
     webui = args.webui_base_url or os.environ.get("OPENCODE_WEBUI_BASE_URL")
     return OpenCodeOps(opencode_url, webui)
 
 
-def _emit(payload: dict) -> int:
+def _emit(payload: dict[str, Any]) -> int:
     print(json.dumps(payload, ensure_ascii=False))
     return 0
 
 
-def main(argv=None) -> int:
+def main(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(prog="portal-opencode-tool", description=__doc__)
     parser.add_argument("--opencode-url", default=None)
     parser.add_argument("--webui-base-url", default=None)

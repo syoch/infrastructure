@@ -6,13 +6,14 @@ import tarfile
 import tempfile
 import time
 import logging
+from typing import Any
 from backend.core.database import Base
 
 logger = logging.getLogger(__name__)
 
 class BackupManager:
     @staticmethod
-    def _get_extensions():
+    def _get_extensions() -> list[Any]:
         from backend.core import config
         host = getattr(config, "EXTENSION_HOST", None)
         if not host:
@@ -21,7 +22,7 @@ class BackupManager:
         return list(host._extensions.values())
 
     @classmethod
-    def serialize_db(cls, session) -> dict:
+    def serialize_db(cls, session: Any) -> dict[str, Any]:
         """Serializes relational database records dynamically via extensions."""
         ext_data = {}
         for ext in cls._get_extensions():
@@ -36,7 +37,7 @@ class BackupManager:
         }
 
     @classmethod
-    def deserialize_db(cls, session, data: dict, strategy: str = "overwrite"):
+    def deserialize_db(cls, session: Any, data: dict[str, Any], strategy: str = "overwrite") -> None:
         """Deserializes records dynamically by delegating to extensions."""
         if strategy == "overwrite":
             logger.info("Wiping existing database records dynamically for fresh restoration...")
@@ -62,7 +63,7 @@ class BackupManager:
         session.flush()
 
     @classmethod
-    def create_backup_tarball(cls, out_path: str, session, storage_ext=None, include_apks: bool = True):
+    def create_backup_tarball(cls, out_path: str, session: Any, storage_ext: Any = None, include_apks: bool = True) -> None:
         """Generates a compressed tarball containing database serialization and physical assets."""
         logger.info(f"Starting backup. Export path: {out_path}")
         
@@ -86,7 +87,7 @@ class BackupManager:
                 json.dump(manifest, f, ensure_ascii=False, indent=2)
 
             # Package physical directories if configured
-            packed_dirs = []
+            packed_dirs: list[str] = []
             if include_apks:
                 for ext in cls._get_extensions():
                     try:
@@ -115,7 +116,7 @@ class BackupManager:
         logger.info("Backup created successfully.")
 
     @classmethod
-    def restore_backup_tarball(cls, in_path: str, session, storage_ext=None, strategy: str = "overwrite"):
+    def restore_backup_tarball(cls, in_path: str, session: Any, storage_ext: Any = None, strategy: str = "overwrite") -> None:
         """Extracts and applies backup tarball content dynamically."""
         logger.info(f"Starting restoration from: {in_path} using strategy: {strategy}")
         

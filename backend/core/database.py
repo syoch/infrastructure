@@ -1,7 +1,10 @@
 import logging
 import sys
+from collections.abc import Iterator
+from typing import Any, Optional
 from sqlalchemy import create_engine, event
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from backend.core import config
 
 logger = logging.getLogger(__name__)
@@ -9,10 +12,10 @@ logger = logging.getLogger(__name__)
 Base = declarative_base()
 
 # Session management placeholders
-_engine = None
-_Session = None
+_engine: Optional[Engine] = None
+_Session: Optional[sessionmaker[Session]] = None
 
-def get_engine():
+def get_engine() -> Engine:
     global _engine
     if _engine is not None:
         return _engine
@@ -31,7 +34,7 @@ def get_engine():
     # Configure SQLite-specific settings (like WAL mode)
     if _engine.name == 'sqlite':
         @event.listens_for(_engine, 'connect')
-        def set_sqlite_pragma(dbapi_connection, connection_record):
+        def set_sqlite_pragma(dbapi_connection: Any, connection_record: Any) -> None:
             cursor = dbapi_connection.cursor()
             cursor.execute("PRAGMA foreign_keys=ON;")
             cursor.execute("PRAGMA busy_timeout = 5000;")
@@ -41,7 +44,7 @@ def get_engine():
                 
     return _engine
 
-def get_session():
+def get_session() -> Session:
     global _Session
     if _Session is None:
         engine = get_engine()
@@ -49,14 +52,14 @@ def get_session():
         _Session = sessionmaker(bind=engine)
     return _Session()
 
-def init_db():
+def init_db() -> None:
     """Initializes tables in the target database if they do not exist."""
     engine = get_engine()
     Base.metadata.create_all(engine)
 
 from contextlib import contextmanager
 
-def get_db():
+def get_db() -> Iterator[Session]:
     """FastAPI dependency for database session lifecycle management."""
     db = get_session()
     try:
@@ -65,7 +68,7 @@ def get_db():
         db.close()
 
 @contextmanager
-def session_scope():
+def session_scope() -> Iterator[Session]:
     """Provide a transactional scope around a series of operations (for CLI/scripts)."""
     session = get_session()
     try:

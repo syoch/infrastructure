@@ -1,5 +1,6 @@
+from collections.abc import AsyncIterator
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
@@ -26,10 +27,10 @@ router = APIRouter(tags=["control-plane"])
 async def sse_events(
     request: Request,
     device: Device = Depends(get_current_device),
-):
+) -> StreamingResponse:
     queue = await event_bus.subscribe()
 
-    async def gen():
+    async def gen() -> AsyncIterator[bytes]:
         try:
             async for chunk in _sse_generator(device, queue):
                 if await request.is_disconnected():
@@ -53,7 +54,7 @@ async def sse_events(
 def list_operations(
     device: Device = Depends(get_current_device),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     visible = filter_operations_for_device(db, device)
     return {"operations": [_operation_to_dict(o) for o in visible]}
 
@@ -63,7 +64,7 @@ def create_command(
     body: CommandBody,
     device: Device = Depends(get_current_device),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     target = db.query(Device).filter_by(id=body.target_device_id).first()
     if not target:
         raise HTTPException(status_code=404, detail=f"target device {body.target_device_id!r} not found")
@@ -102,7 +103,7 @@ def list_commands(
     op: Optional[str] = None,
     limit: int = 25,
     offset: int = 0,
-):
+) -> dict[str, Any]:
     valid_statuses = {"pending", "claimed", "succeeded", "failed", "timeout", "cancelled"}
     if status is not None and status not in valid_statuses:
         raise HTTPException(
@@ -142,7 +143,7 @@ def get_command(
     command_id: str,
     device: Device = Depends(get_current_device),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     cmd = db.query(CommandRequest).filter_by(id=command_id).first()
     if not cmd:
         raise HTTPException(status_code=404, detail=f"command {command_id!r} not found")

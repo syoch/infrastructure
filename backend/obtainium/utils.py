@@ -4,6 +4,7 @@ from typing import Optional
 from fastapi import Request
 from backend.utils.network import get_local_ip
 from backend.utils.text import safe_app_name
+from .models import LocalAppAPK
 
 
 def export_apk_filename(app_name: str, app_id: str, version: str, architecture: Optional[str] = None) -> str:
@@ -11,12 +12,12 @@ def export_apk_filename(app_name: str, app_id: str, version: str, architecture: 
     return f"{safe_app_name(app_name)}_{app_id}_v{version}{arch}.apk"
 
 
-def version_sort_key(version: str) -> list:
+def version_sort_key(version: str) -> list[tuple[int, str]]:
     parts = re.split(r"[._\-+]+", version or "")
     return [(int(p), "") if p.isdigit() else (0, p) for p in parts]
 
 
-def select_latest_apk(apks: list):
+def select_latest_apk(apks: list[LocalAppAPK]) -> LocalAppAPK:
     return max(apks, key=lambda a: (version_sort_key(a.version), a.id))
 
 def get_base_url(request: Request, default_port: int = 8000) -> str:

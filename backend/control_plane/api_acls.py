@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -13,7 +15,7 @@ router = APIRouter(tags=["control-plane"])
 def list_acls(
     device: Device = Depends(get_current_device),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     acls = db.query(DeviceACL).order_by(DeviceACL.created_at).all()
     return {"acls": [_acl_to_dict(a) for a in acls]}
 
@@ -23,7 +25,7 @@ def create_acl(
     body: ACLBody,
     device: Device = Depends(require_admin),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     existing = db.query(DeviceACL).filter_by(
         source_device=body.source_device,
         target_device=body.target_device,
@@ -48,7 +50,7 @@ def update_acl(
     body: ACLBody,
     device: Device = Depends(require_admin),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     acl = db.query(DeviceACL).filter_by(id=acl_id).first()
     if not acl:
         raise HTTPException(status_code=404, detail=f"ACL {acl_id!r} not found")
@@ -65,7 +67,7 @@ def delete_acl(
     acl_id: str,
     device: Device = Depends(require_admin),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     acl = db.query(DeviceACL).filter_by(id=acl_id).first()
     if not acl:
         raise HTTPException(status_code=404, detail=f"ACL {acl_id!r} not found")

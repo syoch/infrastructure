@@ -4,6 +4,7 @@ HTTP routes live in :mod:`backend.obtainium.api`; this module keeps the
 extension class plus its backup/restore and CLI hooks.
 """
 import logging
+from typing import Any, Optional
 
 from backend.extensions.base import BaseExtension
 from .models import App, Category, LocalAppAPK, Setting
@@ -22,15 +23,15 @@ class ObtainiumRepoExtension(BaseExtension):
 
     ID = "obtainium"
 
-    def __init__(self, core_config, ext_config=None):
+    def __init__(self, core_config: Any, ext_config: Optional[dict[str, Any]] = None):
         super().__init__(core_config)
         self.ext_config = ext_config or {}
         self.tags = ["index-compiler"]
-        self.compiler = None
-        self.cli_manager = None
+        self.compiler: Optional[ObtainiumConfigCompiler] = None
+        self.cli_manager: Optional[ObtainiumRepoManagerCLI] = None
         self.router = build_router(self)
 
-    def setup(self):
+    def setup(self) -> None:
         """Initializes dependencies for the extension."""
         provider_id = self.ext_config.get("storage_provider", "storage")
         if self.host is None:
@@ -40,14 +41,14 @@ class ObtainiumRepoExtension(BaseExtension):
         self.compiler = ObtainiumConfigCompiler(self.config)
         self.cli_manager = ObtainiumRepoManagerCLI(self.config, self.compiler)
 
-    def register_cli_commands(self, subparsers):
+    def register_cli_commands(self, subparsers: Any) -> None:
         """Registers CLI commands under the manage.py framework."""
         if not self.cli_manager:
             self.setup()
         assert self.cli_manager is not None
         self.cli_manager.register_commands(subparsers)
 
-    def backup_data(self, session) -> dict:
+    def backup_data(self, session: Any) -> dict[str, Any]:
         """Serializes App, Category, Setting, and LocalAppAPK records."""
         categories = [
             {"name": cat.name, "color": cat.color}
@@ -88,7 +89,7 @@ class ObtainiumRepoExtension(BaseExtension):
             "local_app_apks": local_apks,
         }
 
-    def restore_data(self, session, data: dict, strategy: str):
+    def restore_data(self, session: Any, data: dict[str, Any], strategy: str) -> None:
         """Deserializes App, Category, Setting, and LocalAppAPK records."""
         logger.info("Restoring Category records...")
         for cat_data in data.get("categories", []):
@@ -162,15 +163,15 @@ class ObtainiumRepoExtension(BaseExtension):
                 setting.value = setting_data["value"]
         session.flush()
 
-    def post_restore(self, strategy: str):
+    def post_restore(self, strategy: str) -> None:
         """Hook called after successful database restoration."""
         invalidate_export_cache()
 
-    def get_referenced_file_hashes(self, session) -> set:
+    def get_referenced_file_hashes(self, session: Any) -> set[str]:
         """Returns the set of file hashes currently referenced by registered LocalAppAPK records."""
         return {apk.file_hash for apk in session.query(LocalAppAPK).all()}
 
-    def get_startup_info(self, local_ip: str) -> list:
+    def get_startup_info(self, local_ip: str) -> list[str]:
         return [
             f"Obtainium Export: http://{local_ip}:{self.config.DEFAULT_PORT}/obtainium-export.json"
         ]

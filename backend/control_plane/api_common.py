@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel, Field, field_validator
 
 from .manager_cli import validate_acl_field, validate_device_id
@@ -6,7 +8,7 @@ from .models import (
 )
 
 
-def _device_to_dict(d: Device, include_token: bool = False) -> dict:
+def _device_to_dict(d: Device, include_token: bool = False) -> dict[str, Any]:
     res = {
         "id": d.id,
         "display_name": d.display_name,
@@ -20,7 +22,7 @@ def _device_to_dict(d: Device, include_token: bool = False) -> dict:
     return res
 
 
-def _acl_to_dict(a: DeviceACL) -> dict:
+def _acl_to_dict(a: DeviceACL) -> dict[str, Any]:
     return {
         "id": a.id,
         "source_device": a.source_device,
@@ -31,7 +33,7 @@ def _acl_to_dict(a: DeviceACL) -> dict:
     }
 
 
-def _operation_to_dict(o: OperationSpec) -> dict:
+def _operation_to_dict(o: OperationSpec) -> dict[str, Any]:
     return {
         "id": o.id,
         "provider": o.provider,
@@ -46,7 +48,7 @@ def _operation_to_dict(o: OperationSpec) -> dict:
     }
 
 
-def _command_to_dict(c: CommandRequest) -> dict:
+def _command_to_dict(c: CommandRequest) -> dict[str, Any]:
     return {
         "id": c.id,
         "target_device_id": c.target_device_id,
@@ -63,7 +65,7 @@ def _command_to_dict(c: CommandRequest) -> dict:
     }
 
 
-def _token_to_dict(t: DeviceBootstrapToken) -> dict:
+def _token_to_dict(t: DeviceBootstrapToken) -> dict[str, Any]:
     return {
         "id": t.id,
         "device_id": t.device_id,
@@ -111,7 +113,7 @@ class ACLBody(BaseModel):
 class CommandBody(BaseModel):
     target_device_id: str
     operation: str
-    params: dict = Field(default_factory=dict)
+    params: dict[str, Any] = Field(default_factory=dict)
     timeout_seconds: int = Field(default=60, ge=1, le=3600)
 
     @field_validator("target_device_id")

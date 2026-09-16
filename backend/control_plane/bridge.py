@@ -18,7 +18,7 @@ import sys
 import time
 import logging
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 import websockets
 from websockets.exceptions import (
@@ -140,7 +140,7 @@ BRIDGE_OPERATIONS = [
 ]
 
 
-def _run_cli(manage_bin: str, config_path: Optional[str], args: list) -> tuple[int, str, str]:
+def _run_cli(manage_bin: str, config_path: Optional[str], args: list[str]) -> tuple[int, str, str]:
     cmd = [manage_bin]
     if config_path:
         cmd.extend(["--config", config_path])
@@ -155,7 +155,7 @@ def _run_cli(manage_bin: str, config_path: Optional[str], args: list) -> tuple[i
         return 127, "", f"portal-manage not found at {manage_bin!r}"
 
 
-def _execute_operation(operation: str, params: dict, manage_bin: str, config_path: Optional[str]) -> dict:
+def _execute_operation(operation: str, params: dict[str, Any], manage_bin: str, config_path: Optional[str]) -> dict[str, Any]:
     if operation == "acl.list":
         rc, out, err = _run_cli(manage_bin, config_path, ["list-acl"])
         if rc != 0:
@@ -245,7 +245,7 @@ async def _run(server_url: str, ws_url: str, bearer_token: str, manage_bin: str,
         await asyncio.sleep(backoff.next_delay())
 
 
-async def _serve(ws, bearer_token: str, manage_bin: str, config_path: Optional[str]) -> None:
+async def _serve(ws: Any, bearer_token: str, manage_bin: str, config_path: Optional[str]) -> None:
     await ws.send(json.dumps({"type": "operations_register", "operations": BRIDGE_OPERATIONS}))
     ack = json.loads(await ws.recv())
     if ack.get("type") != "operations_registered":
@@ -313,7 +313,7 @@ def main() -> int:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    def _on_signal(*_):
+    def _on_signal(*_: Any) -> None:
         logger.info("received signal, shutting down")
         stop.set()
         loop.stop()

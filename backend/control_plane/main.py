@@ -1,6 +1,6 @@
 from datetime import datetime
 import asyncio
-from typing import cast
+from typing import Any, Optional, cast
 from fastapi import APIRouter
 from backend.extensions.base import BaseExtension
 from backend.utils.timeutil import parse_iso_datetime
@@ -18,38 +18,38 @@ class ControlPlaneExtension(BaseExtension):
 
     ID = "control-plane"
 
-    def __init__(self, core_config, ext_config=None):
+    def __init__(self, core_config: Any, ext_config: Optional[dict[str, Any]] = None):
         super().__init__(core_config)
         self.ext_config = ext_config or {}
         self.tags = ["control-plane"]
-        self.cli_manager = None
+        self.cli_manager: Optional[ControlPlaneManagerCLI] = None
         merged = APIRouter()
         merged.include_router(api_router)
         merged.include_router(ws_router)
         self.router = merged
 
-    def setup(self):
+    def setup(self) -> None:
         self.cli_manager = ControlPlaneManagerCLI(self.config)
 
-    def install_event_loop_capture(self, app):
+    def install_event_loop_capture(self, app: Any) -> None:
         """Registers a FastAPI startup hook to capture the main asyncio loop."""
         @app.on_event("startup")
-        async def _capture_loop():
+        async def _capture_loop() -> None:
             set_main_loop(asyncio.get_event_loop())
 
-    def register_cli_commands(self, subparsers):
+    def register_cli_commands(self, subparsers: Any) -> None:
         if not self.cli_manager:
             self.setup()
         assert self.cli_manager is not None
         self.cli_manager.register_commands(subparsers)
 
-    def get_routes(self):
+    def get_routes(self) -> dict[str, Any]:
         return {}
 
-    def get_post_routes(self):
+    def get_post_routes(self) -> dict[str, Any]:
         return {}
 
-    def backup_data(self, session) -> dict:
+    def backup_data(self, session: Any) -> dict[str, Any]:
         from .models import Device, DeviceACL, DeviceBootstrapToken, OperationSpec, CommandRequest
 
         devices = [
@@ -133,7 +133,7 @@ class ControlPlaneExtension(BaseExtension):
             "ctrl_command_requests": commands,
         }
 
-    def restore_data(self, session, data: dict, strategy: str):
+    def restore_data(self, session: Any, data: dict[str, Any], strategy: str) -> None:
         from .models import Device, DeviceACL, DeviceBootstrapToken, OperationSpec, CommandRequest
 
         if strategy == "overwrite":
@@ -232,7 +232,7 @@ class ControlPlaneExtension(BaseExtension):
             ))
         session.flush()
 
-    def get_startup_info(self, local_ip: str) -> list:
+    def get_startup_info(self, local_ip: str) -> list[str]:
         return [
             f"Control Plane:  http://{local_ip}:{self.config.DEFAULT_PORT}/api/control/  (Phase 2: REST API)"
         ]

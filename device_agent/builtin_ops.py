@@ -5,15 +5,16 @@ These operations let the WebUI configure the agent itself: list/add/update/
 delete/test user operations, view the full config, and trigger a reload.
 """
 import copy
+from typing import Any
 
 
-def _string_field(name: str, title: str, **extra) -> dict:
+def _string_field(name: str, title: str, **extra: Any) -> dict[str, Any]:
     base = {"type": "string", "title": title}
     base.update(extra)
     return {name: base}
 
 
-def _json_field(name: str, title: str) -> dict:
+def _json_field(name: str, title: str) -> dict[str, Any]:
     return {
         name: {
             "type": "string",
@@ -23,7 +24,7 @@ def _json_field(name: str, title: str) -> dict:
     }
 
 
-def _add_or_update_schema() -> dict:
+def _add_or_update_schema() -> dict[str, Any]:
     return {
         "type": "object",
         "required": ["id", "name", "command"],
@@ -63,7 +64,7 @@ def _add_or_update_schema() -> dict:
     }
 
 
-def _test_schema() -> dict:
+def _test_schema() -> dict[str, Any]:
     return {
         "type": "object",
         "required": ["id"],
@@ -78,7 +79,7 @@ def _test_schema() -> dict:
     }
 
 
-BUILTIN_OPS = [
+BUILTIN_OPS: list[dict[str, Any]] = [
     {
         "id": "device.config.list_operations",
         "name": "List Operations",
@@ -144,7 +145,7 @@ BUILTIN_OPS = [
 ]
 
 
-def get_builtin_ops() -> list:
+def get_builtin_ops() -> list[dict[str, Any]]:
     return copy.deepcopy(BUILTIN_OPS)
 
 

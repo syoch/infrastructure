@@ -1,6 +1,7 @@
 import socket
+from typing import cast
 
-def get_local_ip():
+def get_local_ip() -> str:
     """
     Detects the local IP address of the server on the LAN by attempting
     a connection to a dummy external IP. Does not send actual packets.
@@ -11,6 +12,6 @@ def get_local_ip():
         s.connect(("8.8.8.8", 80))
         ip = s.getsockname()[0]
         s.close()
-        return ip
+        return cast(str, ip)
     except Exception:
         return "127.0.0.1"

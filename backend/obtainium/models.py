@@ -17,7 +17,7 @@ class App(Base):
     
     id: Mapped[str] = Column(String(255), primary_key=True)
     name: Mapped[str] = Column(String(255), nullable=False)
-    url = Column(String(1024), nullable=False)
+    url: Mapped[str] = Column(String(1024), nullable=False)
     override_source = Column(String(50), nullable=True)
     preferred_apk_index = Column(Integer, nullable=True)
     pinned = Column(Boolean, nullable=False, default=False)
@@ -53,5 +53,5 @@ class Category(Base):
 class Setting(Base):
     __tablename__ = 'settings'
     
-    key = Column(String(100), primary_key=True)
+    key: Mapped[str] = Column(String(100), primary_key=True)
     value = Column(JSON, nullable=False)

@@ -19,7 +19,7 @@ class Device(Base):
 
     id: Mapped[str] = Column(String(64), primary_key=True, nullable=False)
     display_name = Column(String(128), nullable=False)
-    bearer_token = Column(String(64), nullable=False, unique=True, index=True)
+    bearer_token: Mapped[str] = Column(String(64), nullable=False, unique=True, index=True)
     ws_state = Column(
         Enum("online", "offline", "never_connected", name="ctrl_ws_state"),
         default="never_connected",
@@ -42,7 +42,7 @@ class DeviceACL(Base):
     target_device: Mapped[str] = Column(String(256), nullable=False)
     operation: Mapped[str] = Column(String(256), nullable=False)
     extra = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     __table_args__ = (
         UniqueConstraint("source_device", "target_device", "operation", name="ctrl_acl_unique"),
@@ -82,7 +82,7 @@ class CommandRequest(Base):
         nullable=False,
         index=True,
     )
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    created_at: Mapped[datetime] = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     claimed_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     result = Column(JSON, nullable=True)

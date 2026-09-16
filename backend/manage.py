@@ -11,7 +11,7 @@ if REPO_ROOT not in sys.path:
 from backend.core import config
 from backend.core.extension_loader import load_extensions
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Portal Management Utility")
     parser.add_argument("--config", help="Path to config JSON file")
     subparsers = parser.add_subparsers(dest="command", required=True, help="Management command")

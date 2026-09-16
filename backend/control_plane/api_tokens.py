@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -16,7 +17,7 @@ router = APIRouter(tags=["control-plane"])
 def list_tokens(
     device: Device = Depends(require_admin),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     tokens = db.query(DeviceBootstrapToken).order_by(DeviceBootstrapToken.created_at.desc()).all()
     return {"tokens": [_token_to_dict(t) for t in tokens]}
 
@@ -26,7 +27,7 @@ def issue_token(
     body: TokenIssueBody,
     device: Device = Depends(require_admin),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     if db.query(Device).filter_by(id=body.device_id).first():
         raise HTTPException(status_code=409, detail=f"device {body.device_id!r} is already registered")
 
@@ -49,7 +50,7 @@ def delete_token(
     token_id: str,
     device: Device = Depends(require_admin),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     tok = db.query(DeviceBootstrapToken).filter_by(id=token_id).first()
     if not tok:
         raise HTTPException(status_code=404, detail="token not found")

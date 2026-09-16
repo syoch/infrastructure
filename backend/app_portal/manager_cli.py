@@ -1,13 +1,15 @@
+from typing import Any, Optional
+
 from backend.core.database import session_scope
 from backend.utils.text import slugify
 from .models import WebApp, Feedback, Bridge
 
 
 class AppPortalManagerCLI:
-    def __init__(self, core_config):
+    def __init__(self, core_config: Any):
         self.config = core_config
 
-    def register_commands(self, subparsers):
+    def register_commands(self, subparsers: Any) -> None:
         parser = subparsers.add_parser(
             "app-portal",
             help="Manage the App Portal (web app registry and feedback)",
@@ -51,7 +53,7 @@ class AppPortalManagerCLI:
 
         parser.set_defaults(func=self.handle_cli)
 
-    def handle_cli(self, args):
+    def handle_cli(self, args: Any) -> None:
         if args.subcommand == "list-apps":
             self.list_apps()
         elif args.subcommand == "register-app":
@@ -65,7 +67,7 @@ class AppPortalManagerCLI:
         elif args.subcommand == "list-bridges":
             self.list_bridges()
 
-    def list_apps(self):
+    def list_apps(self) -> None:
         with session_scope() as session:
             rows = session.query(WebApp).order_by(WebApp.created_at).all()
             if not rows:
@@ -75,7 +77,7 @@ class AppPortalManagerCLI:
             for a in rows:
                 print(f"{a.slug:<32} {a.name:<32} {a.opencode_session_id:<32} {a.bridge_device_id}")
 
-    def register_app(self, args):
+    def register_app(self, args: Any) -> bool:
         slug = args.slug or slugify(args.name)
         with session_scope() as session:
             if session.query(WebApp).filter_by(slug=slug).first():
@@ -101,7 +103,7 @@ class AppPortalManagerCLI:
             print(f"Registered app: slug={app.slug} id={app.id}")
             return True
 
-    def update_app(self, args):
+    def update_app(self, args: Any) -> bool:
         with session_scope() as session:
             app = session.query(WebApp).filter_by(slug=args.slug).first()
             if not app:
@@ -127,7 +129,7 @@ class AppPortalManagerCLI:
             print(f"Updated app: {app.slug}")
             return True
 
-    def delete_app(self, slug: str):
+    def delete_app(self, slug: str) -> bool:
         with session_scope() as session:
             app = session.query(WebApp).filter_by(slug=slug).first()
             if not app:
@@ -137,7 +139,7 @@ class AppPortalManagerCLI:
             print(f"Deleted app: {slug}")
             return True
 
-    def list_feedback(self, app_slug):
+    def list_feedback(self, app_slug: Optional[str]) -> Optional[bool]:
         with session_scope() as session:
             query = session.query(Feedback).order_by(Feedback.created_at.desc())
             if app_slug:
@@ -149,14 +151,15 @@ class AppPortalManagerCLI:
             rows = query.limit(50).all()
             if not rows:
                 print("(no feedback)")
-                return
+                return None
             print(f"{'ID':<38} {'STATUS':<12} {'CREATED':<22} BODY")
             for f in rows:
                 body = (f.body or "").replace("\n", " ")[:60]
                 created = f.created_at.isoformat() if f.created_at else "-"
                 print(f"{f.id:<38} {f.status:<12} {created:<22} {body}")
+            return None
 
-    def list_bridges(self):
+    def list_bridges(self) -> None:
         with session_scope() as session:
             rows = session.query(Bridge).order_by(Bridge.registered_at).all()
             if not rows:

@@ -3,6 +3,7 @@ import hashlib
 import time
 import shutil
 import logging
+from typing import Any, Optional
 from fastapi import APIRouter, File, UploadFile, Query, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 from backend.extensions.base import BaseExtension
@@ -16,7 +17,7 @@ class StorageManagerExtension(BaseExtension):
     """
     ID = "storage"
 
-    def __init__(self, core_config, ext_config=None):
+    def __init__(self, core_config: Any, ext_config: Optional[dict[str, Any]] = None):
         super().__init__(core_config)
         self.ext_config = ext_config or {}
         self.tags = ["storage-provider"]
@@ -33,7 +34,7 @@ class StorageManagerExtension(BaseExtension):
         self.router = APIRouter()
         self.setup_routes()
 
-    def setup(self):
+    def setup(self) -> None:
         # Ensure uploads directory exists
         os.makedirs(self.uploads_dir, exist_ok=True)
 
@@ -58,9 +59,9 @@ class StorageManagerExtension(BaseExtension):
             f.write(file_content)
         return file_hash
 
-    def _collect_referenced_hashes(self, session) -> set:
+    def _collect_referenced_hashes(self, session: Any) -> set[str]:
         """Dynamically gathers all referenced file hashes from loaded extensions."""
-        referenced = set()
+        referenced: set[str] = set()
         if self.host:
             for ext in self.host._extensions.values():
                 try:
@@ -87,12 +88,12 @@ class StorageManagerExtension(BaseExtension):
             logger.error(f"Error during physical CAS deletion check: {e}")
             return False
 
-    def garbage_collect(self) -> list:
+    def garbage_collect(self) -> list[str]:
         """Physically removes all files in CAS directory that are not referenced in the database, with 1h grace period."""
         try:
             with session_scope() as session:
                 referenced_hashes = self._collect_referenced_hashes(session)
-                deleted_hashes = []
+                deleted_hashes: list[str] = []
                 
                 if os.path.exists(self.uploads_dir):
                     for filename in os.listdir(self.uploads_dir):
@@ -121,11 +122,11 @@ class StorageManagerExtension(BaseExtension):
         """Returns the absolute path to the file on disk matching the hash."""
         return os.path.join(self.uploads_dir, f"{file_hash}.apk")
 
-    def setup_routes(self):
+    def setup_routes(self) -> None:
         @self.router.get("/api/storage/files")
-        def serve_files_list():
+        def serve_files_list() -> list[dict[str, Any]]:
             """GET /api/storage/files - Lists all stored files in CAS with their size."""
-            files = []
+            files: list[dict[str, Any]] = []
             if os.path.exists(self.uploads_dir):
                 for filename in os.listdir(self.uploads_dir):
                     if filename.endswith(".apk"):
@@ -139,7 +140,7 @@ class StorageManagerExtension(BaseExtension):
             return files
 
         @self.router.post("/api/storage/files")
-        async def handle_upload(file: UploadFile = File(...)):
+        async def handle_upload(file: UploadFile = File(...)) -> dict[str, Any]:
             """POST /api/storage/files - Uploads a file, hashes it, and saves it in CAS."""
             try:
                 file_content = await file.read()
@@ -159,7 +160,7 @@ class StorageManagerExtension(BaseExtension):
                 raise HTTPException(status_code=500, detail=f"Upload error: {str(e)}")
 
         @self.router.get("/api/storage/files/{file_hash}")
-        def serve_download(file_hash: str, filename: str = Query(None)):
+        def serve_download(file_hash: str, filename: Optional[str] = Query(None)) -> FileResponse:
             """GET /api/storage/files/[file_hash] - Streams a file with dynamic friendly filename."""
             filepath = self.get_file_path(file_hash)
             if not os.path.exists(filepath):
@@ -176,7 +177,7 @@ class StorageManagerExtension(BaseExtension):
             )
 
         @self.router.delete("/api/storage/files/{file_hash}")
-        def handle_delete(file_hash: str):
+        def handle_delete(file_hash: str) -> dict[str, Any]:
             """DELETE /api/storage/files/[file_hash] - Physically deletes the file if unreferenced."""
             filepath = self.get_file_path(file_hash)
             if not os.path.exists(filepath):
@@ -188,11 +189,11 @@ class StorageManagerExtension(BaseExtension):
             else:
                 return {"status": "skipped", "message": "Physical file delete skipped (referenced in database)."}
 
-    def get_backup_directories(self) -> dict:
+    def get_backup_directories(self) -> dict[str, str]:
         """Returns the uploads directory to package in the backup tarball."""
         return {"uploads": self.uploads_dir}
 
-    def restore_directories(self, temp_dir: str):
+    def restore_directories(self, temp_dir: str) -> None:
         """Restores physical CAS assets non-destructively from the temporary directory."""
         uploads_tmp_dir = os.path.join(temp_dir, "uploads")
         if os.path.exists(uploads_tmp_dir):

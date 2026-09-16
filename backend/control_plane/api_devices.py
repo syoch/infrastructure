@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -17,7 +18,7 @@ router = APIRouter(tags=["control-plane"])
 def list_devices(
     device: Device = Depends(get_current_device),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     devices = db.query(Device).order_by(Device.registered_at).all()
     return {"devices": [_device_to_dict(d) for d in devices]}
 
@@ -26,7 +27,7 @@ def list_devices(
 def get_me(
     device: Device = Depends(get_current_device),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     return _device_to_dict(device, include_token=True)
 
 
@@ -36,7 +37,7 @@ def rename_device(
     body: RenameDeviceBody,
     device: Device = Depends(get_current_device),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     validate_device_id(device_id)
     if device.id != device_id and not device.is_first_webui_device:
         raise HTTPException(status_code=403, detail="admin privilege required to rename other devices")
@@ -53,7 +54,7 @@ def delete_device(
     device_id: str,
     device: Device = Depends(require_admin),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     validate_device_id(device_id)
     target = db.query(Device).filter_by(id=device_id).first()
     if not target:
@@ -70,7 +71,7 @@ def set_admin(
     device_id: str,
     device: Device = Depends(require_admin),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     validate_device_id(device_id)
     target = db.query(Device).filter_by(id=device_id).first()
     if not target:
@@ -87,7 +88,7 @@ def set_admin(
 def register_device(
     body: RegisterDeviceBody,
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     tok = db.query(DeviceBootstrapToken).filter_by(id=body.bootstrap_token).first()
     if not tok:
         raise HTTPException(status_code=404, detail="bootstrap token not found")

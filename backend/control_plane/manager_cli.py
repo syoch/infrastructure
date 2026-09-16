@@ -1,6 +1,7 @@
 import re
 import uuid
 from datetime import datetime, timedelta
+from typing import Any
 from backend.core.database import session_scope
 from .models import (
     Device, DeviceACL, DeviceBootstrapToken, OperationSpec, CommandRequest,
@@ -34,10 +35,10 @@ def validate_device_id(value: str) -> None:
 
 
 class ControlPlaneManagerCLI:
-    def __init__(self, core_config):
+    def __init__(self, core_config: Any):
         self.config = core_config
 
-    def register_commands(self, subparsers):
+    def register_commands(self, subparsers: Any) -> None:
         parser = subparsers.add_parser(
             "control",
             help="Manage the Control Plane (devices, ACLs, bootstrap tokens)",
@@ -87,7 +88,7 @@ class ControlPlaneManagerCLI:
 
         parser.set_defaults(func=self.handle_cli)
 
-    def handle_cli(self, args):
+    def handle_cli(self, args: Any) -> None:
         if args.subcommand == "list-acl":
             self.list_acl()
         elif args.subcommand == "grant":
@@ -115,7 +116,7 @@ class ControlPlaneManagerCLI:
         elif args.subcommand == "show-command":
             self.show_command(args.command_id)
 
-    def list_acl(self):
+    def list_acl(self) -> None:
         with session_scope() as session:
             rows = session.query(DeviceACL).order_by(DeviceACL.created_at).all()
             if not rows:
@@ -128,7 +129,7 @@ class ControlPlaneManagerCLI:
                     f"{r.operation:<24} {r.created_at.isoformat()}"
                 )
 
-    def grant(self, source: str, target: str, operation: str):
+    def grant(self, source: str, target: str, operation: str) -> bool:
         try:
             validate_acl_field("source", source, require_prefix=True)
             validate_acl_field("target", target, require_prefix=True)
@@ -149,7 +150,7 @@ class ControlPlaneManagerCLI:
             print(f"Created ACL: id={acl.id}")
             return True
 
-    def revoke(self, acl_id: str):
+    def revoke(self, acl_id: str) -> bool:
         with session_scope() as session:
             row = session.query(DeviceACL).filter_by(id=acl_id).first()
             if not row:
@@ -159,7 +160,7 @@ class ControlPlaneManagerCLI:
             print(f"Deleted ACL: id={acl_id}")
             return True
 
-    def list_devices(self):
+    def list_devices(self) -> None:
         with session_scope() as session:
             rows = session.query(Device).order_by(Device.registered_at).all()
             if not rows:
@@ -176,7 +177,7 @@ class ControlPlaneManagerCLI:
                     f"{str(d.is_first_webui_device):<8} {last_seen:<20} {d.bearer_token}"
                 )
 
-    def rename_device(self, device_id: str, display_name: str):
+    def rename_device(self, device_id: str, display_name: str) -> bool:
         try:
             validate_device_id(device_id)
         except ValueError as e:
@@ -191,7 +192,7 @@ class ControlPlaneManagerCLI:
             print(f"Renamed device {device_id} -> {display_name!r}")
             return True
 
-    def delete_device(self, device_id: str):
+    def delete_device(self, device_id: str) -> bool:
         try:
             validate_device_id(device_id)
         except ValueError as e:
@@ -206,7 +207,7 @@ class ControlPlaneManagerCLI:
             print(f"Deleted device {device_id}")
             return True
 
-    def set_admin(self, device_id: str):
+    def set_admin(self, device_id: str) -> bool:
         try:
             validate_device_id(device_id)
         except ValueError as e:
@@ -224,7 +225,7 @@ class ControlPlaneManagerCLI:
             print(f"Set admin: {device_id}")
             return True
 
-    def show_admin(self):
+    def show_admin(self) -> None:
         with session_scope() as session:
             d = session.query(Device).filter_by(is_first_webui_device=True).first()
             if not d:
@@ -232,7 +233,7 @@ class ControlPlaneManagerCLI:
                 return
             print(f"{d.id}\t{d.display_name}\t{token_first8(d.bearer_token)}")
 
-    def clear_admin(self):
+    def clear_admin(self) -> bool:
         with session_scope() as session:
             count = session.query(Device).filter(
                 Device.is_first_webui_device == True
@@ -240,7 +241,7 @@ class ControlPlaneManagerCLI:
             print(f"Cleared admin flag from {count} device(s)")
             return True
 
-    def issue_bootstrap_token(self, device_id: str, display_name: str, ttl_minutes: int):
+    def issue_bootstrap_token(self, device_id: str, display_name: str, ttl_minutes: int) -> bool:
         try:
             validate_device_id(device_id)
         except ValueError as e:
@@ -269,7 +270,7 @@ class ControlPlaneManagerCLI:
             print("Use this token with the device agent or WebUI to register.")
             return True
 
-    def list_operations(self):
+    def list_operations(self) -> None:
         with session_scope() as session:
             rows = session.query(OperationSpec).order_by(
                 OperationSpec.provider, OperationSpec.id
@@ -287,7 +288,7 @@ class ControlPlaneManagerCLI:
                     f"{r.name:<28} {last_seen}"
                 )
 
-    def list_commands(self):
+    def list_commands(self) -> None:
         with session_scope() as session:
             rows = (
                 session.query(CommandRequest)
@@ -308,7 +309,7 @@ class ControlPlaneManagerCLI:
                     f"{r.operation:<24} {r.status:<12} {r.created_at.isoformat()}"
                 )
 
-    def show_command(self, command_id: str):
+    def show_command(self, command_id: str) -> bool:
         with session_scope() as session:
             r = session.query(CommandRequest).filter_by(id=command_id).first()
             if not r:

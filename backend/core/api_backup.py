@@ -7,6 +7,7 @@ import logging
 import os
 import tempfile
 import time
+from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Header, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
@@ -24,7 +25,7 @@ def require_admin_device(
     authorization: str = Header(default=""),
     token: str = Query(default=""),
     db: Session = Depends(get_db),
-):
+) -> Any:
     """Requires a control-plane admin device (Bearer token + is_first_webui_device).
 
     Imported lazily to avoid a hard dependency on the control-plane extension
@@ -38,7 +39,7 @@ def require_admin_device(
     return device
 
 
-def _storage_extension():
+def _storage_extension() -> Any:
     host = getattr(config, "EXTENSION_HOST", None)
     if host is None:
         return None
@@ -56,8 +57,8 @@ def _remove_quietly(path: str) -> None:
 def handle_backup(
     include_apks: bool = True,
     db: Session = Depends(get_db),
-    _admin=Depends(require_admin_device),
-):
+    _admin: Any = Depends(require_admin_device),
+) -> Any:
     from backend.core.backup_manager import BackupManager
 
     try:
@@ -96,8 +97,8 @@ async def handle_restore(
     file: UploadFile = File(...),
     strategy: str = Form("overwrite"),
     db: Session = Depends(get_db),
-    _admin=Depends(require_admin_device),
-):
+    _admin: Any = Depends(require_admin_device),
+) -> Any:
     if strategy not in ("overwrite", "merge"):
         raise HTTPException(
             status_code=400, detail="Invalid restore strategy. Must be 'overwrite' or 'merge'."

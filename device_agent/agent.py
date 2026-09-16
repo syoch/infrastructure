@@ -62,7 +62,7 @@ def _resolve_bootstrap_token(cfg: dict[str, Any]) -> str:
     return _read_text(p)
 
 
-def _load_credentials(path: Optional[str]) -> Optional[dict]:
+def _load_credentials(path: Optional[str]) -> Optional[dict[str, Any]]:
     if not path or not os.path.exists(path):
         return None
     try:
@@ -74,7 +74,7 @@ def _load_credentials(path: Optional[str]) -> Optional[dict]:
         return None
 
 
-def _save_credentials(path: str, data: dict) -> None:
+def _save_credentials(path: str, data: dict[str, Any]) -> None:
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
@@ -87,7 +87,7 @@ def _save_credentials(path: str, data: dict) -> None:
         pass
 
 
-def load_config(path: str) -> dict:
+def load_config(path: str) -> dict[str, Any]:
     with open(path, "r", encoding="utf-8") as f:
         cfg: dict[str, Any] = json.load(f)
     jsonschema.validate(cfg, CONFIG_SCHEMA)
@@ -100,14 +100,14 @@ def load_config(path: str) -> dict:
     return cfg
 
 
-def _http_register(server_url: str, device_id: str, display_name: str, bootstrap_token: str) -> dict:
+def _http_register(server_url: str, device_id: str, display_name: str, bootstrap_token: str) -> dict[str, Any]:
     return register_device(
         server_url, device_id, display_name, bootstrap_token,
         user_agent="portal-device-agent",
     )
 
 
-def _build_command(template: Any, params: dict, use_shell: bool) -> tuple[list, bool]:
+def _build_command(template: Any, params: dict[str, Any], use_shell: bool) -> tuple[list[str], bool]:
     """
     Returns (argv_list, run_via_shell).
     - If template is str and use_shell is True: returned as ["sh", "-c", <expanded>] (single argv[2] is the shell line).
@@ -131,8 +131,8 @@ def _build_command(template: Any, params: dict, use_shell: bool) -> tuple[list, 
     raise RuntimeError(f"command template must be str or list, got {type(template).__name__}")
 
 
-def _interpolate(template: str, params: dict, *, quote: bool = False) -> str:
-    out = []
+def _interpolate(template: str, params: dict[str, Any], *, quote: bool = False) -> str:
+    out: list[str] = []
     i = 0
     while i < len(template):
         ch = template[i]
@@ -154,7 +154,7 @@ def _interpolate(template: str, params: dict, *, quote: bool = False) -> str:
     return "".join(out)
 
 
-def _validate_params(schema: dict, params: dict) -> None:
+def _validate_params(schema: dict[str, Any], params: dict[str, Any]) -> None:
     validator = jsonschema.Draft7Validator(schema) if schema else None
     if validator is not None:
         errors = sorted(validator.iter_errors(params), key=lambda e: e.path)
@@ -163,7 +163,7 @@ def _validate_params(schema: dict, params: dict) -> None:
             raise RuntimeError("params validation failed: " + "; ".join(msgs))
 
 
-def _execute_shell(argv: list, shell: bool, timeout: int) -> dict:
+def _execute_shell(argv: list[str], shell: bool, timeout: int) -> dict[str, Any]:
     started = time.time()
     try:
         result = subprocess.run(
@@ -190,7 +190,7 @@ def _execute_shell(argv: list, shell: bool, timeout: int) -> dict:
         }
 
 
-def _op_dict(user_op: dict) -> dict:
+def _op_dict(user_op: dict[str, Any]) -> dict[str, Any]:
     spec = {
         "id": user_op["id"],
         "name": user_op.get("name", user_op["id"]),
@@ -202,16 +202,17 @@ def _op_dict(user_op: dict) -> dict:
     return spec
 
 
-def _all_ops(cfg: dict) -> list:
+def _all_ops(cfg: dict[str, Any]) -> list[dict[str, Any]]:
     return [copy.deepcopy(op) for op in BUILTIN_OPS] + [_op_dict(o) for o in cfg.get("operations", [])]
 
 
-def _lookup_op(cfg: dict, op_id: str) -> Optional[dict]:
+def _lookup_op(cfg: dict[str, Any], op_id: str) -> Optional[dict[str, Any]]:
     if is_builtin(op_id):
         for op in BUILTIN_OPS:
             if op["id"] == op_id:
                 return copy.deepcopy(op)
-    for op in cfg.get("operations", []):
+    ops: list[dict[str, Any]] = cfg.get("operations", [])
+    for op in ops:
         if op.get("id") == op_id:
             return op
     return None
@@ -230,7 +231,7 @@ def _parse_json_field(value: Any, field_name: str) -> Any:
     raise RuntimeError(f"{field_name} must be a JSON string or object")
 
 
-def _materialize_operation(params: dict) -> dict:
+def _materialize_operation(params: dict[str, Any]) -> dict[str, Any]:
     op_id = params.get("id")
     if not op_id:
         raise RuntimeError("id is required")
@@ -269,7 +270,7 @@ class Agent:
         self._reload_event = asyncio.Event()
         self._stop_event = asyncio.Event()
         self._ws: Optional[Any] = None
-        self._registered_ops: list = []
+        self._registered_ops: list[dict[str, Any]] = []
 
     def request_reload(self) -> None:
         self._reload_event.set()
@@ -313,7 +314,7 @@ class Agent:
             log.info(f"credentials saved to {creds_path}")
         return cast(str, self.bearer_token)
 
-    async def _consume_welcome(self, ws) -> list:
+    async def _consume_welcome(self, ws: Any) -> list[dict[str, Any]]:
         raw = await ws.recv()
         try:
             msg = json.loads(raw)
@@ -323,12 +324,12 @@ class Agent:
         if msg.get("type") != "welcome":
             log.warning(f"unexpected first message: {msg.get('type')!r}")
             return []
-        pending = msg.get("pending_commands") or []
+        pending: list[dict[str, Any]] = msg.get("pending_commands") or []
         if pending:
             log.info(f"welcome: {len(pending)} pending command(s) from server")
         return pending
 
-    async def _register_ops(self, ws, pending_commands: Optional[list] = None) -> None:
+    async def _register_ops(self, ws: Any, pending_commands: Optional[list[dict[str, Any]]] = None) -> None:
         ops = _all_ops(self.config)
         await ws.send(json.dumps({"type": "operations_register", "operations": ops}))
         ack_raw = await ws.recv()
@@ -343,7 +344,7 @@ class Agent:
         self._registered_ops = ops
         log.info(f"registered {ack.get('count', 0)} operations")
 
-    async def _drain_pending(self, ws, pending: list) -> None:
+    async def _drain_pending(self, ws: Any, pending: list[dict[str, Any]]) -> None:
         for cmd in pending:
             await self._process_command(ws, {
                 "type": "command",
@@ -355,7 +356,7 @@ class Agent:
                 "source_device_id": cmd.get("source_device_id"),
             })
 
-    async def _send_claim(self, ws, command_id: str, claim_token: str) -> bool:
+    async def _send_claim(self, ws: Any, command_id: str, claim_token: str) -> bool:
         await ws.send(json.dumps({"type": "claim", "command_id": command_id, "claim_token": claim_token}))
         try:
             ack: dict[str, Any] = json.loads(await asyncio.wait_for(ws.recv(), timeout=5.0))
@@ -363,10 +364,10 @@ class Agent:
             return False
         return ack.get("type") == "claimed_ack"
 
-    async def _send_result(self, ws, command_id: str, body: dict) -> None:
+    async def _send_result(self, ws: Any, command_id: str, body: dict[str, Any]) -> None:
         await ws.send(json.dumps({"type": "result", "command_id": command_id, **body}))
 
-    def _handle_builtin(self, op_id: str, params: dict) -> dict:
+    def _handle_builtin(self, op_id: str, params: dict[str, Any]) -> dict[str, Any]:
         try:
             if op_id == "device.config.list_operations":
                 return {"succeeded": True, "result": {"operations": self.config.get("operations", [])}}
@@ -423,7 +424,7 @@ class Agent:
         except RuntimeError as e:
             return {"succeeded": False, "error": str(e)}
 
-    def _run_user_op(self, op: dict, params: dict) -> dict:
+    def _run_user_op(self, op: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
         try:
             _validate_params(op.get("params_schema") or {}, params)
             argv, shell = _build_command(op["command"], params, bool(op.get("shell", False)))
@@ -448,7 +449,7 @@ class Agent:
         except OSError:
             pass
 
-    async def _process_command(self, ws, msg: dict) -> None:
+    async def _process_command(self, ws: Any, msg: dict[str, Any]) -> None:
         cid = str(msg["command_id"])
         ctok = str(msg.get("claim_token") or "")
         op_id = str(msg.get("operation") or "")
@@ -476,7 +477,7 @@ class Agent:
             "error": body.get("error"),
         })
 
-    async def _serve(self, ws) -> None:
+    async def _serve(self, ws: Any) -> None:
         pending = await self._consume_welcome(ws)
         await self._register_ops(ws)
         if pending:
@@ -536,11 +537,11 @@ class Agent:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-        def _on_sighup(*_):
+        def _on_sighup(*_: Any) -> None:
             log.info("SIGHUP received, scheduling reload")
             self.request_reload()
 
-        def _on_sigterm(*_):
+        def _on_sigterm(*_: Any) -> None:
             log.info("signal received, shutting down")
             self.request_stop()
             try:

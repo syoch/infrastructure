@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Any
 
 import uvicorn
 from fastapi import FastAPI
@@ -18,13 +19,13 @@ class PortalServer:
     Wrapper around FastAPI that aggregates routers from various extensions.
     """
 
-    def __init__(self, host=config.HOST, port=config.DEFAULT_PORT):
+    def __init__(self, host: str = config.HOST, port: int = config.DEFAULT_PORT):
         self.host = host
         self.port = port
         self.app = FastAPI(title="Android Device Provisioning Portal")
         self.app.include_router(backup_router)
 
-    def register_extension(self, extension):
+    def register_extension(self, extension: Any) -> None:
         """Mounts the extension router onto the main FastAPI application if present."""
         router = getattr(extension, "router", None)
         if router:
@@ -33,7 +34,7 @@ class PortalServer:
         else:
             logger.debug("No router defined for extension: %s", extension.__class__.__name__)
 
-    def start(self):
+    def start(self) -> None:
         """Starts the FastAPI server using Uvicorn."""
         # Serve static files from config.PUBLIC_DIR at the root path "/"
         # Note: StaticFiles should be mounted AFTER API routes to avoid matching api calls as static files

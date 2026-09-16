@@ -10,7 +10,7 @@ import json
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Optional
+from typing import Any, Optional
 
 DEFAULT_OPENCODE_URL = "http://127.0.0.1:12000"
 
@@ -29,8 +29,8 @@ def server_key_for(base_url: str) -> str:
     return base64.urlsafe_b64encode(base_url.encode("utf-8")).decode("ascii").rstrip("=")
 
 
-def _http_json(url: str, method: str = "GET", body: Optional[dict] = None,
-               headers: Optional[dict] = None, timeout: float = 10.0):
+def _http_json(url: str, method: str = "GET", body: Optional[dict[str, Any]] = None,
+               headers: Optional[dict[str, str]] = None, timeout: float = 10.0) -> tuple[int, Any]:
     data = json.dumps(body).encode() if body is not None else None
     hdrs = {"Content-Type": "application/json"} if body is not None else {}
     if headers:
@@ -53,7 +53,7 @@ class OpenCodeOps:
     def webui_url(self, session_id: str) -> str:
         return f"{self.webui_base_url}/server/{self.server_key}/session/{session_id}"
 
-    def inject_feedback(self, session_id: str, prompt: str) -> dict:
+    def inject_feedback(self, session_id: str, prompt: str) -> dict[str, Any]:
         status, _ = _http_json(
             f"{self.opencode_url}/session/{urllib.parse.quote(session_id)}/prompt_async",
             method="POST",
@@ -66,7 +66,7 @@ class OpenCodeOps:
             "accepted": status in (200, 202, 204),
         }
 
-    def list_sessions(self, directory: Optional[str] = None) -> dict:
+    def list_sessions(self, directory: Optional[str] = None) -> dict[str, Any]:
         _, data = _http_json(f"{self.opencode_url}/session", method="GET", timeout=10.0)
         sessions = data or []
         if directory:
@@ -84,7 +84,7 @@ class OpenCodeOps:
             ]
         }
 
-    def traits(self) -> dict:
+    def traits(self) -> dict[str, Any]:
         return {
             "trait": "opencode-bridge",
             "operations": dict(ROLE_KEYS),

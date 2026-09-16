@@ -19,7 +19,7 @@ from backend.core.extension_loader import load_extensions
 logger = logging.getLogger("portal")
 
 
-def main():
+def main() -> None:
     import argparse
     parser = argparse.ArgumentParser(description="Portal Server Backend")
     parser.add_argument("--config", help="Path to config JSON file")

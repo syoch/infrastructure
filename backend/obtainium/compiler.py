@@ -2,8 +2,9 @@ import re
 import json
 import logging
 import time
+from typing import Any, Optional
 from urllib.parse import urlparse
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import Session, selectinload
 from .models import App, Category, Setting
 from .utils import export_apk_filename, select_latest_apk
 
@@ -22,10 +23,10 @@ class ObtainiumConfigCompiler:
 
     _OVERRIDE_SOURCE_SELF_HOSTED = "HTML"
 
-    def __init__(self, core_config):
+    def __init__(self, core_config: Any):
         self.config = core_config
 
-    def compile_master(self, base_url, session=None):
+    def compile_master(self, base_url: str, session: Optional[Session] = None) -> dict[str, Any]:
         """
         Loads all application configurations from the database,
         combining them with global configurations.
@@ -37,27 +38,29 @@ class ObtainiumConfigCompiler:
         with session_scope() as session:
             return self._compile_master_with_session(base_url, session)
 
-    def _compile_master_with_session(self, base_url, session):
+    def _compile_master_with_session(self, base_url: str, session: Session) -> dict[str, Any]:
         db_apps = session.query(App).options(
             selectinload(App.categories),
             selectinload(App.apks)
         ).order_by(App.id).all()
 
-        compiled_apps = []
+        compiled_apps: list[dict[str, Any]] = []
         for app in db_apps:
             try:
                 compiled_apps.append(self._build_app(app, base_url))
             except Exception as e:
                 logger.error("Error compiling app config %s: %s", app.id, e)
 
-        master_export = {"apps": compiled_apps}
+        master_export: dict[str, Any] = {"apps": compiled_apps}
         settings = self._build_settings(session)
         if settings:
             master_export["settings"] = settings
         return master_export
 
-    def _build_app(self, app, base_url):
+    def _build_app(self, app: App, base_url: str) -> dict[str, Any]:
         is_self_hosted = bool(app.apks)
+        url: str
+        override_source: Optional[str]
         if is_self_hosted:
             url = f"{base_url}/scrape-index.html"
             override_source = self._OVERRIDE_SOURCE_SELF_HOSTED
@@ -74,7 +77,7 @@ class ObtainiumConfigCompiler:
             )
             apk_download_url = f"{base_url}/api/apps/download/{latest_apk.id}/{filename}"
             apk_urls = [[filename, apk_download_url]]
-            other_asset_urls: list = []
+            other_asset_urls: list[Any] = []
             latest_version = latest_apk.version
             # Obtainium applies both regexes to the *absolute download URL*
             # (see lib/services/apk_filter_service.dart filterApks() and
@@ -127,7 +130,7 @@ class ObtainiumConfigCompiler:
 
         return export
 
-    def _infer_author(self, url):
+    def _infer_author(self, url: str) -> str:
         """Best-effort author inference from common source-host URL patterns.
 
         Obtainium requires `author` to be a non-null String. We extract a
@@ -147,8 +150,8 @@ class ObtainiumConfigCompiler:
             pass
         return ""
 
-    def _build_settings(self, session):
-        export_settings = {}
+    def _build_settings(self, session: Session) -> dict[str, Any]:
+        export_settings: dict[str, Any] = {}
         try:
             db_settings = session.query(Setting).all()
             for s in db_settings:

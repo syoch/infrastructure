@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Header, status
 from pydantic import BaseModel, Field
@@ -20,7 +20,7 @@ _settings = {"bridge_device_id": "opencode-bridge"}
 
 # In-process cache of per-device opencode-bridge metadata discovered through the
 # `traits.opencode-bridge` operation: {"roles": {role: op_id}, "webui_base_url", "server_key"}
-_meta_cache: dict[str, dict] = {}
+_meta_cache: dict[str, dict[str, Any]] = {}
 
 
 def configure(bridge_device_id: str) -> None:
@@ -31,7 +31,7 @@ def _device_required(
     authorization: str = Header(default=""),
     token: str = Query(default=""),
     db: Session = Depends(get_db),
-):
+) -> Any:
     """Requires any registered control-plane device (Bearer token)."""
     from backend.control_plane.core import get_current_device
 
@@ -42,7 +42,7 @@ def _iso(dt: Optional[datetime]) -> Optional[str]:
     return dt.isoformat() + "Z" if dt else None
 
 
-def _parse_op_result(result) -> dict:
+def _parse_op_result(result: Any) -> dict[str, Any]:
     """Normalizes a control-plane command result.
 
     The generic device agent reports `{"stdout", "stderr", "exit_code"}` and the
@@ -88,7 +88,7 @@ def _device_online(db: Session, device_id: str) -> bool:
     return bool(d and d.ws_state == "online")
 
 
-def _opencode_meta(db: Session, source_device, device_id: str, timeout: float = 8.0) -> dict:
+def _opencode_meta(db: Session, source_device: Any, device_id: str, timeout: float = 8.0) -> dict[str, Any]:
     """Discovers the target device's `opencode-bridge` trait.
 
     Returns {"roles": {role: op_id}, "webui_base_url", "server_key"} (possibly
@@ -118,7 +118,7 @@ def _opencode_meta(db: Session, source_device, device_id: str, timeout: float = 
         server_key = payload.get("server_key") or (
             server_key_for(webui_base_url) if webui_base_url else None
         )
-        meta = {
+        meta: dict[str, Any] = {
             "roles": payload.get("operations") or {},
             "webui_base_url": webui_base_url,
             "server_key": server_key,
@@ -159,7 +159,7 @@ def _reconcile(db: Session, fb: Feedback) -> Feedback:
     return fb
 
 
-def _feedback_to_dict(fb: Feedback) -> dict:
+def _feedback_to_dict(fb: Feedback) -> dict[str, Any]:
     return {
         "id": fb.id,
         "app_id": fb.app_id,
@@ -176,8 +176,8 @@ def _feedback_to_dict(fb: Feedback) -> dict:
     }
 
 
-def _app_to_dict(db: Session, app: WebApp, include_feedback: bool = False) -> dict:
-    data = {
+def _app_to_dict(db: Session, app: WebApp, include_feedback: bool = False) -> dict[str, Any]:
+    data: dict[str, Any] = {
         "id": app.id,
         "slug": app.slug,
         "name": app.name,
@@ -266,9 +266,9 @@ class BridgeAnnounceBody(BaseModel):
 
 @router.get("/apps")
 def list_apps(
-    device=Depends(_device_required),
+    device: Any = Depends(_device_required),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     apps = db.query(WebApp).order_by(WebApp.created_at.desc()).all()
     return {"apps": [_app_to_dict(db, a) for a in apps]}
 
@@ -276,9 +276,9 @@ def list_apps(
 @router.post("/apps")
 def create_app(
     body: AppCreateBody,
-    device=Depends(_device_required),
+    device: Any = Depends(_device_required),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     slug = body.slug or slugify(body.name)
     if db.query(WebApp).filter(WebApp.slug == slug).first():
         raise HTTPException(status_code=409, detail=f"app slug {slug!r} already exists")
@@ -304,9 +304,9 @@ def create_app(
 @router.get("/apps/{slug}")
 def get_app(
     slug: str,
-    device=Depends(_device_required),
+    device: Any = Depends(_device_required),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     app = _get_app_or_404(db, slug)
     # Warm the opencode-bridge metadata cache so the session deep link can be
     # shown even before the first feedback is delivered.
@@ -319,9 +319,9 @@ def get_app(
 def update_app(
     slug: str,
     body: AppUpdateBody,
-    device=Depends(require_admin_device),
+    device: Any = Depends(require_admin_device),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     app = _get_app_or_404(db, slug)
     for field in (
         "name", "description", "url", "project_directory",
@@ -338,9 +338,9 @@ def update_app(
 @router.delete("/apps/{slug}")
 def delete_app(
     slug: str,
-    device=Depends(require_admin_device),
+    device: Any = Depends(require_admin_device),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     app = _get_app_or_404(db, slug)
     db.delete(app)
     db.commit()
@@ -351,9 +351,9 @@ def delete_app(
 def submit_feedback(
     slug: str,
     body: FeedbackBody,
-    device=Depends(require_admin_device),
+    device: Any = Depends(require_admin_device),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     app = _get_app_or_404(db, slug)
     if not app.opencode_session_id:
         raise HTTPException(status_code=400, detail="app has no pinned OpenCode session")
@@ -410,10 +410,10 @@ def submit_feedback(
 
 @router.get("/feedback")
 def list_feedback(
-    device=Depends(require_admin_device),
+    device: Any = Depends(require_admin_device),
     db: Session = Depends(get_db),
     limit: int = Query(default=100, ge=1, le=500),
-):
+) -> dict[str, Any]:
     rows = db.query(Feedback).order_by(Feedback.created_at.desc()).limit(limit).all()
     result = [_feedback_to_dict(_reconcile(db, fb)) for fb in rows]
     db.commit()
@@ -423,9 +423,9 @@ def list_feedback(
 @router.post("/feedback/{feedback_id}/refresh")
 def refresh_feedback(
     feedback_id: str,
-    device=Depends(require_admin_device),
+    device: Any = Depends(require_admin_device),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     fb = db.query(Feedback).filter_by(id=feedback_id).first()
     if not fb:
         raise HTTPException(status_code=404, detail=f"feedback {feedback_id!r} not found")
@@ -438,9 +438,9 @@ def refresh_feedback(
 @router.post("/bridges/announce")
 def announce_bridge(
     body: BridgeAnnounceBody,
-    device=Depends(_device_required),
+    device: Any = Depends(_device_required),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     br = _bridge(db, device.id)
     if not br:
         br = Bridge(device_id=device.id)
@@ -461,9 +461,9 @@ def announce_bridge(
 
 @router.get("/bridges")
 def list_bridges(
-    device=Depends(require_admin_device),
+    device: Any = Depends(require_admin_device),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     bridges = db.query(Bridge).order_by(Bridge.registered_at).all()
     return {
         "bridges": [

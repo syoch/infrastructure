@@ -107,7 +107,7 @@ def enqueue_command(
     source_device: Device,
     target_device_id: str,
     operation: str,
-    params: dict,
+    params: dict[str, Any],
     timeout_seconds: int = 60,
 ) -> CommandRequest:
     cmd = CommandRequest(
@@ -141,26 +141,26 @@ def _try_push(device_id: str, cmd: CommandRequest) -> bool:
         log.warning(f"_try_push({device_id}) failed: {e}")
         return False
 
-_main_loop = None
+_main_loop: Any = None
 
-def set_main_loop(loop) -> None:
+def set_main_loop(loop: Any) -> None:
     global _main_loop
     _main_loop = loop
 
-def get_main_loop():
+def get_main_loop() -> Any:
     return _main_loop
 
 
 # --- EVENT BUS (SSE) ---
 
 class EventBus:
-    def __init__(self):
-        self._subscribers: list[asyncio.Queue] = []
+    def __init__(self) -> None:
+        self._subscribers: list[asyncio.Queue[dict[str, Any]]] = []
         self._lock = asyncio.Lock()
-        self._last_statuses: dict[str, dict] = {}
+        self._last_statuses: dict[str, dict[str, Any]] = {}
 
-    async def subscribe(self) -> asyncio.Queue:
-        q: asyncio.Queue = asyncio.Queue(maxsize=256)
+    async def subscribe(self) -> asyncio.Queue[dict[str, Any]]:
+        q: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=256)
         async with self._lock:
             self._subscribers.append(q)
             snapshot = list(self._last_statuses.values())
@@ -171,12 +171,12 @@ class EventBus:
                 break
         return q
 
-    async def unsubscribe(self, q: asyncio.Queue) -> None:
+    async def unsubscribe(self, q: asyncio.Queue[dict[str, Any]]) -> None:
         async with self._lock:
             if q in self._subscribers:
                 self._subscribers.remove(q)
 
-    async def publish(self, event: dict) -> None:
+    async def publish(self, event: dict[str, Any]) -> None:
         async with self._lock:
             self._last_statuses[event.get("command_id", "")] = event
             subs = list(self._subscribers)
@@ -265,12 +265,12 @@ def publish_command_status(cmd: CommandRequest) -> None:
         return
     asyncio.ensure_future(event_bus.publish(event))
 
-def _device_acl_filter(device: Device, event: dict) -> bool:
+def _device_acl_filter(device: Device, event: dict[str, Any]) -> bool:
     if device.is_first_webui_device:
         return True
     return event.get("source_device_id") == device.id or event.get("target_device_id") == device.id
 
-async def _sse_generator(device: Device, queue: asyncio.Queue) -> AsyncIterator[bytes]:
+async def _sse_generator(device: Device, queue: asyncio.Queue[dict[str, Any]]) -> AsyncIterator[bytes]:
     yield b": connected\n\n"
     loop = asyncio.get_running_loop()
     last_ping = loop.time()

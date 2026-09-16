@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any, Optional
 
 from fastapi import APIRouter
 
@@ -17,30 +18,30 @@ class AppPortalExtension(BaseExtension):
 
     ID = "app-portal"
 
-    def __init__(self, core_config, ext_config=None):
+    def __init__(self, core_config: Any, ext_config: Optional[dict[str, Any]] = None):
         super().__init__(core_config)
         self.ext_config = ext_config or {}
         self.tags = ["app-portal"]
         self.bridge_device_id = self.ext_config.get("bridge_device_id", "opencode-bridge")
-        self.cli_manager = None
+        self.cli_manager: Optional[AppPortalManagerCLI] = None
         self.router = api_router
 
-    def setup(self):
+    def setup(self) -> None:
         configure(self.bridge_device_id)
         self.cli_manager = AppPortalManagerCLI(self.config)
 
-    def register_cli_commands(self, subparsers):
+    def register_cli_commands(self, subparsers: Any) -> None:
         if not self.cli_manager:
             self.setup()
         assert self.cli_manager is not None
         self.cli_manager.register_commands(subparsers)
 
-    def get_startup_info(self, local_ip: str) -> list:
+    def get_startup_info(self, local_ip: str) -> list[str]:
         return [
             f"App Portal:     http://{local_ip}:{self.config.DEFAULT_PORT}/#/apps"
         ]
 
-    def backup_data(self, session) -> dict:
+    def backup_data(self, session: Any) -> dict[str, Any]:
         from .models import WebApp, Feedback, Bridge
 
         apps = [
@@ -99,7 +100,7 @@ class AppPortalExtension(BaseExtension):
             "app_portal_bridges": bridges,
         }
 
-    def restore_data(self, session, data: dict, strategy: str):
+    def restore_data(self, session: Any, data: dict[str, Any], strategy: str) -> None:
         from .models import WebApp, Feedback, Bridge
 
         if strategy == "overwrite":

@@ -1,6 +1,6 @@
 import logging
 import sys
-from typing import Optional
+from typing import Any, Optional
 
 from backend.core.extensions import load_extension_class
 
@@ -12,10 +12,10 @@ class ExtensionHost:
     Registry host that acts as the service locator for loaded extensions.
     Extensions are keyed by their stable ID and can also be looked up by tag.
     """
-    def __init__(self, extensions_dict):
+    def __init__(self, extensions_dict: dict[str, Any]):
         self._extensions = extensions_dict
 
-    def get_extension(self, name: Optional[str] = None, tags: Optional[list] = None) -> object:
+    def get_extension(self, name: Optional[str] = None, tags: Optional[list[str]] = None) -> object:
         if not name and not tags:
             raise ValueError("Either extension name or tags must be specified.")
         tags = tags or []
@@ -32,7 +32,7 @@ class ExtensionHost:
             return ext
 
         # Match purely by tags
-        matched_exts = []
+        matched_exts: list[Any] = []
         for ext in self._extensions.values():
             ext_tags = getattr(ext, "tags", [])
             if all(tag in ext_tags for tag in tags):
@@ -49,7 +49,7 @@ class ExtensionHost:
         return matched_exts[0]
 
 
-def load_extensions(core_config, host=None):
+def load_extensions(core_config: Any, host: Optional[ExtensionHost] = None) -> list[Any]:
     """
     Loads the extensions listed in ``core_config.EXTENSIONS`` by ID.
 
@@ -62,11 +62,11 @@ def load_extensions(core_config, host=None):
         sys.path.insert(0, core_config.ROOT_DIR)
 
     loaded: dict[str, object] = {}
-    extensions = []
+    extensions: list[Any] = []
 
     for entry in getattr(core_config, "EXTENSIONS", []):
         extension_id: Optional[str]
-        ext_config: dict
+        ext_config: dict[str, Any]
         if isinstance(entry, str):
             extension_id, ext_config = entry, {}
         else:

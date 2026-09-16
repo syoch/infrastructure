@@ -9,7 +9,7 @@ import logging
 import os
 import time
 import urllib.parse
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
@@ -23,7 +23,7 @@ from .utils import export_apk_filename, get_base_url
 logger = logging.getLogger(__name__)
 
 # In-memory cache for compiled Obtainium export JSON: base_url -> (dict, expiry)
-_export_cache: dict = {}
+_export_cache: dict[str, tuple[dict[str, Any], float]] = {}
 CACHE_TTL = 30.0  # seconds
 
 
@@ -40,18 +40,18 @@ class AppSaveModel(BaseModel):
     pinned: bool = False
     allowIdChange: bool = False
     categories: list[str] = []
-    additionalSettings: dict = {}
+    additionalSettings: dict[str, Any] = {}
 
 
 class AppDeleteModel(BaseModel):
     id: str
 
 
-def build_router(ext) -> APIRouter:
+def build_router(ext: Any) -> APIRouter:
     router = APIRouter()
 
     @router.get("/obtainium-export.json")
-    def serve_export(request: Request, db: Session = Depends(get_db)):
+    def serve_export(request: Request, db: Session = Depends(get_db)) -> Any:
         """Serves the dynamic, cached Obtainium configuration export JSON."""
         base_url = get_base_url(request, ext.config.DEFAULT_PORT)
 
@@ -69,7 +69,7 @@ def build_router(ext) -> APIRouter:
             raise HTTPException(status_code=500, detail=f"Error compiling export JSON: {str(e)}")
 
     @router.get("/scrape-index.html", response_class=HTMLResponse)
-    def serve_scrape_index(request: Request, db: Session = Depends(get_db)):
+    def serve_scrape_index(request: Request, db: Session = Depends(get_db)) -> str:
         """Serves the HTML scraping index where Obtainium detects local APKs."""
         base_url = get_base_url(request, ext.config.DEFAULT_PORT)
 
@@ -112,7 +112,7 @@ def build_router(ext) -> APIRouter:
             logger.exception("Error generating scraping HTML")
             raise HTTPException(status_code=500, detail=f"Error generating scraping HTML: {str(e)}")
 
-    def _serve_download_impl(apk_id: int, db: Session):
+    def _serve_download_impl(apk_id: int, db: Session) -> FileResponse:
         """Shared implementation for APK download."""
         apk = db.query(LocalAppAPK).options(selectinload(LocalAppAPK.app)).filter_by(id=apk_id).first()
         if not apk:
@@ -137,7 +137,7 @@ def build_router(ext) -> APIRouter:
         )
 
     @router.get("/api/apps/download/{apk_id}/{filename}")
-    def serve_download_apk_with_filename(apk_id: int, filename: str = "", db: Session = Depends(get_db)):
+    def serve_download_apk_with_filename(apk_id: int, filename: str = "", db: Session = Depends(get_db)) -> FileResponse:
         """Streams APK file. URL includes filename for Obtainium HTML source provider matching."""
         try:
             return _serve_download_impl(apk_id, db)
@@ -148,7 +148,7 @@ def build_router(ext) -> APIRouter:
             raise HTTPException(status_code=500, detail=f"Error serving download: {str(e)}")
 
     @router.get("/api/apps/download/{apk_id}")
-    def serve_download_apk(apk_id: int, db: Session = Depends(get_db)):
+    def serve_download_apk(apk_id: int, db: Session = Depends(get_db)) -> FileResponse:
         """Streams APK file. Legacy route without filename in URL."""
         try:
             return _serve_download_impl(apk_id, db)
@@ -159,7 +159,7 @@ def build_router(ext) -> APIRouter:
             raise HTTPException(status_code=500, detail=f"Error serving download: {str(e)}")
 
     @router.get("/api/apps")
-    def serve_apps_api(db: Session = Depends(get_db)):
+    def serve_apps_api(db: Session = Depends(get_db)) -> dict[str, Any]:
         """API GET endpoint to retrieve list of all app configurations with categories and linked APKs."""
         try:
             db_apps = db.query(App).options(
@@ -195,7 +195,7 @@ def build_router(ext) -> APIRouter:
             raise HTTPException(status_code=500, detail=f"Error reading app configurations: {str(e)}")
 
     @router.get("/api/settings")
-    def serve_settings_api(db: Session = Depends(get_db)):
+    def serve_settings_api(db: Session = Depends(get_db)) -> dict[str, Any]:
         """API GET endpoint to retrieve global settings configuration JSON from the database."""
         try:
             settings = {s.key: s.value for s in db.query(Setting).all()}
@@ -206,7 +206,7 @@ def build_router(ext) -> APIRouter:
             raise HTTPException(status_code=500, detail=f"Error reading global settings: {str(e)}")
 
     @router.post("/api/apps/save")
-    def handle_save_app(body: AppSaveModel, db: Session = Depends(get_db)):
+    def handle_save_app(body: AppSaveModel, db: Session = Depends(get_db)) -> dict[str, Any]:
         """API POST endpoint to save or update an app configuration in the database."""
         try:
             app = db.query(App).filter_by(id=body.id).first()
@@ -240,7 +240,7 @@ def build_router(ext) -> APIRouter:
             raise HTTPException(status_code=500, detail=f"Error saving app configuration: {str(e)}")
 
     @router.post("/api/apps/delete")
-    def handle_delete_app(body: AppDeleteModel, db: Session = Depends(get_db)):
+    def handle_delete_app(body: AppDeleteModel, db: Session = Depends(get_db)) -> dict[str, Any]:
         """API POST endpoint to delete an app configuration from the database."""
         try:
             app = db.query(App).filter_by(id=body.id).first()
@@ -269,7 +269,7 @@ def build_router(ext) -> APIRouter:
             raise HTTPException(status_code=500, detail=f"Error deleting app configuration: {str(e)}")
 
     @router.post("/api/apps/compile")
-    def handle_compile(request: Request):
+    def handle_compile(request: Request) -> dict[str, Any]:
         """API POST endpoint to force cache invalidation and compilation."""
         try:
             invalidate_export_cache()
@@ -285,7 +285,7 @@ def build_router(ext) -> APIRouter:
             raise HTTPException(status_code=500, detail=f"Error during configuration compile: {str(e)}")
 
     @router.post("/api/settings/save")
-    def handle_save_settings(data: dict, db: Session = Depends(get_db)):
+    def handle_save_settings(data: dict[str, Any], db: Session = Depends(get_db)) -> dict[str, Any]:
         """API POST endpoint to save global settings in the database."""
         try:
             for k, v in data.items():
@@ -320,9 +320,9 @@ def build_router(ext) -> APIRouter:
         file: UploadFile = File(...),
         app_id: str = Form(...),
         version: str = Form(...),
-        architecture: str = Form(None),
+        architecture: Optional[str] = Form(None),
         db: Session = Depends(get_db),
-    ):
+    ) -> dict[str, Any]:
         """POST /api/apps/local-apks - Atomic file upload and metadata registration."""
         try:
             file_content = file.file.read()
@@ -394,7 +394,7 @@ def build_router(ext) -> APIRouter:
             raise HTTPException(status_code=500, detail=f"Database error during registration: {str(e)}")
 
     @router.delete("/api/apps/local-apks/{apk_id}")
-    def handle_delete_mapping(apk_id: int, db: Session = Depends(get_db)):
+    def handle_delete_mapping(apk_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
         """DELETE /api/apps/local-apks/{apk_id} - Removes APK metadata link from DB and triggers storage cleanup."""
         try:
             apk = db.query(LocalAppAPK).filter_by(id=apk_id).first()
@@ -419,7 +419,7 @@ def build_router(ext) -> APIRouter:
             raise HTTPException(status_code=500, detail=f"Error deleting APK metadata: {str(e)}")
 
     @router.post("/api/apps/import")
-    def handle_import_settings(data: dict, db: Session = Depends(get_db)):
+    def handle_import_settings(data: dict[str, Any], db: Session = Depends(get_db)) -> dict[str, Any]:
         """POST /api/apps/import - Imports an Obtainium export JSON into the database."""
         if not isinstance(data, dict) or ("apps" not in data and "settings" not in data):
             raise HTTPException(status_code=400, detail="JSON must contain 'apps' or 'settings' key")

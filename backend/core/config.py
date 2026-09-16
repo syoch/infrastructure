@@ -38,7 +38,7 @@ def resolve_config_path(path: str) -> str:
         return path
     return os.path.abspath(os.path.join(get_config_dir(), path))
 
-def load_config(config_data: dict, config_dir: Optional[str] = None):
+def load_config(config_data: dict[str, Any], config_dir: Optional[str] = None) -> None:
     """Loads configuration dynamically from a dictionary, setting module-level variables."""
     global DEFAULT_PORT, HOST, DATABASE_URL, SQLITE_WAL, EXTENSIONS, PUBLIC_DIR, _config_dir
     
@@ -64,7 +64,7 @@ def load_config(config_data: dict, config_dir: Optional[str] = None):
     if "public_dir" in paths_cfg:
         PUBLIC_DIR = os.path.abspath(paths_cfg["public_dir"])
 
-def load_config_from_file(config_path: str):
+def load_config_from_file(config_path: str) -> None:
     """Helper to read JSON file and load configuration."""
     if not config_path:
         return

@@ -2,8 +2,9 @@ import asyncio
 import json
 import logging
 import secrets
+from collections.abc import Callable
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Any, Optional
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from sqlalchemy.orm import Session
 from backend.core.database import get_session
@@ -16,7 +17,7 @@ log = logging.getLogger("control_plane.ws")
 
 
 class ConnectionManager:
-    def __init__(self):
+    def __init__(self) -> None:
         self.connections: dict[str, "WebSocketConnection"] = {}
         self._lock = asyncio.Lock()
 
@@ -64,13 +65,13 @@ class ConnectionManager:
 
 
 class WebSocketConnection:
-    def __init__(self, websocket: WebSocket, device: Device, session_factory):
+    def __init__(self, websocket: WebSocket, device: Device, session_factory: Callable[[], Session]) -> None:
         self.websocket = websocket
         self.device = device
         self.session_factory = session_factory
         self._closed = False
 
-    async def send(self, data: dict) -> None:
+    async def send(self, data: dict[str, Any]) -> None:
         if self._closed:
             return
         await self.websocket.send_text(json.dumps(data))
@@ -126,7 +127,7 @@ async def _send_welcome(conn: WebSocketConnection) -> None:
         session.close()
 
 
-async def _handle_hello(conn: WebSocketConnection, payload: dict) -> None:
+async def _handle_hello(conn: WebSocketConnection, payload: dict[str, Any]) -> None:
     resumed_ids = payload.get("resumed_claimed_ids") or []
     if not resumed_ids:
         return
@@ -147,7 +148,7 @@ async def _handle_hello(conn: WebSocketConnection, payload: dict) -> None:
         session.close()
 
 
-async def _handle_claim(conn: WebSocketConnection, payload: dict) -> None:
+async def _handle_claim(conn: WebSocketConnection, payload: dict[str, Any]) -> None:
     cmd_id = payload.get("command_id")
     claim_token = payload.get("claim_token")
     if not cmd_id or not claim_token:
@@ -178,7 +179,7 @@ async def _handle_claim(conn: WebSocketConnection, payload: dict) -> None:
         session.close()
 
 
-async def _handle_result(conn: WebSocketConnection, payload: dict) -> None:
+async def _handle_result(conn: WebSocketConnection, payload: dict[str, Any]) -> None:
     cmd_id = payload.get("command_id")
     status = payload.get("status")
     result = payload.get("result")
@@ -213,7 +214,7 @@ async def _handle_result(conn: WebSocketConnection, payload: dict) -> None:
         session.close()
 
 
-async def _handle_operations_register(conn: WebSocketConnection, payload: dict) -> None:
+async def _handle_operations_register(conn: WebSocketConnection, payload: dict[str, Any]) -> None:
     ops = payload.get("operations") or []
     if not isinstance(ops, list):
         await conn.send({"type": "error", "message": "operations must be a list"})
@@ -288,7 +289,7 @@ async def device_ws(
     websocket: WebSocket,
     device_id: str,
     token: str = Query(default=""),
-):
+) -> None:
     if not token:
         await websocket.close(code=1008, reason="missing token")
         return
