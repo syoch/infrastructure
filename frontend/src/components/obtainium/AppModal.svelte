@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { store, loadAllData } from '../lib/store.svelte.ts';
+  import { store, loadAllData } from '../../lib/store.svelte.ts';
   import { goto as navigate } from '$app/navigation';
   import { Dialog, Portal } from '@skeletonlabs/skeleton-svelte';
-  import { saveApp, type SaveAppPayload, type App } from '../api/api.js';
-  import { showCustomToast } from '../lib/toast.ts';
+  import { saveApp, type SaveAppPayload, type App } from '../../api/api.js';
+  import { showCustomToast } from '../../lib/toast.ts';
 
   let {
     active = false,

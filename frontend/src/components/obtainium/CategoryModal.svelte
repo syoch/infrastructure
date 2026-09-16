@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { store, loadAllData } from '../lib/store.svelte.ts';
+  import { store, loadAllData } from '../../lib/store.svelte.ts';
   import { goto as navigate } from '$app/navigation';
   import { Dialog, Portal } from '@skeletonlabs/skeleton-svelte';
-  import { saveSettings, saveApp, type SaveAppPayload } from '../api/api.js';
-  import { colorIntToHex, parseHexToColorInt, getCategoryModalColorPreview } from '../lib/ui.js';
-  import { confirmDialog } from '../lib/dialogs.svelte.ts';
-  import { showCustomToast } from '../lib/toast.ts';
+  import { saveSettings, saveApp, type SaveAppPayload } from '../../api/api.js';
+  import { colorIntToHex, parseHexToColorInt, getCategoryModalColorPreview } from '../../lib/ui.js';
+  import { confirmDialog } from '../../lib/dialogs.svelte.ts';
+  import { showCustomToast } from '../../lib/toast.ts';
 
   let {
     active = false,

@@ -94,3 +94,25 @@ Removed the last `frontend/style.css`-defined classes from `Dashboard.svelte`, `
   `dashboard.spec.js` locator updated to `#apk-list-tbody [data-testid="apk-delete-btn"]`
   (name avoids the forbidden `delete-apk-btn` substring).
 - Verified: `svelte-check found 0 errors and 0 warnings`; `npm run build` succeeds.
+
+## Obtainium pages refactor: self-contained pages + granular components (2026-09-17, supersedes "views")
+Deleted `src/views/{Dashboard,AppEdit,Portal}.svelte` entirely. The `src/views/` directory is now gone
+for all features (app_portal/control_plane did the same concurrently). New convention:
+**each `src/routes/**/+page.svelte` is a composition root that reads its own params/search params**, and
+never imports a whole view from `src/views/`.
+- New `src/components/obtainium/`: `SortHeader`, `DashboardHeader`, `CategoriesBar`, `AppsTable`,
+  `PortalAppsTable`, `GlobalSettingsPanel`, `SystemBackupPanel`, `AppEditHeader`, `AppDetailedForm`,
+  `SelfHostedApkManager`, plus moved `AppModal`/`CategoryModal` (were `src/components/`).
+- Page → components:
+  - `/` → hero + search/filter + `PortalAppsTable` (sort state lives in the page).
+  - `/dashboard`, `/list` → `DashboardHeader`+`CategoriesBar`+`AppsTable`+`GlobalSettingsPanel`+`SystemBackupPanel`.
+  - `/new` → same dashboard set + `AppModal`(active `type=app`) / `CategoryModal`(active `type=category`).
+  - `/edit` → `type=app`: `AppEditHeader`+`AppDetailedForm`+`SelfHostedApkManager`; else dashboard set with
+    route-driven quick-app/category modals.
+- Cross-component state on `/edit?type=app`: the page owns `appSource` (`bind:appSource` into
+  `AppDetailedForm`) and passes `isSelfHosted={appSource === 'HTML'}` to `SelfHostedApkManager`, preserving
+  the original "changing source to HTML reveals the APK card" behaviour.
+- Gotcha: `SortHeader` receives `onclick` as a normal Svelte 5 component callback prop and applies it to
+  the DOM `<button {onclick}>`; icon id must be `id={iconId}` (a bare `{iconId}` would become the wrong attr).
+- All existing ids/`data-testid` preserved verbatim → obtainium specs unchanged. Gates: svelte-check
+  0 errors/0 warnings, `npm run build` OK, `ls src/views` → no such directory.

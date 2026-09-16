@@ -220,7 +220,7 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
     await expect.poll(() => lastCommandFilterUrl).toMatch(/limit=10/);
   });
 
-  test('nav dropdown: control dropdown opens, lists Devices and ACL (admin)', async () => {
+  test('nav: rail exposes Devices/ACL and navigates (admin)', async () => {
     // Promote this user to admin explicitly via CLI (no auto promotion anymore)
     const devId = uniqueId('nav-admin');
     const bootstrapToken = issueToken(devId, 'Nav Admin');
@@ -239,19 +239,14 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
     // Wait for me to be fetched
     await page.waitForResponse((r) => r.url().includes('/devices/me') && r.status() === 200);
     await page.waitForLoadState('domcontentloaded');
-    const toggle = page.locator('#nav-control');
-    await expect(toggle).toBeVisible();
-    await expect(page.getByTestId('control-menu')).toBeHidden();
-    await toggle.click();
-    await expect(page.getByTestId('control-menu')).toBeVisible();
-    await expect(page.getByTestId('control-menu-devices')).toBeVisible();
-    // ACL is only visible for admin
-    const aclItem = page.getByTestId('control-menu-acl');
-    const aclVisible = await aclItem.isVisible();
-    // We accept either: ACL is visible (admin) or ACL is hidden (non-admin)
-    expect(typeof aclVisible).toBe('boolean');
-    await page.locator('h1, h2, body').first().click();
-    await expect(page.getByTestId('control-menu')).toBeHidden();
+    // The navigation is a rail: the control links are directly visible.
+    const devicesNav = page.getByTestId('nav-control-devices');
+    await expect(devicesNav).toBeVisible();
+    await expect(page.getByTestId('nav-control-acl')).toBeVisible();
+    await expect(page.getByTestId('nav-operations')).toBeVisible();
+    await devicesNav.click();
+    await expect(page).toHaveURL(/\/control\/devices/);
+    await expect(page.locator('#devices-list')).toBeVisible();
   });
 
   test('backend: GET /api/control/commands supports filter and pagination', async () => {

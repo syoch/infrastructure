@@ -55,8 +55,8 @@ test.describe('Portal Public UI E2E Tests', () => {
 
   test('1. Portal initial layout check', async () => {
     // Check navigation buttons
-    await expect(page.locator('#nav-portal')).toBeVisible();
-    await expect(page.locator('#nav-dashboard')).toBeVisible();
+    await expect(page.getByTestId('nav-home')).toBeVisible();
+    await expect(page.getByTestId('nav-dashboard')).toBeVisible();
 
     // Check main title
     await expect(page.locator('h1:has-text("Android 端末のプロビジョニングを快適に")')).toBeVisible();
@@ -71,14 +71,14 @@ test.describe('Portal Public UI E2E Tests', () => {
 
   test('2. Navigation routing to dashboard and back', async () => {
     // Click dashboard link
-    const navDashboard = page.locator('#nav-dashboard');
+    const navDashboard = page.getByTestId('nav-dashboard');
     await navDashboard.click();
     await expect(page).toHaveURL(/\/dashboard/);
     await expect(page.locator('#dashboard-view')).toBeVisible();
     await expect(page.locator('#portal-view')).not.toBeVisible();
 
     // Click portal link
-    const navPortal = page.locator('#nav-portal');
+    const navPortal = page.getByTestId('nav-home');
     await navPortal.click();
     await expect(page).toHaveURL(/\/$/);
     await expect(page.locator('#portal-view')).toBeVisible();

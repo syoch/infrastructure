@@ -1,5 +1,56 @@
 <script lang="ts">
-  import Control from '../../../views/Control.svelte';
+  import { untrack } from 'svelte';
+  import { ensureMe } from '../../../lib/auth.svelte.ts';
+  import { getToken, type Device } from '../../../api/control_api.js';
+  import BootstrapForm from '../../../components/control_plane/BootstrapForm.svelte';
+  import ControlGuard from '../../../components/control_plane/ControlGuard.svelte';
+  import AclPanel from '../../../components/control_plane/AclPanel.svelte';
+
+  type Phase = 'loading' | 'bootstrap' | 'ready';
+
+  let token = $state<string | null>(getToken());
+  let me = $state<Device | null>(null);
+  let phase = $state<Phase>('loading');
+
+  const isAdmin = $derived(me?.is_first_webui_device === true);
+
+  $effect(() => {
+    const currentToken = token;
+    untrack(() => {
+      void load(currentToken);
+    });
+  });
+
+  async function load(currentToken: string | null): Promise<void> {
+    if (!currentToken) {
+      me = null;
+      phase = 'bootstrap';
+      return;
+    }
+    phase = 'loading';
+    const fetched = await ensureMe(true);
+    if (!fetched) {
+      me = null;
+      phase = 'bootstrap';
+      return;
+    }
+    me = fetched;
+    phase = 'ready';
+  }
+
+  function onRegistered(): void {
+    token = getToken();
+  }
 </script>
 
-<div id="control-view"><Control sub="acl"  /></div>
+<div id="control-view">
+  {#if phase === 'bootstrap'}
+    <BootstrapForm onRegistered={onRegistered} />
+  {:else if phase === 'ready' && me}
+    {#if isAdmin}
+      <AclPanel />
+    {:else}
+      <ControlGuard deviceId={me.id} />
+    {/if}
+  {/if}
+</div>

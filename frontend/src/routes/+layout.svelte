@@ -18,13 +18,13 @@
   import { Navigation } from '@skeletonlabs/skeleton-svelte';
 
   const linksSidebar = {
-    apps: [{ label: 'Dashboard', href: '/dashboard', icon: DashboardIcon }],
+    apps: [{ label: 'Dashboard', href: '/dashboard', icon: DashboardIcon, testid: 'nav-dashboard' }],
     control: [
-      { label: 'Devices', href: '/control/devices', icon: DeviceIcon },
-      { label: 'ACL', href: '/control/acl', icon: ACLIcon },
-      { label: 'Operations', href: '/operations', icon: OperationsIcon },
+      { label: 'Devices', href: '/control/devices', icon: DeviceIcon, testid: 'nav-control-devices' },
+      { label: 'ACL', href: '/control/acl', icon: ACLIcon, testid: 'nav-control-acl' },
+      { label: 'Operations', href: '/operations', icon: OperationsIcon, testid: 'nav-operations' },
     ],
-    'app portal': [{ label: 'Apps', href: '/apps', icon: AppsIcon }],
+    'app portal': [{ label: 'Apps', href: '/apps', icon: AppsIcon, testid: 'nav-apps' }],
   };
 
   let { children } = $props();
@@ -38,7 +38,10 @@
 </script>
 
 <div class="w-full h-[100vh] grid grid-cols-[auto_1fr] items-stretch border border-surface-200-800">
-  <Navigation layout={navigationStyle} class="grid grid-rows-[auto_1fr_auto] gap-4">
+  <Navigation
+    layout={navigationStyle}
+    class={navigationStyle == 'rail' ? '' : 'grid grid-rows-[auto_1fr_auto] gap-4'}
+  >
     <Navigation.Header>
       <Navigation.Trigger
         onclick={() => {
@@ -52,7 +55,7 @@
     <Navigation.Content>
       <Navigation.Group>
         <Navigation.Menu>
-          <Navigation.TriggerAnchor href="/">
+          <Navigation.TriggerAnchor href="/" data-testid="nav-home">
             <HomeIcon class="w-5 h-5" />
             <Navigation.TriggerText>Home</Navigation.TriggerText>
           </Navigation.TriggerAnchor>
@@ -64,7 +67,7 @@
           <Navigation.Menu>
             {#each links as link (link)}
               {@const Icon = link.icon}
-              <Navigation.TriggerAnchor href={link.href} title={link.label} aria-label={link.label}>
+              <Navigation.TriggerAnchor href={link.href} title={link.label} aria-label={link.label} data-testid={link.testid}>
                 <Icon class="w-5 h-5" />
                 <Navigation.TriggerText>{link.label}</Navigation.TriggerText>
               </Navigation.TriggerAnchor>
@@ -73,7 +76,6 @@
         </Navigation.Group>
       {/each}
     </Navigation.Content>
-    <Navigation.Footer>a</Navigation.Footer>
   </Navigation>
   <div class="overflow-y-auto overflow-x-auto">
     <div class="p-6">
