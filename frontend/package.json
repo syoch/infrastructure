@@ -17,6 +17,7 @@
     "prepare": "svelte-kit sync"
   },
   "devDependencies": {
+    "@lucide/svelte": "^1.46.0",
     "@playwright/test": "^1.49.0",
     "@skeletonlabs/skeleton": "^5.0.1",
     "@skeletonlabs/skeleton-svelte": "^5.0.1",
