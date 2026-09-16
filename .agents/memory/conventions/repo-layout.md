@@ -10,7 +10,7 @@ The repo IS the portal. Top-level:
 - `device_agent/` — standalone agent package (`agent.py`, `builtin_ops.py`, `protocol.py`, own pyproject/default.nix); deps websockets+jsonschema only.
 - `frontend/` — **SvelteKit 2 SPA** (adapter-static → `dist/`, `ssr`/`prerender` off) + **Tailwind v4** + **Skeleton v5**.
   - Routes: `src/routes/**` (path URLs `/`, `/list`, `/dashboard`, `/new`, `/edit`, `/operations`, `/control/{devices,acl}`, `/apps`, `/apps/[slug]`, `/test_schema_renderer`). No custom router (SvelteKit `goto`/`page`).
-  - Shell: `src/routes/+layout.svelte` (header/nav via Skeleton Menu, footer, Toast.Group, dialog hosts). Views: `src/views/**`; shared components: `src/components/**`, `src/lib/components/**`.
+  - Shell: `src/routes/+layout.svelte` (Skeleton Navigation rail/sidebar via `Navigation`; Toast.Group; dialog hosts). No `src/views/` layer: each `+page.svelte` is a self-contained page (reads its own params/query) composed of reusable components under `src/components/<feature>/` (obtainium/control_plane/app_portal) plus shared `src/components/*.svelte` and `src/lib/components/*`.
   - Toasts: `src/lib/toast.ts` (Skeleton Toast). Confirm/prompt: `src/lib/dialogs.svelte.ts` (promise API, Skeleton Dialog) — no native confirm/alert/prompt.
   - Legacy `style.css` is deleted; styling is Tailwind + Skeleton tokens/classes. Ambient blobs use scoped styles in the layout.
   - E2E specs at `src/features/<feature>/e2e/` (prefer `data-testid`); harness at `/test_schema_renderer` via `src/lib/schema_harness.ts`.
