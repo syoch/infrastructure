@@ -1,26 +1,30 @@
-# dotfiles follow-up required (breaking changes)
+# dotfiles follow-up — DONE (2026-09)
 
-This repo's refactors changed interfaces that dotfiles (`inputs.syoch-infra`,
-`github:syoch/infrastructure`) must adopt in a SEPARATE task. Until then dotfiles is broken.
-
-Changes to apply in dotfiles:
-- `flake.nix`: `syoch-infra.nixosModules.syoch-portal` → `syoch-infra.nixosModules.portal`.
+dotfiles (`github.com/syoch/dotfiles`) has been updated for the infrastructure refactors.
+Changes applied (uncommitted in dotfiles at the time of writing; dotfiles has other unrelated
+pending changes — commit selectively):
+- `flake.nix`: `syoch-infra.nixosModules.syoch-portal` → `.portal`; nix-on-droid
+  `packages.aarch64-linux.portal` → `portal-device-agent`.
 - `components/host/sv01/services/portal.nix`: `services.syoch-portal` → `services.portal`;
-  `systemd.services.syoch-portal` → `portal` (unit renamed).
-- Portal config JSON (sops secret `portal-config`): `extensions` must now be a list of IDs, e.g.
-  `[{"id":"storage","config":{"uploads_dir":"..."}},{"id":"obtainium"},{"id":"control-plane"},{"id":"app-portal"}]`.
-  The old `{module, class}` schema no longer loads.
-- **device agent is now a separate package**: use `syoch-infra.packages.<system>.portal-device-agent`
-  (deps: websockets+jsonschema only) instead of `packages.portal`. In
-  `components/host/syoch-nix/portal-device-agent.nix`, `portalPkg` currently points at
-  `packages.portal` and runs `${portalPkg}/bin/portal-device-agent` (no longer provided there);
-  set the agent path to `packages.portal-device-agent` while keeping `portal-opencode-tool`
-  from `packages.portal`.
-- nix-on-droid: `syoch-infra.packages.aarch64-linux.portal-device-agent` (or `portal` if the
-  full app is needed).
-- Host data migration if adopting the new default names: StateDirectory/user/DB
-  `syoch-portal` → `portal` (`/var/lib/syoch-portal` → `/var/lib/portal`, Postgres db/user).
-- `packages.portal` / `packages.aarch64-linux.portal` still exist and are unchanged in name.
-- Optional: dotfiles has its own `services.portal-device-agent` module (same option name as this
-  repo's `nixosModules.portal-device-agent`); reconcile (adopt one) to avoid collisions.
-- `nixosModules.web-infrastructure` no longer exists; sv01 composes nginx/acme itself already.
+  `systemd.services.syoch-portal` → `portal`; added explicit `users.users.syoch-portal` /
+  `users.groups.syoch-portal` (the module no longer creates them now that its default changed).
+  OS user/group and Postgres db/role intentionally KEEP the `syoch-portal` names (no data migration).
+- `components/host/sv01/services/pgsql.nix`: `before = [ "portal.service" ]`.
+- `components/host/syoch-nix/portal-device-agent.nix`: agent binary now from
+  `packages.portal-device-agent` (`agentPkg`), while `portal-opencode-tool` still comes from
+  `packages.portal`.
+- sops secret `components/host/sv01/secrets.yaml` `portal-config`: `extensions` migrated from
+  `{module, class}` to `{id, ...}` (`storage`/`obtainium`/`control-plane`/`app-portal`) using
+  `sops set --value-file` (only that key decrypted).
+
+Verified (with `--override-input syoch-infra path:<infra>`): `nixosConfigurations.sv01`,
+`nixosConfigurations.syoch-nix` and `nixOnDroidConfigurations.default` all evaluate; the
+aarch64 `portal-device-agent` package exists.
+
+Remaining operational steps (user):
+- Push the infrastructure changes, then in dotfiles run `nix flake update syoch-infra`
+  (flake.lock still pins the old rev `757cd14`).
+- Rebuild/deploy the hosts (`nixos-rebuild switch`); the systemd unit renamed
+  `syoch-portal.service` → `portal.service`.
+- The infra `nixosModules.portal-device-agent` (`services.portal-device-agent`) is NOT imported by
+  dotfiles (dotfiles keeps its own richer local module of the same option name) — no conflict.
