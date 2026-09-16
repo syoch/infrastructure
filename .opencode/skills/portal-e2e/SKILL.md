@@ -11,18 +11,16 @@ Covers dashboard CRUD, category management, APK upload, import, and portal publi
 ## When to use me
 
 Use this after modifying any of:
-- `frontend/js/dashboard.js`
-- `frontend/js/portal.js`
-- `frontend/js/ui.js`
-- `frontend/js/api.js`
-- `frontend/index.html`
-- `frontend/style.css`
+- `frontend/src/features/obtainium/**` (dashboard, public portal, app/category modals)
+- `frontend/src/shared/**` (schema renderer/form/editor)
+- `frontend/src/app/**` (shell, router, toast)
+- `frontend/js/api.ts`, `frontend/js/ui.ts`
 
 ## Command
 
 ```bash
 # pwd MUST be the repository root (/home/syoch/ghq/github.com/syoch/infrastructure)
-nix develop --command bash -c "cd tests && npx playwright test --reporter=list"
+nix develop --command bash -c "cd frontend && npx playwright test --reporter=list"
 ```
 
 Or via Make:
@@ -39,13 +37,16 @@ make test-e2e
 
 ## Timeout
 
-~2 minutes for 18 tests (12 dashboard + 6 portal)
+~2 minutes for the full suite (dashboard, portal, control plane, app portal, schema renderer)
 
 ## Test structure
 
-- `tests/dashboard.spec.js` — Dashboard UI tests (12 tests)
-- `tests/portal.spec.js` — Public portal UI tests (6 tests)
-- `tests/playwright.config.js` — Config (baseURL: `http://localhost:8000`)
+- `frontend/src/features/obtainium/e2e/dashboard.spec.js` — Dashboard UI tests
+- `frontend/src/features/obtainium/e2e/portal.spec.js` — Public portal UI tests
+- `frontend/src/features/control_plane/e2e/*.spec.js` — Control plane UI / device agent
+- `frontend/src/features/app_portal/e2e/app_portal.spec.js` — App Portal UI
+- `frontend/src/shared/e2e/schema_renderer.spec.js` — Schema renderer
+- `frontend/playwright.config.js` — Config (baseURL: `http://localhost:8000`); shared fixtures in `tests/`
 
 ## Notes
 

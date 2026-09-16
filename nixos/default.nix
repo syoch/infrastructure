@@ -1,8 +1,6 @@
-{ config, pkgs, ... }:
-
 {
   imports = [
     ./portal-service.nix
-    ./web-infrastructure.nix
+    ./portal-device-agent.nix
   ];
 }

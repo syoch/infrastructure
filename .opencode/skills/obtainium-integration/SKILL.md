@@ -24,7 +24,7 @@ Use this after modifying:
 
 ```bash
 # pwd MUST be the repository root
-nix develop -c ./tests/obtainium-integration/obtainium-integration \
+nix develop -c ./backend/obtainium/tests/avd/obtainium-integration \
   --backup-tarball /path/to/backup.tgz
 ```
 

@@ -1,11 +1,11 @@
 ---
 name: nixos-portal-nginx-basic-auth-test
-description: Use when adding nginx virtual host or HTTP Basic Auth options to the syoch-portal NixOS module and verifying them with the NixOS VM integration test. Trigger keywords: portal-service.nix, nginx vhost, auth_basic, htpasswd, {SHA} hash, openssl dgst sha1 base64, nix build check portal-test, NixOS VM test, 401 status, curl http_code, mkIf locations merge.
+description: Use when adding nginx virtual host or HTTP Basic Auth options to the portal NixOS module and verifying them with the NixOS VM integration test. Trigger keywords: portal-service.nix, nginx vhost, auth_basic, htpasswd, {SHA} hash, openssl dgst sha1 base64, nix build check portal-test, NixOS VM test, 401 status, curl http_code, mkIf locations merge.
 ---
 
 ## When to use
 
-Use when extending `nixos/portal-service.nix` (the `services.syoch-portal` module) with nginx virtual-host or HTTP Basic Auth options, and verifying via the NixOS VM test. Typical work: adding `nginx`/`basicAuth` option blocks, wiring `services.nginx.virtualHosts`, and asserting 401/200 status codes in the flake.nix NixOS test.
+Use when extending `nixos/portal-service.nix` (the `services.portal` module) with nginx virtual-host or HTTP Basic Auth options, and verifying via the NixOS VM test. Typical work: adding `nginx`/`basicAuth` option blocks, wiring `services.nginx.virtualHosts`, and asserting 401/200 status codes in the flake.nix NixOS test.
 
 ## Procedure
 
@@ -21,7 +21,7 @@ Use when extending `nixos/portal-service.nix` (the `services.syoch-portal` modul
    `printf 'password' | openssl dgst -sha1 -binary | base64` -> `{SHA}<hash>`
    Use it in the test as `htpasswdFile = pkgs.writeText "x.htpasswd" "user:{SHA}<hash>"`.
 
-4. In the flake.nix NixOS test node: enable `services.syoch-portal.nginx`/`basicAuth`, set `hostName = "portal.test.local"`, and add testScript curl assertions:
+4. In the flake.nix NixOS test node: enable `services.portal.nginx`/`basicAuth`, set `hostName = "portal.test.local"`, and add testScript curl assertions:
    `machine.succeed("curl -s -o /dev/null -w '%{http_code}\\n' -H 'Host: portal.test.local' http://127.0.0.1/scrape-index.html | grep -q '^401$'")` and with `-u user:pass` expecting `^200$`.
 
 5. Run the test:

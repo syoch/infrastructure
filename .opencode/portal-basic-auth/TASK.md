@@ -41,7 +41,7 @@
 
 ### 1. NixOS module (`nixos/portal-service.nix`)
 
-`services.syoch-portal` に Basic Auth 用のオプションを追加する。
+`services.portal` に Basic Auth 用のオプションを追加する。
 
 ```nix
 basicAuth = {
@@ -70,7 +70,7 @@ basicAuth = {
 
 ### 2. nginx vhost (`dotfiles/components/host/sv01/services/portal.nix`)
 
-`portal.syoch.org` の vhost で、`cfg.services.syoch-portal.basicAuth.protectedPaths`
+`portal.syoch.org` の vhost で、`cfg.services.portal.basicAuth.protectedPaths`
 に該当する location に `auth_basic` を設定する。
 
 ```nix

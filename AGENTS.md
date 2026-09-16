@@ -2,22 +2,22 @@
 
 ## プロジェクト概要
 
-Android Device Provisioning Portal を中心としたセルフホストインフラストラクチャ。
+Android Device Provisioning Portal (以下 portal) のリポジトリ。
 Obtainium と連携し、APK の配信・更新管理を行う。
 
 ## ディレクトリ構成
 
 | ディレクトリ | 役割 |
 |-------------|------|
-| `portal/` | Python/FastAPI ベースの Portal Web アプリ |
-| `backend/` | コアサーバー (extension loader, backup manager, database) |
-| `portal/servers/` | エクステンション (StorageManager, ObtainiumRepo, **ControlPlane**) |
-| `frontend/` | フロントエンド (SPA, vanilla JS) |
-| `tests/` | E2E テスト (Playwright) + バックエンドテスト |
-| `tests/obtainium-integration/` | Obtainium 統合試験 (AVD 使用) |
-| `nixos/` | NixOS モジュール (portal-service, web-infrastructure) |
-| `tailscale/` | Tailscale VPN 設定テンプレート |
-| `gamemcbe/` | Minecraft Bedrock Dedicated Server |
+| `backend/` | Python/FastAPI アプリ本体 |
+| `backend/core/` | コア (extension registry/loader, backup manager, database, auth, config) |
+| `backend/{obtainium,control_plane,app_portal,storage}/` | 拡張機能 (extension)。各機能のテストは `backend/<feature>/tests/` |
+| `device_agent/` | 汎用デバイスエージェント (ポータル標準コンポーネント) |
+| `frontend/` | フロントエンド (Svelte 5 + Vite SPA)。E2E spec は `frontend/src/features/<feature>/e2e/` |
+| `tests/` | 共有テストフィクスチャ (`config.test.json`, `bootstrap/`, `uploads/`) |
+| `backend/obtainium/tests/avd/` | Obtainium 統合試験 (AVD 使用) |
+| `nixos/` | NixOS モジュール (`portal-service.nix`, `portal-device-agent.nix`) |
+| `contrib/` | 非ポータル資産 (gamemcbe, tailscale, Android root ツール) と専用 flake |
 | `.opencode/control-plane/` | Control plane 設計ドキュメント (Phase 1-12) |
 
 ## 開発環境
@@ -30,7 +30,8 @@ nix develop --command bash
 # または direnv が自動で有効化 (.envrc: "use flake")
 ```
 
-dev shell で提供される主なツール: Node.js, Python 3 (sqlalchemy, fastapi, uvicorn), Chromium, curl, jq, rsync, Android tools (aapt, adb)
+dev shell で提供される主なツール: Node.js, Python 3 (sqlalchemy, fastapi, uvicorn), mypy, Chromium, curl, jq, rsync, android-tools (adb)。
+Android root 系ツール (aapt, scrcpy, dtc, usbutils, sunxi-tools, ksud-next) は `contrib/` の flake で提供 (`nix develop ./contrib`)。
 
 ## テスト実行
 
@@ -38,14 +39,14 @@ dev shell で提供される主なツール: Node.js, Python 3 (sqlalchemy, fast
 # 全テスト
 make test
 
-# バックエンドテストのみ
+# バックエンドテストのみ (機能別に backend/<feature>/tests/ に配置)
 make test-backend
 # 注: control_plane_ws テストは `nix develop` 環境 (websockets パッケージ) を必要とします
 
 # Playwright E2E テスト (pwd はリポジトリルート必須)
 make test-e2e
 # または
-nix develop --command bash -c "cd tests && npx playwright test --reporter=list"
+nix develop --command bash -c "cd frontend && npx playwright test --reporter=list"
 
 # Obtainium 統合試験 (AVD 起動中 + バックアップ tarball 必須)
 make test-obtainium BACKUP=path/to/backup.tgz
@@ -69,7 +70,7 @@ make test-obtainium-smoke BACKUP=path/to/backup.tgz
 ### テスト環境
 - E2E: `nix develop --command` で実行 (pwd はリポジトリルート必須)
 - Obtainium: AVD 起動中 + バックアップ tarball 必須
-- シードデータ: `bootstrap/seed_backup.tar.gz`
+- シードデータ: `tests/bootstrap/seed_backup.tar.gz`
 - テスト自動起動: Playwright が `webServer` 設定で事前にサーバーを起動
 
 ### クリーンアップ
@@ -90,18 +91,21 @@ make test-obtainium-smoke BACKUP=path/to/backup.tgz
 - Control plane REST: `/api/control/{devices,acls,operations,commands,events}`
 - Control plane WS: `/api/control/devices/{device_id}/ws?token=tk_xxx`
 - Control plane bridge: `portal-control-bridge --server-url <...> --bootstrap-token <...>`
-- Device agent: `portal-device-agent --config /path/to/config.json` (generic shell-command-based)
-- Device dogfooding: `bridge.py` が `acl.*` / `device_admin.*` を advertise
-- WebUI: `#/control` ルート (Phase 12 で分割: `#/control/devices`, `#/control/acl`, `#/operations`)
-- Control JS モジュール: `frontend/js/control_{router,bootstrap,devices,acl,operations,api}.js`
+- Device agent: `portal-device-agent --config /path/to/config.json` (汎用 shell-command ベース)
+- Device dogfooding: `backend/control_plane/bridge.py` が `acl.*` / `device_admin.*` を advertise
+- WebUI: `#/control` ルート (`#/control/devices`, `#/control/acl`, `#/operations`)
+- Control 画面: `frontend/src/features/control_plane/`
 - Operations クエリ: `#/operations?status=&from=&to=&op=&limit=&offset=`
-- 管理者昇格 CLI: `python3 manage.py --config <cfg> control set-admin --device-id <id>`
-- Schema renderer: `frontend/js/schema_renderer.js` (JSON Schema → form, `ui_hint.widget: json|textarea|password`)
-- Schema editor: `frontend/js/schema_editor.js` (visual JSON Schema editor)
+- 管理者昇格 CLI: `python3 backend/manage.py --config <cfg> control set-admin --device-id <id>`
+- Schema renderer: `frontend/js/schema_api.ts` + `frontend/src/shared/` (JSON Schema → form, `ui_hint.widget: json|textarea|password`)
+- 拡張機能の選択: config の `extensions` に **ID** を列挙 (`storage` / `obtainium` / `control-plane` / `app-portal`)
+- NixOS モジュール: `nixosModules.portal` / `nixosModules.portal-device-agent` (`services.portal` / `services.portal-device-agent`)
 - 設計: `.opencode/control-plane/PHASE{1..12}.md` を参照
+
 ## 注意事項
 
 - `nix develop` はリポジトリルートで実行してください (flake.nix の検索)
+- 非ポータル資産は `contrib/` (専用 flake) に分離されています
 - プレコミットフックが秘密情報のスキャンを行います (`.githooks/pre-commit`)
 - Cloudflare Access が `portal.syoch.org` を保護しています
 - APK は Content-Addressable Storage (SHA-256) で管理されます

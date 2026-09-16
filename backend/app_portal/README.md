@@ -188,6 +188,6 @@ bootstrap token は sops secret `portal-opencode-bridge-token` から供給さ�
 
 ## テスト
 
-- `tests/backend/test_app_portal.py` — REST + 配送フロー（コマンド結果は DB でシミュレート）
-- `tests/backend/test_opencode_tool.py` — fake OpenCode サーバに対する `OpenCodeOps` / ヘルパー CLI のテスト
-- `tests/backend/test_app_portal_delivery_e2e.py` — portal + 汎用 device agent + ヘルパー CLI の配送統合テスト
+- `backend/app_portal/tests/test_app_portal.py` — REST + 配送フロー（コマンド結果は DB でシミュレート）
+- `backend/app_portal/tests/test_opencode_tool.py` — fake OpenCode サーバに対する `OpenCodeOps` / ヘルパー CLI のテスト
+- `backend/app_portal/tests/test_app_portal_delivery_e2e.py` — portal + 汎用 device agent + ヘルパー CLI の配送統合テスト

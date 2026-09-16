@@ -2,7 +2,6 @@
   lib,
   buildPythonApplication,
   python,
-  python3Packages,
   setuptools,
   buildNpmPackage,
 }:
@@ -35,7 +34,7 @@ buildPythonApplication {
     ];
   };
 
-  propagatedBuildInputs = (import ./python-deps.nix python3Packages) ++ [ setuptools ];
+  propagatedBuildInputs = (import ./python-deps.nix python.pkgs) ++ [ setuptools ];
 
   # ビルド時にフロントエンドの成果物を取り込む
   postInstall = ''

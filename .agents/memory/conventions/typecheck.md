@@ -3,7 +3,7 @@
 ## Gate
 `make typecheck` runs both:
 1. `cd frontend && npm run typecheck` (svelte-check; `tsconfig.json` needs `noEmit: true` + `allowImportingTsExtensions: true` for `.svelte.ts` imports)
-2. `cd portal && mypy backend servers agents manage.py`
+2. `mypy backend device_agent`
 
 Run inside `nix develop` (devShell now provides `mypy`; the devShell python also has sqlalchemy so the plugin is importable).
 

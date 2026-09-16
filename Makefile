@@ -60,17 +60,17 @@ test-obtainium:
 		echo "Usage: make test-obtainium BACKUP=path/to/backup-XXXX.tgz" >&2; \
 		exit 2; \
 	fi
-	nix develop -c ./tests/obtainium-integration/obtainium-integration --backup-tarball "$(BACKUP)"
+	nix develop -c ./backend/obtainium/tests/avd/obtainium-integration --backup-tarball "$(BACKUP)"
 
 test-obtainium-smoke:
 	@if [[ -z "$(BACKUP)" ]]; then \
 		echo "Usage: make test-obtainium-smoke BACKUP=path/to/backup-XXXX.tgz" >&2; \
 		exit 2; \
 	fi
-	nix develop -c ./tests/obtainium-integration/obtainium-integration \
+	nix develop -c ./backend/obtainium/tests/avd/obtainium-integration \
 		--backup-tarball "$(BACKUP)" \
 		--apps 3 \
-		--output-dir ./tests/obtainium-integration/results/smoke-$$(date +%s)
+		--output-dir ./backend/obtainium/tests/avd/results/smoke-$$(date +%s)
 
 frontend/node_modules: frontend/package.json
 	cd frontend && npm install
@@ -80,4 +80,4 @@ clean:
 	rm -f tests/portal_test.db*
 	rm -rf tests/uploads/*
 	rm -rf tests/test-results
-	rm -rf tests/obtainium-integration/results/*
+	rm -rf backend/obtainium/tests/avd/results/*

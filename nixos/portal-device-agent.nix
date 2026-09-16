@@ -3,11 +3,11 @@
 with lib;
 
 let
-  cfg = config.services.syoch-portal-device-agent;
+  cfg = config.services.portal-device-agent;
   portalPkg = pkgs.python3Packages.callPackage ../default.nix { };
 in
 {
-  options.services.syoch-portal-device-agent = {
+  options.services.portal-device-agent = {
     enable = mkEnableOption "Portal control-plane device agent";
 
     configFile = mkOption {
@@ -29,37 +29,37 @@ in
 
     user = mkOption {
       type = types.str;
-      default = "syoch-portal-device-agent";
+      default = "portal-device-agent";
       description = "User account under which the service runs.";
     };
 
     group = mkOption {
       type = types.str;
-      default = "syoch-portal-device-agent";
+      default = "portal-device-agent";
       description = "Group under which the service runs.";
     };
 
     stateDirectory = mkOption {
       type = types.str;
-      default = "syoch-portal-device-agent";
+      default = "portal-device-agent";
       description = "State directory (used for the credentials file).";
     };
   };
 
   config = mkIf cfg.enable {
-    users.users = lib.optionalAttrs (cfg.user == "syoch-portal-device-agent") {
-      syoch-portal-device-agent = {
+    users.users = lib.optionalAttrs (cfg.user == "portal-device-agent") {
+      portal-device-agent = {
         isSystemUser = true;
         group = cfg.group;
         description = "Portal control-plane device agent";
       };
     };
 
-    users.groups = lib.optionalAttrs (cfg.group == "syoch-portal-device-agent") {
-      syoch-portal-device-agent = { };
+    users.groups = lib.optionalAttrs (cfg.group == "portal-device-agent") {
+      portal-device-agent = { };
     };
 
-    systemd.services.syoch-portal-device-agent = {
+    systemd.services.portal-device-agent = {
       description = "Portal control-plane device agent";
       after = [ "network.target" ];
       wantedBy = [ "multi-user.target" ];

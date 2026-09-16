@@ -20,9 +20,9 @@ When an existing (or new) portal backend endpoint needs admin-only authenticatio
 
 ### Runtime verification via curl (status-code differential)
 1. Clean state: `pkill -9 -f "manage.py|backend.app|uvicorn|_control_plane"; sleep 1; rm -f tests/portal_test.db*`; reseed: `python3 backend/manage.py --config tests/config.test.json restore --in tests/bootstrap/seed_backup.tar.gz`.
-2. Start server: `cd tests && python3 ../backend/main.py --config config.test.json > /tmp/server.log 2>&1 &`; confirm `ss -ltnp | grep :8000`.
+2. Start server: `python3 backend/app.py --config config.test.json > /tmp/server.log 2>&1 &`; confirm `ss -ltnp | grep :8000`.
 3. Expect **401/redirect without creds**: `curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/backup`.
-4. Issue token: `python3 manage.py --config config.test.json control issue-bootstrap-token --device-id admin-dev --display-name "Admin Dev"`. Register: `POST /api/control/devices/register` with `{device_id, display_name, bootstrap_token}`; extract `bearer_token` via `python3 -c "import sys,json; print(json.load(sys.stdin)['bearer_token'])"`. Promote: `python3 manage.py --config <cfg> control set-admin --device-id admin-dev`.
+4. Issue token: `python3 backend/manage.py --config config.test.json control issue-bootstrap-token --device-id admin-dev --display-name "Admin Dev"`. Register: `POST /api/control/devices/register` with `{device_id, display_name, bootstrap_token}`; extract `bearer_token` via `python3 -c "import sys,json; print(json.load(sys.stdin)['bearer_token'])"`. Promote: `python3 backend/manage.py --config <cfg> control set-admin --device-id admin-dev`.
 5. Admin bearer must return **200**; register a second device, leave it non-admin, and confirm **403**.
 
 ### Regression

@@ -11,6 +11,8 @@ fi
 
 # This hook file legitimately contains the pattern strings; skip it.
 STAGED_FILES=$(echo "$STAGED_FILES" | grep -v '^\.githooks/pre-commit$' || true)
+# Example files hold placeholders, not real secrets.
+STAGED_FILES=$(echo "$STAGED_FILES" | grep -v '\.env\.example$' || true)
 if [ -z "$STAGED_FILES" ]; then
     exit 0
 fi

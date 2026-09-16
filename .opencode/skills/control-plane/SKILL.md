@@ -118,13 +118,13 @@ portal-manage control issue-bootstrap-token --device-id bridge --display-name "P
 portal-control-bridge \
   --server-url http://127.0.0.1:8000 \
   --bootstrap-token $(cat /run/secrets/portal-bridge-token) \
-  --config /var/lib/syoch-portal/config.json
+  --config /var/lib/portal/config.json
 ```
 
 ## Tests
 
-- `tests/backend/test_control_plane.py` (24 REST tests, no nix-only deps)
-- `tests/backend/test_control_plane_ws.py` (5 WS tests, requires `nix develop`)
+- `backend/control_plane/tests/test_control_plane.py` (24 REST tests, no nix-only deps)
+- `backend/control_plane/tests/test_control_plane_ws.py` (5 WS tests, requires `nix develop`)
 
 Run all backend tests: `make test-backend`
 

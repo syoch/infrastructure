@@ -1,5 +1,5 @@
 {
-  description = "Infrastructure deployment with reproducible environment";
+  description = "Android Device Provisioning Portal (syoch/infrastructure)";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/25.05";
@@ -21,62 +21,8 @@
       in
       rec {
         packages = {
-          magisk = pkgs.fetchurl {
-            url = "https://github.com/topjohnwu/Magisk/releases/download/v30.7/app-debug.apk";
-            hash = "sha256-QHKVJeKYoR2tbhNYainvpIpI6Xy/ACA3mOgEfRxxDLI=";
-          };
-          magiskboot =
-            let
-              sys = if system == "x86_64-linux" then "x86_64" else "arm64";
-              exe_path = "lib/${sys}/libmagiskboot.so";
-            in
-            pkgs.stdenv.mkDerivation {
-              name = "magiskboot";
-              version = "30.7";
-              src = packages.magisk;
-              unpackPhase = ''
-                mkdir -p $out
-                ${pkgs.unzip}/bin/unzip -j $src "${exe_path}" -d $out
-              '';
-              buildPhase = ''
-                mkdir -p $out/bin
-                mv $out/libmagiskboot.so $out/bin/magiskboot
-                chmod +x $out/bin/magiskboot
-              '';
-            };
-          ksud-next =
-            let
-              pkgs-x86 = if system == "x86_64-linux" then pkgs else import nixpkgs { system = "x86_64-linux"; };
-            in
-            pkgs.stdenv.mkDerivation {
-              name = "ksud-next";
-              version = "3.2.0";
-              src = pkgs.fetchurl (
-                if system == "x86_64-linux" then
-                  {
-                    url = "https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v3.2.0/ksud-x86_64-unknown-linux-musl";
-                    hash = "sha256-NUi3XwR2HvBiy1KmPuaOS9W4b6LQEDIChybz6kjOd50=";
-                  }
-                else if system == "aarch64-linux" then
-                  {
-                    url = "https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v3.2.0/ksud-aarch64-unknown-linux-musl";
-                    hash = "";
-                  }
-                else
-                  throw "Unsupported system: ${system}"
-              );
-
-              unpackPhase = "true";
-
-              buildPhase = ''
-                mkdir -p $out/bin
-                cp $src $out/bin/ksud-next
-                chmod +x $out/bin/ksud-next
-              '';
-            };
           portal = pkgs.python3Packages.callPackage ./default.nix {
             buildNpmPackage = pkgs.buildNpmPackage;
-            python3Packages = pkgs.python3Packages;
           };
           test-backend = pkgs.writeShellApplication {
             name = "run-backend-tests";
@@ -137,10 +83,6 @@
             type = "app";
             program = "${packages.portal}/bin/portal-server";
           };
-          ksud-next = {
-            type = "app";
-            program = "${packages.ksud-next}/bin/ksud-next";
-          };
           portal = {
             type = "app";
             program = "${packages.portal}/bin/portal-server";
@@ -168,12 +110,17 @@
             name = "portal-integration-test";
             
             nodes.machine = { config, pkgs, lib, ... }: {
-              imports = [ ./nixos/web-infrastructure.nix ];
-              
+              imports = [ ./nixos/portal-service.nix ];
+
+              services.portal.enable = true;
+              services.nginx.enable = true;
+              services.nginx.recommendedProxySettings = true;
+              services.nginx.recommendedTlsSettings = true;
+
               # Override the portal config for the test machine to use test paths
-              services.syoch-portal.configFile = lib.mkForce (pkgs.writeText "config.json" (builtins.toJSON {
+              services.portal.configFile = lib.mkForce (pkgs.writeText "config.json" (builtins.toJSON {
                 database = {
-                  url = "sqlite:////var/lib/syoch-portal/database.db";
+                  url = "sqlite:////var/lib/portal/database.db";
                   sqlite_wal = true;
                 };
                 server = {
@@ -193,17 +140,17 @@
                 ];
               }));
 
-              services.syoch-portal.readWritePaths = lib.mkForce [
-                "/var/lib/syoch-portal"
+              services.portal.readWritePaths = lib.mkForce [
+                "/var/lib/portal"
                 "/var/uploads"
               ];
 
               # Portal nginx vhost + Basic Auth (Obtainium bypass protection)
-              services.syoch-portal.nginx = {
+              services.portal.nginx = {
                 enable = true;
                 hostName = "portal.test.local";
               };
-              services.syoch-portal.basicAuth = {
+              services.portal.basicAuth = {
                 enable = true;
                 htpasswdFile = pkgs.writeText "obtainium.htpasswd" "obtainium:{SHA}IGyAQTualsExLMNGt9JRe4RGPt0=";
               };
@@ -221,7 +168,7 @@
             };
 
             testScript = ''
-              machine.wait_for_unit("syoch-portal.service")
+              machine.wait_for_unit("portal.service")
               machine.wait_for_unit("nginx.service")
               machine.wait_for_open_port(8000)
               machine.wait_for_open_port(80)
@@ -261,16 +208,9 @@
             nginx
             certbot
             openssl
-            unzip
 
-            # Android root dev tools
-            aapt
+            # Android tooling (adb) for the Obtainium integration test
             android-tools
-            dtc
-            usbutils
-            sunxi-tools
-            scrcpy
-            packages.ksud-next
             portalPython
           ];
 
@@ -304,9 +244,8 @@
       }
     ) // {
       nixosModules = {
-        syoch-portal = ./nixos/portal-service.nix;
-        syoch-portal-device-agent = ./nixos/portal-device-agent.nix;
-        web-infrastructure = ./nixos/web-infrastructure.nix;
+        portal = ./nixos/portal-service.nix;
+        portal-device-agent = ./nixos/portal-device-agent.nix;
         default = ./nixos;
       };
     };

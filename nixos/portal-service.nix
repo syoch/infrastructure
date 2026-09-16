@@ -3,11 +3,11 @@
 with lib;
 
 let
-  cfg = config.services.syoch-portal;
+  cfg = config.services.portal;
   portalPkg = pkgs.python3Packages.callPackage ../default.nix { };
 in
 {
-  options.services.syoch-portal = {
+  options.services.portal = {
     enable = mkEnableOption "Android Device Provisioning Portal";
 
     configFile = mkOption {
@@ -23,13 +23,13 @@ in
 
     user = mkOption {
       type = types.str;
-      default = "syoch-portal";
+      default = "portal";
       description = "User account under which the service runs.";
     };
 
     group = mkOption {
       type = types.str;
-      default = "syoch-portal";
+      default = "portal";
       description = "Group under which the service runs.";
     };
 
@@ -116,19 +116,19 @@ in
   };
 
   config = mkIf cfg.enable {
-    users.users = lib.optionalAttrs (cfg.user == "syoch-portal") {
-      syoch-portal = {
+    users.users = lib.optionalAttrs (cfg.user == "portal") {
+      portal = {
         isSystemUser = true;
         group = cfg.group;
         description = "Android Device Provisioning Portal user";
       };
     };
 
-    users.groups = lib.optionalAttrs (cfg.group == "syoch-portal") {
-      syoch-portal = { };
+    users.groups = lib.optionalAttrs (cfg.group == "portal") {
+      portal = { };
     };
 
-    systemd.services.syoch-portal = {
+    systemd.services.portal = {
       description = "Android Device Provisioning Portal Backend Service";
       after = [ "network.target" ];
       wantedBy = [ "multi-user.target" ];
@@ -137,7 +137,7 @@ in
         Type = "simple";
         User = cfg.user;
         Group = cfg.group;
-        StateDirectory = "syoch-portal";
+        StateDirectory = "portal";
 
         ReadWritePaths = cfg.readWritePaths;
 
@@ -160,17 +160,17 @@ in
       };
     };
 
-    systemd.services.syoch-portal-bridge = mkIf cfg.bridge.enable {
+    systemd.services.portal-bridge = mkIf cfg.bridge.enable {
       description = "Portal control-plane bridge (dogfood: exposes acl.* and device_admin.* via WebSocket)";
-      after = [ "syoch-portal.service" "network.target" ];
+      after = [ "portal.service" "network.target" ];
       wantedBy = [ "multi-user.target" ];
-      requires = [ "syoch-portal.service" ];
+      requires = [ "portal.service" ];
 
       serviceConfig = mkIf (cfg.bridge.bootstrapTokenFile != null) {
         Type = "simple";
         User = cfg.user;
         Group = cfg.group;
-        StateDirectory = "syoch-portal";
+        StateDirectory = "portal";
 
         ExecStart = "${portalPkg}/bin/portal-control-bridge --server-url ${cfg.bridge.serverUrl} --bootstrap-token $(cat ${cfg.bridge.bootstrapTokenFile}) --config ${cfg.configFile}";
         Restart = "always";
@@ -195,11 +195,11 @@ in
     assertions = [
       {
         assertion = !cfg.nginx.enable || cfg.nginx.hostName != null;
-        message = "services.syoch-portal.nginx.enable requires services.syoch-portal.nginx.hostName to be set";
+        message = "services.portal.nginx.enable requires services.portal.nginx.hostName to be set";
       }
       {
         assertion = !cfg.basicAuth.enable || cfg.basicAuth.htpasswdFile != null;
-        message = "services.syoch-portal.basicAuth.enable requires services.syoch-portal.basicAuth.htpasswdFile to be set";
+        message = "services.portal.basicAuth.enable requires services.portal.basicAuth.htpasswdFile to be set";
       }
     ];
 

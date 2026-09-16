@@ -9,9 +9,9 @@ result-*
 .env
 
 # Tailscale (except example)
-tailscale/.env
-tailscale/*
-!tailscale/.env.example
+contrib/tailscale/.env
+contrib/tailscale/*
+!contrib/tailscale/.env.example
 
 # Editor
 .vscode/
@@ -28,4 +28,7 @@ __pycache__
 update-ip.sh
 init-cert.sh
 setup.sh
-tests/node_modules
+
+# Obtainium AVD harness output
+backend/obtainium/tests/avd/results/*
+!backend/obtainium/tests/avd/results/.gitkeep

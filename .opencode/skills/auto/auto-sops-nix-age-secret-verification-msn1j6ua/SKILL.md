@@ -11,7 +11,7 @@ Use when deploying a NixOS service that reads sops-nix secrets (e.g. portal-serv
 - `sops` decrypt errors (age no applicable keys / decryption failed)
 - `age-encrypted` files in the repo can't be read
 - `sops` or `htpasswd` binaries are missing from PATH
-- Adding a new secret for a NixOS service module (e.g. `nixos/portal-service.nix`, `web-infrastructure.nix`)
+- Adding a new secret for a NixOS service module (e.g. `nixos/portal-service.nix`)
 
 ## Procedure
 
