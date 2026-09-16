@@ -38,3 +38,22 @@ Run inside `nix develop` (devShell now provides `mypy`; the devShell python also
   `return` is rejected).
 - Keep `device_agent/` standalone: use local types/`Any`, never import from `backend`.
 
+
+## FastAPI JSON responses typed with TypedDict (2026-09)
+REST response bodies are now typed with `TypedDict`s (control-plane in `backend/control_plane/api_common.py`;
+app-portal in `backend/app_portal/responses.py`; obtainium in `backend/obtainium/responses.py`; storage +
+api_backup define them locally). Serializers (`_device_to_dict` etc.) return the TypedDicts.
+- **Mandatory rule:** FastAPI uses a handler's return annotation as `response_model`. Whenever a handler's
+  annotation changed from `dict[str, Any]` to a TypedDict, the route decorator MUST also set
+  `response_model=None` (e.g. `@router.get("/devices", response_model=None)`) to preserve the old runtime
+  behavior (no validation/serialization change). Forgetting it is a silent behavior change.
+- Genuinely dynamic payloads stay `dict[str, Any]` with no `response_model` change:
+  obtainium `serve_settings_api` (arbitrary setting keys), `serve_export` (compiled export), control-plane
+  `api.py` (router wiring only, no dicts). `_opencode_meta`/`_parse_op_result` are internal, not responses.
+- Use `NotRequired[...]` for conditionally present keys (`DeviceDict.bearer_token`, `AppDict.feedback`).
+- Legacy `Column(...)` non-null columns read into a TypedDict were promoted to `Mapped[...]` on the model
+  (DeviceBootstrapToken.device_id/display_name/created_at, OperationSpec.params_schema,
+  WebApp/Feedback/Bridge many fields, obtainium App.pinned/allow_id_change/additional_settings,
+  LocalAppAPK.id, Category.name/color) rather than lying in the TypedDict.
+- Verification gate after such changes: `mypy backend device_agent` Success; reset port 8000 +
+  `rm -f tests/portal_test.db*` + `make test-backend` EXIT 0; `make typecheck`; `make test-e2e` 37 passed.

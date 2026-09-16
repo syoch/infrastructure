@@ -102,11 +102,11 @@ class DeviceBootstrapToken(Base):
     __tablename__ = "ctrl_bootstrap_tokens"
 
     id: Mapped[str] = Column(String(36), primary_key=True, nullable=False, default=_uuid4)
-    device_id = Column(String(64), nullable=False)
-    display_name = Column(String(128), nullable=False)
+    device_id: Mapped[str] = Column(String(64), nullable=False)
+    display_name: Mapped[str] = Column(String(128), nullable=False)
     expires_at: Mapped[datetime] = Column(DateTime, nullable=False, index=True)
     consumed_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     def __repr__(self) -> str:
         return (
@@ -123,7 +123,7 @@ class OperationSpec(Base):
     group: Mapped[str] = Column(String(64), nullable=False, index=True)
     name: Mapped[str] = Column(String(128), nullable=False)
     description = Column(Text, nullable=True)
-    params_schema = Column(JSON, nullable=False, default=dict)
+    params_schema: Mapped[dict[str, Any]] = Column(JSON, nullable=False, default=dict)
     result_schema = Column(JSON, nullable=True)
     ui_hint = Column(JSON, nullable=True)
     registered_at = Column(DateTime, default=datetime.utcnow, nullable=False)

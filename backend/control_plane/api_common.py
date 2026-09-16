@@ -1,4 +1,5 @@
-from typing import Any
+from datetime import datetime
+from typing import Any, NotRequired, TypedDict
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -8,8 +9,92 @@ from .models import (
 )
 
 
-def _device_to_dict(d: Device, include_token: bool = False) -> dict[str, Any]:
-    res = {
+class DeviceDict(TypedDict):
+    id: str
+    display_name: str
+    ws_state: str
+    last_seen: str | None
+    registered_at: str | None
+    is_first_webui_device: bool
+    bearer_token: NotRequired[str]
+
+
+class ACLDict(TypedDict):
+    id: str
+    source_device: str
+    target_device: str
+    operation: str
+    extra: str | None
+    created_at: str | None
+
+
+class OperationDict(TypedDict):
+    id: str
+    provider: str
+    group: str
+    name: str
+    description: str | None
+    params_schema: Any
+    result_schema: Any
+    ui_hint: Any
+    registered_at: str | None
+    last_seen: str | None
+
+
+class CommandDict(TypedDict):
+    id: str
+    target_device_id: str
+    source_device_id: str
+    operation: str
+    params: dict[str, Any]
+    status: str
+    created_at: datetime
+    claimed_at: datetime | None
+    completed_at: datetime | None
+    result: Any
+    error: str | None
+    timeout_seconds: int
+
+
+class TokenDict(TypedDict):
+    id: str
+    device_id: str
+    display_name: str
+    expires_at: str | None
+    consumed_at: str | None
+    created_at: str | None
+
+
+class DeviceListResponse(TypedDict):
+    devices: list[DeviceDict]
+
+
+class ACLListResponse(TypedDict):
+    acls: list[ACLDict]
+
+
+class OperationListResponse(TypedDict):
+    operations: list[OperationDict]
+
+
+class CommandListResponse(TypedDict):
+    commands: list[CommandDict]
+    total: int
+    limit: int
+    offset: int
+
+
+class TokenListResponse(TypedDict):
+    tokens: list[TokenDict]
+
+
+class DeleteResponse(TypedDict):
+    status: str
+    deleted: str
+
+
+def _device_to_dict(d: Device, include_token: bool = False) -> DeviceDict:
+    res: DeviceDict = {
         "id": d.id,
         "display_name": d.display_name,
         "ws_state": d.ws_state,
@@ -22,7 +107,7 @@ def _device_to_dict(d: Device, include_token: bool = False) -> dict[str, Any]:
     return res
 
 
-def _acl_to_dict(a: DeviceACL) -> dict[str, Any]:
+def _acl_to_dict(a: DeviceACL) -> ACLDict:
     return {
         "id": a.id,
         "source_device": a.source_device,
@@ -33,7 +118,7 @@ def _acl_to_dict(a: DeviceACL) -> dict[str, Any]:
     }
 
 
-def _operation_to_dict(o: OperationSpec) -> dict[str, Any]:
+def _operation_to_dict(o: OperationSpec) -> OperationDict:
     return {
         "id": o.id,
         "provider": o.provider,
@@ -48,7 +133,7 @@ def _operation_to_dict(o: OperationSpec) -> dict[str, Any]:
     }
 
 
-def _command_to_dict(c: CommandRequest) -> dict[str, Any]:
+def _command_to_dict(c: CommandRequest) -> CommandDict:
     return {
         "id": c.id,
         "target_device_id": c.target_device_id,
@@ -65,7 +150,7 @@ def _command_to_dict(c: CommandRequest) -> dict[str, Any]:
     }
 
 
-def _token_to_dict(t: DeviceBootstrapToken) -> dict[str, Any]:
+def _token_to_dict(t: DeviceBootstrapToken) -> TokenDict:
     return {
         "id": t.id,
         "device_id": t.device_id,

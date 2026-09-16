@@ -3,13 +3,30 @@ import hashlib
 import time
 import shutil
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, TypedDict
 from fastapi import APIRouter, File, UploadFile, Query, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 from backend.extensions.base import BaseExtension
 from backend.core.database import session_scope
 
 logger = logging.getLogger(__name__)
+
+
+class StorageFileDict(TypedDict):
+    id: str
+    size: int
+
+
+class StorageUploadResponse(TypedDict):
+    status: str
+    message: str
+    file_hash: str
+
+
+class StorageDeleteResponse(TypedDict):
+    status: str
+    message: str
+
 
 class StorageManagerExtension(BaseExtension):
     """
@@ -124,10 +141,10 @@ class StorageManagerExtension(BaseExtension):
     def setup_routes(self) -> None:
         router = APIRouter()
         self.router = router
-        @router.get("/api/storage/files")
-        def serve_files_list() -> list[dict[str, Any]]:
+        @router.get("/api/storage/files", response_model=None)
+        def serve_files_list() -> list[StorageFileDict]:
             """GET /api/storage/files - Lists all stored files in CAS with their size."""
-            files: list[dict[str, Any]] = []
+            files: list[StorageFileDict] = []
             if os.path.exists(self.uploads_dir):
                 for filename in os.listdir(self.uploads_dir):
                     if filename.endswith(".apk"):
@@ -140,8 +157,8 @@ class StorageManagerExtension(BaseExtension):
                             pass
             return files
 
-        @router.post("/api/storage/files")
-        async def handle_upload(file: UploadFile = File(...)) -> dict[str, Any]:
+        @router.post("/api/storage/files", response_model=None)
+        async def handle_upload(file: UploadFile = File(...)) -> StorageUploadResponse:
             """POST /api/storage/files - Uploads a file, hashes it, and saves it in CAS."""
             try:
                 file_content = await file.read()
@@ -177,8 +194,8 @@ class StorageManagerExtension(BaseExtension):
                 filename=filename
             )
 
-        @router.delete("/api/storage/files/{file_hash}")
-        def handle_delete(file_hash: str) -> dict[str, Any]:
+        @router.delete("/api/storage/files/{file_hash}", response_model=None)
+        def handle_delete(file_hash: str) -> StorageDeleteResponse:
             """DELETE /api/storage/files/[file_hash] - Physically deletes the file if unreferenced."""
             filepath = self.get_file_path(file_hash)
             if not os.path.exists(filepath):

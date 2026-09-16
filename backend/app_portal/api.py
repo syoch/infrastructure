@@ -11,6 +11,16 @@ from backend.core.server_base import require_admin_device
 from backend.utils.text import slugify
 from .models import WebApp, Feedback, Bridge
 from .opencode_ops import ROLE_KEYS, TRAITS_OPERATION_ID, server_key_for
+from .responses import (
+    AppDict,
+    AppListResponse,
+    BridgeAnnounceResponse,
+    BridgeDict,
+    BridgeListResponse,
+    DeleteResponse,
+    FeedbackDict,
+    FeedbackListResponse,
+)
 
 
 router = APIRouter(prefix="/api/app-portal", tags=["app-portal"])
@@ -159,7 +169,7 @@ def _reconcile(db: Session, fb: Feedback) -> Feedback:
     return fb
 
 
-def _feedback_to_dict(fb: Feedback) -> dict[str, Any]:
+def _feedback_to_dict(fb: Feedback) -> FeedbackDict:
     return {
         "id": fb.id,
         "app_id": fb.app_id,
@@ -176,8 +186,8 @@ def _feedback_to_dict(fb: Feedback) -> dict[str, Any]:
     }
 
 
-def _app_to_dict(db: Session, app: WebApp, include_feedback: bool = False) -> dict[str, Any]:
-    data: dict[str, Any] = {
+def _app_to_dict(db: Session, app: WebApp, include_feedback: bool = False) -> AppDict:
+    data: AppDict = {
         "id": app.id,
         "slug": app.slug,
         "name": app.name,
@@ -264,21 +274,21 @@ class BridgeAnnounceBody(BaseModel):
 
 # --- Routes ---
 
-@router.get("/apps")
+@router.get("/apps", response_model=None)
 def list_apps(
     device: Any = Depends(_device_required),
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> AppListResponse:
     apps = db.query(WebApp).order_by(WebApp.created_at.desc()).all()
     return {"apps": [_app_to_dict(db, a) for a in apps]}
 
 
-@router.post("/apps")
+@router.post("/apps", response_model=None)
 def create_app(
     body: AppCreateBody,
     device: Any = Depends(_device_required),
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> AppDict:
     slug = body.slug or slugify(body.name)
     if db.query(WebApp).filter(WebApp.slug == slug).first():
         raise HTTPException(status_code=409, detail=f"app slug {slug!r} already exists")
@@ -301,12 +311,12 @@ def create_app(
     return _app_to_dict(db, app)
 
 
-@router.get("/apps/{slug}")
+@router.get("/apps/{slug}", response_model=None)
 def get_app(
     slug: str,
     device: Any = Depends(_device_required),
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> AppDict:
     app = _get_app_or_404(db, slug)
     # Warm the opencode-bridge metadata cache so the session deep link can be
     # shown even before the first feedback is delivered.
@@ -315,13 +325,13 @@ def get_app(
     return _app_to_dict(db, app, include_feedback=True)
 
 
-@router.patch("/apps/{slug}")
+@router.patch("/apps/{slug}", response_model=None)
 def update_app(
     slug: str,
     body: AppUpdateBody,
     device: Any = Depends(require_admin_device),
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> AppDict:
     app = _get_app_or_404(db, slug)
     for field in (
         "name", "description", "url", "project_directory",
@@ -335,25 +345,25 @@ def update_app(
     return _app_to_dict(db, app)
 
 
-@router.delete("/apps/{slug}")
+@router.delete("/apps/{slug}", response_model=None)
 def delete_app(
     slug: str,
     device: Any = Depends(require_admin_device),
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> DeleteResponse:
     app = _get_app_or_404(db, slug)
     db.delete(app)
     db.commit()
     return {"status": "success", "deleted": slug}
 
 
-@router.post("/apps/{slug}/feedback")
+@router.post("/apps/{slug}/feedback", response_model=None)
 def submit_feedback(
     slug: str,
     body: FeedbackBody,
     device: Any = Depends(require_admin_device),
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> FeedbackDict:
     app = _get_app_or_404(db, slug)
     if not app.opencode_session_id:
         raise HTTPException(status_code=400, detail="app has no pinned OpenCode session")
@@ -408,24 +418,24 @@ def submit_feedback(
     return _feedback_to_dict(fb)
 
 
-@router.get("/feedback")
+@router.get("/feedback", response_model=None)
 def list_feedback(
     device: Any = Depends(require_admin_device),
     db: Session = Depends(get_db),
     limit: int = Query(default=100, ge=1, le=500),
-) -> dict[str, Any]:
+) -> FeedbackListResponse:
     rows = db.query(Feedback).order_by(Feedback.created_at.desc()).limit(limit).all()
     result = [_feedback_to_dict(_reconcile(db, fb)) for fb in rows]
     db.commit()
     return {"feedback": result}
 
 
-@router.post("/feedback/{feedback_id}/refresh")
+@router.post("/feedback/{feedback_id}/refresh", response_model=None)
 def refresh_feedback(
     feedback_id: str,
     device: Any = Depends(require_admin_device),
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> FeedbackDict:
     fb = db.query(Feedback).filter_by(id=feedback_id).first()
     if not fb:
         raise HTTPException(status_code=404, detail=f"feedback {feedback_id!r} not found")
@@ -435,12 +445,12 @@ def refresh_feedback(
     return _feedback_to_dict(fb)
 
 
-@router.post("/bridges/announce")
+@router.post("/bridges/announce", response_model=None)
 def announce_bridge(
     body: BridgeAnnounceBody,
     device: Any = Depends(_device_required),
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> BridgeAnnounceResponse:
     br = _bridge(db, device.id)
     if not br:
         br = Bridge(device_id=device.id)
@@ -459,11 +469,11 @@ def announce_bridge(
     }
 
 
-@router.get("/bridges")
+@router.get("/bridges", response_model=None)
 def list_bridges(
     device: Any = Depends(require_admin_device),
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> BridgeListResponse:
     bridges = db.query(Bridge).order_by(Bridge.registered_at).all()
     return {
         "bridges": [

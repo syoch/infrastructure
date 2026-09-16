@@ -1,13 +1,21 @@
 from collections.abc import AsyncIterator
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from backend.core.database import get_db
-from .api_common import CommandBody, _command_to_dict, _operation_to_dict
+from .api_common import (
+    CommandBody,
+    CommandDict,
+    CommandListResponse,
+    OperationDict,
+    OperationListResponse,
+    _command_to_dict,
+    _operation_to_dict,
+)
 from .core import (
     get_current_device,
     can_issue,
@@ -50,21 +58,21 @@ async def sse_events(
     )
 
 
-@router.get("/operations")
+@router.get("/operations", response_model=None)
 def list_operations(
     device: Device = Depends(get_current_device),
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> OperationListResponse:
     visible = filter_operations_for_device(db, device)
     return {"operations": [_operation_to_dict(o) for o in visible]}
 
 
-@router.post("/commands")
+@router.post("/commands", response_model=None)
 def create_command(
     body: CommandBody,
     device: Device = Depends(get_current_device),
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> CommandDict:
     target = db.query(Device).filter_by(id=body.target_device_id).first()
     if not target:
         raise HTTPException(status_code=404, detail=f"target device {body.target_device_id!r} not found")
@@ -93,7 +101,7 @@ def create_command(
     return _command_to_dict(cmd)
 
 
-@router.get("/commands")
+@router.get("/commands", response_model=None)
 def list_commands(
     device: Device = Depends(get_current_device),
     db: Session = Depends(get_db),
@@ -103,7 +111,7 @@ def list_commands(
     op: Optional[str] = None,
     limit: int = 25,
     offset: int = 0,
-) -> dict[str, Any]:
+) -> CommandListResponse:
     valid_statuses = {"pending", "claimed", "succeeded", "failed", "timeout", "cancelled"}
     if status is not None and status not in valid_statuses:
         raise HTTPException(
@@ -138,12 +146,12 @@ def list_commands(
     }
 
 
-@router.get("/commands/{command_id}")
+@router.get("/commands/{command_id}", response_model=None)
 def get_command(
     command_id: str,
     device: Device = Depends(get_current_device),
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> CommandDict:
     cmd = db.query(CommandRequest).filter_by(id=command_id).first()
     if not cmd:
         raise HTTPException(status_code=404, detail=f"command {command_id!r} not found")

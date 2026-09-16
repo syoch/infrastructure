@@ -7,7 +7,7 @@ import logging
 import os
 import tempfile
 import time
-from typing import Any, Optional, cast
+from typing import Any, Optional, TypedDict, cast
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Header, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
@@ -20,6 +20,11 @@ from backend.core.protocols import StorageProvider
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["backup"])
+
+
+class StatusMessageResponse(TypedDict):
+    status: str
+    message: str
 
 
 def require_admin_device(
@@ -93,13 +98,13 @@ def handle_backup(
         raise HTTPException(status_code=500, detail=f"Backup failed: {str(e)}")
 
 
-@router.post("/api/restore")
+@router.post("/api/restore", response_model=None)
 async def handle_restore(
     file: UploadFile = File(...),
     strategy: str = Form("overwrite"),
     db: Session = Depends(get_db),
     _admin: Any = Depends(require_admin_device),
-) -> Any:
+) -> StatusMessageResponse:
     if strategy not in ("overwrite", "merge"):
         raise HTTPException(
             status_code=400, detail="Invalid restore strategy. Must be 'overwrite' or 'merge'."

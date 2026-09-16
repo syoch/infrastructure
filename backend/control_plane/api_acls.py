@@ -1,31 +1,35 @@
-from typing import Any
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.core.database import get_db
-from .api_common import ACLBody, _acl_to_dict
+from .api_common import (
+    ACLBody,
+    ACLDict,
+    ACLListResponse,
+    DeleteResponse,
+    _acl_to_dict,
+)
 from .core import get_current_device, require_admin
 from .models import Device, DeviceACL
 
 router = APIRouter(tags=["control-plane"])
 
 
-@router.get("/acls")
+@router.get("/acls", response_model=None)
 def list_acls(
     device: Device = Depends(get_current_device),
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> ACLListResponse:
     acls = db.query(DeviceACL).order_by(DeviceACL.created_at).all()
     return {"acls": [_acl_to_dict(a) for a in acls]}
 
 
-@router.post("/acls")
+@router.post("/acls", response_model=None)
 def create_acl(
     body: ACLBody,
     device: Device = Depends(require_admin),
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> ACLDict:
     existing = db.query(DeviceACL).filter_by(
         source_device=body.source_device,
         target_device=body.target_device,
@@ -44,13 +48,13 @@ def create_acl(
     return _acl_to_dict(acl)
 
 
-@router.patch("/acls/{acl_id}")
+@router.patch("/acls/{acl_id}", response_model=None)
 def update_acl(
     acl_id: str,
     body: ACLBody,
     device: Device = Depends(require_admin),
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> ACLDict:
     acl = db.query(DeviceACL).filter_by(id=acl_id).first()
     if not acl:
         raise HTTPException(status_code=404, detail=f"ACL {acl_id!r} not found")
@@ -62,12 +66,12 @@ def update_acl(
     return _acl_to_dict(acl)
 
 
-@router.delete("/acls/{acl_id}")
+@router.delete("/acls/{acl_id}", response_model=None)
 def delete_acl(
     acl_id: str,
     device: Device = Depends(require_admin),
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> DeleteResponse:
     acl = db.query(DeviceACL).filter_by(id=acl_id).first()
     if not acl:
         raise HTTPException(status_code=404, detail=f"ACL {acl_id!r} not found")

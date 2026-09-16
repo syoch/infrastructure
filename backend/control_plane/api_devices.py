@@ -1,11 +1,17 @@
 from datetime import datetime
-from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.core.database import get_db
-from .api_common import RegisterDeviceBody, RenameDeviceBody, _device_to_dict
+from .api_common import (
+    DeleteResponse,
+    DeviceDict,
+    DeviceListResponse,
+    RegisterDeviceBody,
+    RenameDeviceBody,
+    _device_to_dict,
+)
 from .core import get_current_device, require_admin
 from .manager_cli import validate_device_id
 from .models import Device, DeviceBootstrapToken
@@ -14,30 +20,30 @@ from backend.utils.tokens import generate_bearer_token
 router = APIRouter(tags=["control-plane"])
 
 
-@router.get("/devices")
+@router.get("/devices", response_model=None)
 def list_devices(
     device: Device = Depends(get_current_device),
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> DeviceListResponse:
     devices = db.query(Device).order_by(Device.registered_at).all()
     return {"devices": [_device_to_dict(d) for d in devices]}
 
 
-@router.get("/devices/me")
+@router.get("/devices/me", response_model=None)
 def get_me(
     device: Device = Depends(get_current_device),
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> DeviceDict:
     return _device_to_dict(device, include_token=True)
 
 
-@router.patch("/devices/{device_id}")
+@router.patch("/devices/{device_id}", response_model=None)
 def rename_device(
     device_id: str,
     body: RenameDeviceBody,
     device: Device = Depends(get_current_device),
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> DeviceDict:
     validate_device_id(device_id)
     if device.id != device_id and not device.is_first_webui_device:
         raise HTTPException(status_code=403, detail="admin privilege required to rename other devices")
@@ -49,12 +55,12 @@ def rename_device(
     return _device_to_dict(target)
 
 
-@router.delete("/devices/{device_id}")
+@router.delete("/devices/{device_id}", response_model=None)
 def delete_device(
     device_id: str,
     device: Device = Depends(require_admin),
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> DeleteResponse:
     validate_device_id(device_id)
     target = db.query(Device).filter_by(id=device_id).first()
     if not target:
@@ -66,12 +72,12 @@ def delete_device(
     return {"status": "success", "deleted": device_id}
 
 
-@router.post("/devices/{device_id}/set-admin")
+@router.post("/devices/{device_id}/set-admin", response_model=None)
 def set_admin(
     device_id: str,
     device: Device = Depends(require_admin),
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> DeviceDict:
     validate_device_id(device_id)
     target = db.query(Device).filter_by(id=device_id).first()
     if not target:
@@ -84,11 +90,11 @@ def set_admin(
     return _device_to_dict(target)
 
 
-@router.post("/devices/register")
+@router.post("/devices/register", response_model=None)
 def register_device(
     body: RegisterDeviceBody,
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
+) -> DeviceDict:
     tok = db.query(DeviceBootstrapToken).filter_by(id=body.bootstrap_token).first()
     if not tok:
         raise HTTPException(status_code=404, detail="bootstrap token not found")

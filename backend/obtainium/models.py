@@ -1,3 +1,4 @@
+from typing import Any
 from sqlalchemy import Column, String, Integer, BigInteger, Boolean, ForeignKey, Table
 from sqlalchemy.types import JSON
 from sqlalchemy.orm import Mapped, relationship
@@ -20,9 +21,9 @@ class App(Base):
     url: Mapped[str] = Column(String(1024), nullable=False)
     override_source = Column(String(50), nullable=True)
     preferred_apk_index = Column(Integer, nullable=True)
-    pinned = Column(Boolean, nullable=False, default=False)
-    allow_id_change = Column(Boolean, nullable=False, default=False)
-    additional_settings = Column(JSON, nullable=False, default=dict)
+    pinned: Mapped[bool] = Column(Boolean, nullable=False, default=False)
+    allow_id_change: Mapped[bool] = Column(Boolean, nullable=False, default=False)
+    additional_settings: Mapped[dict[str, Any]] = Column(JSON, nullable=False, default=dict)
     
     # Relationship to Category
     categories: Mapped[list['Category']] = relationship('Category', secondary=app_categories, back_populates='apps')
@@ -33,7 +34,7 @@ class App(Base):
 class LocalAppAPK(Base):
     __tablename__ = 'local_app_apks'
     
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = Column(Integer, primary_key=True, autoincrement=True)
     app_id: Mapped[str] = Column(String(255), ForeignKey('apps.id', ondelete='CASCADE'), nullable=False)
     file_hash: Mapped[str] = Column(String(64), nullable=False)
     version: Mapped[str] = Column(String(50), nullable=False)
@@ -44,8 +45,8 @@ class LocalAppAPK(Base):
 class Category(Base):
     __tablename__ = 'categories'
     
-    name = Column(String(100), primary_key=True)
-    color = Column(BigInteger, nullable=False)  # Handles 32-bit unsigned integer ARGB
+    name: Mapped[str] = Column(String(100), primary_key=True)
+    color: Mapped[int] = Column(BigInteger, nullable=False)  # Handles 32-bit unsigned integer ARGB
     
     # Relationship to App
     apps: Mapped[list['App']] = relationship('App', secondary=app_categories, back_populates='categories')
