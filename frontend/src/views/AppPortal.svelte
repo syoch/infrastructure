@@ -14,6 +14,8 @@
   } from '../api/app_portal_api.js';
   import { getToken } from '../api/control_api.js';
   import { safeURL } from '../lib/ui.js';
+  import { showCustomToast } from '../lib/toast.ts';
+  import { confirmDialog } from '../lib/dialogs.svelte.ts';
   import { goto } from '$app/navigation';
 
   let { slug = '' }: { slug?: string } = $props();
@@ -79,7 +81,7 @@
       showRegister = false;
       apps = await fetchWebApps();
     } catch (err) {
-      alert(err instanceof Error ? err.message : String(err));
+      showCustomToast(err instanceof Error ? err.message : String(err), 'error');
     }
   }
 
@@ -110,7 +112,7 @@
       app = await fetchWebApp(app.slug);
       message = '設定を保存しました';
     } catch (err) {
-      alert(err instanceof Error ? err.message : String(err));
+      showCustomToast(err instanceof Error ? err.message : String(err), 'error');
     } finally {
       if (btn) {
         btn.disabled = false;
@@ -121,12 +123,17 @@
 
   async function onDelete(): Promise<void> {
     if (!app) return;
-    if (!confirm(`アプリ ${app.slug} を削除しますか?`)) return;
+    const confirmed = await confirmDialog({
+      title: 'アプリを削除',
+      message: `アプリ ${app.slug} を削除しますか?`,
+      confirmText: '削除',
+    });
+    if (!confirmed) return;
     try {
       await deleteWebApp(app.slug);
       void goto('/apps');
     } catch (err) {
-      alert(err instanceof Error ? err.message : String(err));
+      showCustomToast(err instanceof Error ? err.message : String(err), 'error');
     }
   }
 
@@ -148,7 +155,7 @@
       form.reset();
       app = await fetchWebApp(app.slug);
     } catch (err) {
-      alert(err instanceof Error ? err.message : String(err));
+      showCustomToast(err instanceof Error ? err.message : String(err), 'error');
     } finally {
       if (btn) {
         btn.disabled = false;
@@ -163,7 +170,7 @@
       await refreshFeedback(id);
       app = await fetchWebApp(app.slug);
     } catch (err) {
-      alert(err instanceof Error ? err.message : String(err));
+      showCustomToast(err instanceof Error ? err.message : String(err), 'error');
     }
   }
 

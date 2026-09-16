@@ -13,6 +13,7 @@
   } from '../api/api.js';
   import { validateUrlSourceMatch, detectSourceFromUrl } from '../lib/ui.js';
   import { showCustomToast } from '../lib/toast.ts';
+  import { confirmDialog } from '../lib/dialogs.svelte.ts';
 
   let { id = '' }: { id?: string } = $props();
 
@@ -149,20 +150,25 @@
       await loadAllData();
     } catch (err) {
       console.error(err);
-      alert('詳細設定の保存に失敗しました。');
+      showCustomToast('詳細設定の保存に失敗しました。', 'error');
     }
   }
 
   async function onDelete(): Promise<void> {
     if (!app) return;
-    if (!confirm(`アプリ '${app.id}' を削除してもよろしいですか？`)) return;
+    const confirmed = await confirmDialog({
+      title: 'アプリを削除',
+      message: `アプリ '${app.id}' を削除してもよろしいですか？`,
+      confirmText: '削除',
+    });
+    if (!confirmed) return;
     try {
       await deleteApp(app.id);
       navigate('/list');
       await loadAllData();
     } catch (err) {
       console.error(err);
-      alert('アプリの削除に失敗しました。');
+      showCustomToast('アプリの削除に失敗しました。', 'error');
     }
   }
 
@@ -239,7 +245,12 @@
   }
 
   async function onDeleteApk(apkId: number): Promise<void> {
-    if (!confirm('この APK を削除しますか？')) return;
+    const confirmed = await confirmDialog({
+      title: 'APK を削除',
+      message: 'この APK を削除しますか？',
+      confirmText: '削除',
+    });
+    if (!confirmed) return;
     try {
       await deleteLocalAPK(String(apkId));
       showCustomToast('APK を削除しました。', 'success');

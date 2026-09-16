@@ -11,8 +11,9 @@
     restoreBackup,
     type App,
   } from '../api/api.js';
-  import { showToast, getCategoryColorStyle, validateUrlSourceMatch } from '../lib/ui.js';
-  import { showCustomToast } from '../lib/toast.ts';
+  import { getCategoryColorStyle, validateUrlSourceMatch } from '../lib/ui.js';
+  import { showToast, showCustomToast } from '../lib/toast.ts';
+  import { confirmDialog } from '../lib/dialogs.svelte.ts';
   import { compareAppsByCategory } from '../lib/sort.ts';
 
   let {
@@ -32,7 +33,6 @@
   let restrictNotification = $state(false);
   let savingSettings = $state(false);
 
-  let compileToast = $state<HTMLDivElement | null>(null);
   let compileBtn = $state<HTMLButtonElement | null>(null);
   let importJsonFile = $state<HTMLInputElement | null>(null);
   let restoreFileInput = $state<HTMLInputElement | null>(null);
@@ -74,11 +74,6 @@
     restrictNotification = !!s.backgroundRestrictedNotification;
   });
 
-  function onKeydown(e: KeyboardEvent): void {
-    if (e.key !== 'Escape') return;
-    if (document.querySelector('.modal-backdrop.active')) navigate('/list');
-  }
-
   function onSortClick(): void {
     if (sortDirection === null) sortDirection = 'asc';
     else if (sortDirection === 'asc') sortDirection = 'desc';
@@ -104,14 +99,19 @@
   }
 
   async function onDeleteApp(id: string): Promise<void> {
-    if (!confirm(`アプリ '${id}' を削除してもよろしいですか？`)) return;
+    const confirmed = await confirmDialog({
+      title: 'アプリを削除',
+      message: `アプリ '${id}' を削除してもよろしいですか？`,
+      confirmText: '削除',
+    });
+    if (!confirmed) return;
     try {
       await deleteApp(id);
       navigate('/list');
       await loadAllData();
     } catch (err) {
       console.error(err);
-      alert('アプリの削除に失敗しました。');
+      showCustomToast('アプリの削除に失敗しました。', 'error');
     }
   }
 
@@ -119,11 +119,11 @@
     if (compileBtn) compileBtn.disabled = true;
     try {
       await compileSettings();
-      showToast(compileToast);
+      showToast('反映しました！', 'success');
       await loadAllData();
     } catch (err) {
       console.error(err);
-      alert('設定のコンパイルに失敗しました。');
+      showCustomToast('設定のコンパイルに失敗しました。', 'error');
     } finally {
       if (compileBtn) compileBtn.disabled = false;
     }
@@ -142,11 +142,14 @@
       const text = await file.text();
       const json = JSON.parse(text);
       const res = await importObtainiumConfig(json);
-      alert(res.message || 'インポートが完了しました。');
+      showCustomToast(res.message || 'インポートが完了しました。', 'success');
       await loadAllData();
     } catch (err) {
       console.error(err);
-      alert('インポートに失敗しました。JSONファイルが壊れているか、内容が正しくありません。');
+      showCustomToast(
+        'インポートに失敗しました。JSONファイルが壊れているか、内容が正しくありません。',
+        'error'
+      );
     } finally {
       importBusy = false;
       if (importJsonFile) importJsonFile.value = '';
@@ -168,12 +171,15 @@
         ? '【上書き】（既存データがすべて削除され、バックアップの内容に置き換わります）'
         : '【マージ】（既存のデータにバックアップの内容が追加・統合されます）';
 
-    const confirmed = confirm(
-      `バックアップファイルの復元を実行します。\n` +
+    const confirmed = await confirmDialog({
+      title: 'バックアップからリストア',
+      message:
+        `バックアップファイルの復元を実行します。\n` +
         `選択したファイル: ${file.name}\n` +
         `復元モード: ${strategyText}\n\n` +
-        `本当によろしいですか？`
-    );
+        `本当によろしいですか？`,
+      confirmText: '実行',
+    });
     if (!confirmed) {
       input.value = '';
       return;
@@ -187,7 +193,10 @@
       setTimeout(() => window.location.reload(), 1500);
     } catch (err) {
       console.error(err);
-      alert(`リストアに失敗しました: ${err instanceof Error ? err.message : String(err)}`);
+      showCustomToast(
+        `リストアに失敗しました: ${err instanceof Error ? err.message : String(err)}`,
+        'error'
+      );
     } finally {
       restoreBusy = false;
       input.value = '';
@@ -216,7 +225,7 @@
       a.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
-      alert(err instanceof Error ? err.message : String(err));
+      showCustomToast(err instanceof Error ? err.message : String(err), 'error');
     }
   }
 
@@ -251,8 +260,6 @@
   }
 </script>
 
-<svelte:window onkeydown={onKeydown} />
-
 <section class="dashboard-header-section">
   <div class="dashboard-title-row">
     <div>
@@ -276,7 +283,6 @@
       </button>
     </div>
   </div>
-  <div id="compile-toast" class="toast-message hidden" bind:this={compileToast}>反映しました！</div>
 </section>
 
 <section class="categories-bar-section" style="margin-bottom:32px;background:var(--bg-card);padding:20px;border:1px solid var(--border-color);border-radius:var(--radius-lg);backdrop-filter:blur(20px);">

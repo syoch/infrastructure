@@ -1,8 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { page } from '$app/state';
+  import { goto } from '$app/navigation';
+  import { Menu, Portal, Toast } from '@skeletonlabs/skeleton-svelte';
   import { ensureMe, auth } from '$lib/auth.svelte.ts';
   import { loadAllData } from '$lib/store.svelte.ts';
+  import { toaster } from '$lib/toast.ts';
+  import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
+  import PromptDialog from '$lib/components/PromptDialog.svelte';
   import '../app.css';
 
   let { children } = $props();
@@ -29,12 +34,9 @@
   );
   const isAdmin = $derived(auth.me?.is_first_webui_device === true);
 
-  function closeDropdown(): void {
-    dropdownOpen = false;
-  }
+  const navActive = 'btn btn-sm preset-filled-primary-500';
+  const navIdle = 'btn btn-sm preset-tonal';
 </script>
-
-<svelte:window onclick={() => closeDropdown()} />
 
 <!-- Background blobs for premium glassmorphic effect -->
 <div class="blob-container">
@@ -43,65 +45,138 @@
   <div class="blob blob-3"></div>
 </div>
 
-<header>
-  <div class="header-content container">
-    <div class="logo">
-      <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+<header class="sticky top-0 z-40 border-b border-surface-200-800 bg-surface-50-950/80 backdrop-blur">
+  <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-3">
+    <div class="flex items-center gap-2">
+      <svg
+        class="size-7 text-primary-500"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
       </svg>
-      <span class="logo-text">Android Provisioning Portal</span>
+      <span class="text-sm font-bold sm:text-base">Android Provisioning Portal</span>
     </div>
 
-    <nav class="header-nav">
-      <a href="/" class="nav-btn" id="nav-portal" class:active={isPortal}>ポータル</a>
-      <a href="/dashboard" class="nav-btn" id="nav-dashboard" class:active={isDashboard}>ダッシュボード</a>
-      <div class="nav-dropdown" id="control-dropdown" class:active={isControl} class:open={dropdownOpen}>
-        <button
-          class="nav-btn nav-dropdown-toggle"
-          id="nav-control"
-          aria-haspopup="true"
-          aria-expanded={dropdownOpen}
-          class:active={isControl}
-          onclick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            dropdownOpen = !dropdownOpen;
-          }}
-        >
-          コントロール
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-dropdown-caret">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
-        </button>
-        <div class="nav-dropdown-menu" role="menu">
-          <a href="/control/devices" class="nav-dropdown-item" role="menuitem">Devices</a>
-          <a
-            href="/control/acl"
-            class="nav-dropdown-item"
-            class:hidden={!isAdmin}
-            role="menuitem"
-            data-requires-admin="true"
-          >ACL</a>
+    <nav class="flex flex-wrap items-center gap-2">
+      <a href="/" class={isPortal ? navActive : navIdle} id="nav-portal">ポータル</a>
+      <a
+        href="/dashboard"
+        class={isDashboard ? navActive : navIdle}
+        id="nav-dashboard">ダッシュボード</a
+      >
+
+      <Menu
+        open={dropdownOpen}
+        onOpenChange={(details) => {
+          dropdownOpen = details.open;
+        }}
+      >
+        <div id="control-dropdown" data-testid="control-dropdown">
+          <Menu.Trigger
+            class={isControl ? navActive : navIdle}
+            data-testid="control-menu-trigger"
+          >
+            {#snippet element(attributes)}
+              <button {...attributes} id="nav-control">
+                コントロール
+                <svg
+                  viewBox="0 0 24 24"
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+            {/snippet}
+          </Menu.Trigger>
         </div>
-      </div>
-      <a href="/operations" class="nav-btn" id="nav-operations" class:active={isOperations}>オペレーション</a>
-      <a href="/apps" class="nav-btn" id="nav-apps" class:active={isApps}>アプリ</a>
+        <Portal>
+          <Menu.Positioner class="z-50">
+            <Menu.Content
+              class="card bg-surface-100-900 min-w-40 p-1 shadow-xl"
+              data-testid="control-menu"
+            >
+              <Menu.Item
+                value="devices"
+                class="cursor-pointer rounded px-3 py-2 text-sm hover:preset-tonal"
+                data-testid="control-menu-devices"
+                onclick={() => {
+                  dropdownOpen = false;
+                  void goto('/control/devices');
+                }}
+              >
+                Devices
+              </Menu.Item>
+              {#if isAdmin}
+                <Menu.Item
+                  value="acl"
+                  class="cursor-pointer rounded px-3 py-2 text-sm hover:preset-tonal"
+                  data-testid="control-menu-acl"
+                  data-requires-admin="true"
+                  onclick={() => {
+                    dropdownOpen = false;
+                    void goto('/control/acl');
+                  }}
+                >
+                  ACL
+                </Menu.Item>
+              {/if}
+            </Menu.Content>
+          </Menu.Positioner>
+        </Portal>
+      </Menu>
+
+      <a
+        href="/operations"
+        class={isOperations ? navActive : navIdle}
+        id="nav-operations">オペレーション</a
+      >
+      <a href="/apps" class={isApps ? navActive : navIdle} id="nav-apps">アプリ</a>
     </nav>
 
-    <div class="server-status">
-      <span class="status-indicator online"></span>
-      <span class="status-text">Repository Online</span>
+    <div class="flex items-center gap-2">
+      <span class="size-2 rounded-full bg-success-500"></span>
+      <span class="text-xs text-surface-700-300">Repository Online</span>
     </div>
   </div>
 </header>
 
-<main class="container">
+<main class="mx-auto w-full max-w-7xl px-4 py-6">
   {@render children()}
 </main>
 
-<footer>
-  <div class="footer-content container">
+<footer class="mt-12 border-t border-surface-200-800">
+  <div
+    class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-6 text-xs text-surface-700-300"
+  >
     <p>Android Provisioning Repo &copy; 2026</p>
-    <p class="footer-path">Workspace: <code id="root-path">/mnt/NAS/Android Root</code></p>
+    <p>Workspace: <code id="root-path">/mnt/NAS/Android Root</code></p>
   </div>
 </footer>
+
+<Toast.Group {toaster}>
+  {#snippet children(toast)}
+    <Toast {toast} data-testid="toast">
+      <Toast.Message>
+        <Toast.Title data-testid="toast-title">{toast.title}</Toast.Title>
+        {#if toast.description}
+          <Toast.Description>{toast.description}</Toast.Description>
+        {/if}
+      </Toast.Message>
+      <Toast.CloseTrigger />
+    </Toast>
+  {/snippet}
+</Toast.Group>
+
+<ConfirmDialog />
+<PromptDialog />

@@ -1,8 +1,11 @@
 <script lang="ts">
   import { store, loadAllData } from '../lib/store.svelte.ts';
   import { goto as navigate } from '$app/navigation';
+  import { Dialog, Portal } from '@skeletonlabs/skeleton-svelte';
   import { saveSettings, saveApp, type SaveAppPayload } from '../api/api.js';
   import { colorIntToHex, parseHexToColorInt, getCategoryModalColorPreview } from '../lib/ui.js';
+  import { confirmDialog } from '../lib/dialogs.svelte.ts';
+  import { showCustomToast } from '../lib/toast.ts';
 
   let {
     active = false,
@@ -29,6 +32,10 @@
     lastKey = key;
     openModal();
   });
+
+  function close(): void {
+    navigate('/list');
+  }
 
   function openModal(): void {
     const edit = !!categoryName;
@@ -67,7 +74,7 @@
     const cats: Record<string, number> = { ...(store.settings.categories || {}) };
     const isNameChanged = isEdit && !!categoryName && categoryName !== trimmed;
     if (isNameChanged && cats[trimmed] !== undefined) {
-      alert('既に存在するカテゴリ名です。');
+      showCustomToast('既に存在するカテゴリ名です。', 'error');
       return;
     }
     if (isNameChanged && categoryName) delete cats[categoryName];
@@ -111,18 +118,18 @@
       await loadAllData();
     } catch (err) {
       console.error(err);
-      alert('カテゴリ設定または所属アプリの保存に失敗しました。');
+      showCustomToast('カテゴリ設定または所属アプリの保存に失敗しました。', 'error');
     }
   }
 
   async function onDelete(): Promise<void> {
     if (!categoryName) return;
-    if (
-      !confirm(
-        `カテゴリ "${categoryName}" を削除してもよろしいですか？ (登録アプリ自体のカテゴリ割り当ては別途変更が必要です)`
-      )
-    )
-      return;
+    const confirmed = await confirmDialog({
+      title: 'カテゴリを削除',
+      message: `カテゴリ "${categoryName}" を削除してもよろしいですか？ (登録アプリ自体のカテゴリ割り当ては別途変更が必要です)`,
+      confirmText: '削除',
+    });
+    if (!confirmed) return;
     try {
       const cats = { ...(store.settings.categories || {}) };
       delete cats[categoryName];
@@ -131,74 +138,137 @@
       await loadAllData();
     } catch (err) {
       console.error(err);
-      alert('カテゴリの削除に失敗しました。');
+      showCustomToast('カテゴリの削除に失敗しました。', 'error');
     }
   }
 </script>
 
-<div id="category-modal" class="modal-backdrop" class:active={active}>
-  <div class="modal-content" style="max-width:500px;">
-    <button class="modal-close-btn" id="category-modal-close" type="button" aria-label="閉じる" onclick={() => navigate('/list')}>
-      <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-        <line x1="6" y1="6" x2="18" y2="18"></line>
-      </svg>
-    </button>
-
-    <h2 class="card-title" id="category-modal-title">
-      {isEdit ? `カテゴリ "${categoryName}" を編集` : 'カテゴリを作成'}
-    </h2>
-    <p class="card-subtitle">カテゴリ名とARGBカラーコードを設定します。10進数です。</p>
-
-    <form id="category-modal-form" onsubmit={onSubmit}>
-      <div class="form-group">
-        <label for="cat-modal-name">カテゴリ名</label>
-        <input type="text" id="cat-modal-name" required placeholder="e.g. customize" bind:value={name} />
-      </div>
-
-      <div class="form-group">
-        <label for="cat-modal-color">カラーコード (Hex ARGB / RGB)</label>
-        <div style="display:flex;gap:12px;align-items:center;">
-          <input type="text" id="cat-modal-color" required placeholder="e.g. #88ffcc88 or #ffcc88" style="flex:1;" value={color} oninput={onColorInput} />
-          <div
-            id="cat-modal-color-preview"
-            style="width:38px;height:38px;border-radius:8px;border:1px solid var(--border-color);transition:background-color 0.3s ease;"
-            style:background-color={preview}
-          ></div>
-        </div>
-      </div>
-
-      <div class="form-group" style="margin-top:20px;">
-        <span class="form-label" style="font-weight:600;margin-bottom:12px;display:block;">このカテゴリに所属させるアプリを選択</span>
-        <div id="category-apps-list" class="categories-list" style="max-height:220px;background:rgba(0,0,0,0.15);padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--border-color);overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
-          {#if !isEdit}
-            <div style="color:var(--color-text-muted);font-size:0.8rem;padding:12px 0;">新しいカテゴリです。保存後、アプリに割り当ててください。</div>
-          {:else if apps.length === 0}
-            <div style="color:var(--color-text-muted);font-size:0.8rem;padding:12px 0;">登録されているアプリがありません。</div>
-          {:else}
-            {#each apps as app (app.id)}
-              <label class="modal-app-item" style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 8px;border-radius:4px;transition:background-color 0.2s;">
-                <input type="checkbox" name="cat-app-checkbox" data-app-id={app.id} bind:checked={appChecked[app.id]} style="cursor:pointer;" />
-                <div style="display:flex;flex-direction:column;cursor:pointer;flex:1;">
-                  <span class="app-name-display" style="font-weight:500;font-size:0.85rem;">{app.name}</span>
-                  <span class="app-pkg-display" style="font-size:0.7rem;color:var(--color-text-muted);">{app.id}</span>
-                </div>
-              </label>
-            {/each}
-          {/if}
-        </div>
-      </div>
-
-      <div class="form-actions" style="margin-top:24px;">
-        <button type="submit" class="btn btn-primary" style="flex:2;">保存する</button>
+<Dialog
+  open={active}
+  aria-label="カテゴリ編集"
+  onOpenChange={(details) => {
+    if (!details.open) close();
+  }}
+>
+  <Portal>
+    <Dialog.Backdrop class="fixed inset-0 z-[80] bg-surface-950/60" />
+    <Dialog.Positioner class="fixed inset-0 z-[90] flex items-center justify-center p-4">
+      <Dialog.Content
+        id="category-modal"
+        data-testid="category-modal"
+        class="card bg-surface-100-900 relative max-h-[90vh] w-full max-w-lg overflow-y-auto p-6 shadow-xl"
+      >
         <button
+          class="btn-icon preset-tonal absolute top-3 right-3"
+          id="category-modal-close"
           type="button"
-          id="cat-modal-delete"
-          class="btn btn-secondary"
-          style="color:#ff5252;border-color:rgba(255,82,82,0.2);flex:1;{isEdit ? 'display:inline-flex;' : 'display:none;'}"
-          onclick={onDelete}
-        >削除</button>
-      </div>
-    </form>
-  </div>
-</div>
+          aria-label="閉じる"
+          onclick={close}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            stroke="currentColor"
+            stroke-width="2.5"
+            fill="none"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+
+        <Dialog.Title>
+          {#snippet element(attributes)}
+            <h2 {...attributes} id="category-modal-title" class="card-title">
+              {isEdit ? `カテゴリ "${categoryName}" を編集` : 'カテゴリを作成'}
+            </h2>
+          {/snippet}
+        </Dialog.Title>
+        <p class="card-subtitle">カテゴリ名とARGBカラーコードを設定します。10進数です。</p>
+
+        <form id="category-modal-form" onsubmit={onSubmit}>
+          <div class="form-group">
+            <label for="cat-modal-name">カテゴリ名</label>
+            <input
+              type="text"
+              id="cat-modal-name"
+              class="input"
+              required
+              placeholder="e.g. customize"
+              bind:value={name}
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="cat-modal-color">カラーコード (Hex ARGB / RGB)</label>
+            <div class="flex items-center gap-3">
+              <input
+                type="text"
+                id="cat-modal-color"
+                class="input flex-1"
+                required
+                placeholder="e.g. #88ffcc88 or #ffcc88"
+                value={color}
+                oninput={onColorInput}
+              />
+              <div
+                id="cat-modal-color-preview"
+                class="size-[38px] rounded border border-surface-200-800 transition-colors"
+                style:background-color={preview}
+              ></div>
+            </div>
+          </div>
+
+          <div class="form-group mt-5">
+            <span class="label-text mb-3 font-semibold">このカテゴリに所属させるアプリを選択</span>
+            <div
+              id="category-apps-list"
+              class="flex max-h-[220px] flex-col gap-2 overflow-y-auto rounded border border-surface-200-800 bg-surface-950/20 p-2"
+            >
+              {#if !isEdit}
+                <div class="py-3 text-xs text-surface-600-400">
+                  新しいカテゴリです。保存後、アプリに割り当ててください。
+                </div>
+              {:else if apps.length === 0}
+                <div class="py-3 text-xs text-surface-600-400">登録されているアプリがありません。</div>
+              {:else}
+                {#each apps as app (app.id)}
+                  <label
+                    class="flex cursor-pointer items-center gap-2.5 rounded p-1.5 transition-colors hover:preset-tonal"
+                  >
+                    <input
+                      type="checkbox"
+                      name="cat-app-checkbox"
+                      class="checkbox"
+                      data-app-id={app.id}
+                      bind:checked={appChecked[app.id]}
+                    />
+                    <div class="flex flex-1 cursor-pointer flex-col">
+                      <span class="text-sm font-medium">{app.name}</span>
+                      <span class="text-[0.7rem] text-surface-600-400">{app.id}</span>
+                    </div>
+                  </label>
+                {/each}
+              {/if}
+            </div>
+          </div>
+
+          <div class="form-actions mt-6">
+            <button type="submit" class="btn preset-filled-primary-500 flex-[2]">保存する</button>
+            <button
+              type="button"
+              id="cat-modal-delete"
+              class="btn preset-tonal-error flex-1 {isEdit ? '' : 'hidden'}"
+              onclick={onDelete}
+            >
+              削除
+            </button>
+          </div>
+        </form>
+      </Dialog.Content>
+    </Dialog.Positioner>
+  </Portal>
+</Dialog>

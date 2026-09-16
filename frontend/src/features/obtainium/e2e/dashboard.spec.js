@@ -71,7 +71,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
 
     // モーダルが表示されていること
     const appModal = page.locator('#app-modal');
-    await expect(appModal).toHaveClass(/active/);
+    await expect(appModal).toBeVisible();
 
     // フォームへの入力
     const pkgId = 'com.playwright.test';
@@ -86,7 +86,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await saveBtn.click();
 
     // モーダルが閉じ、ハッシュが一覧に戻ること
-    await expect(appModal).not.toHaveClass(/active/);
+    await expect(appModal).toBeHidden();
     await expect(page).toHaveURL(/\/(list|dashboard)?$/);
 
     // テーブルにアプリが追加されていることを確認
@@ -97,7 +97,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     // ---- 2-2. アプリ名クリックで簡易編集モーダル起動 ----
     // 行をクリック
     await newAppRow.click();
-    await expect(appModal).toHaveClass(/active/);
+    await expect(appModal).toBeVisible();
     await expect(page.locator('#app-modal-title')).toContainText('アプリ簡易編集');
     
     // パッケージIDが読み取り専用（disabled）になっていること
@@ -110,7 +110,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await detailBtn.click();
 
     // モーダルが閉じ、詳細設定画面に遷移し、ハッシュが #edit?type=app&id=... になること
-    await expect(appModal).not.toHaveClass(/active/);
+    await expect(appModal).toBeHidden();
     await expect(page).toHaveURL(new RegExp(`/edit\\?type=app&id=${pkgId}`));
 
     const editView = page.locator('#app-edit-view');
@@ -127,20 +127,16 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await expect(page).toHaveURL(/\/(list|dashboard)?$/);
 
     // ---- 2-4. アプリの削除 ----
-    // 削除処理時の confirm ダイアログを自動受託する
-    page.once('dialog', async dialog => {
-      expect(dialog.message()).toContain(pkgId);
-      await dialog.accept();
-    });
-
     // 再度簡易編集モーダルを開き、詳細設定から削除する
     const row = page.locator(`#dashboard-apps-list tr:has-text("${pkgId}")`);
     await row.click();
     await page.locator('#quick-detail-btn').click();
     
-    // 削除ボタンを押す
+    // 削除ボタンを押し、Skeleton の確認ダイアログで確定する
     const deleteBtn = page.locator('#edit-delete-btn');
     await deleteBtn.click();
+    await expect(page.getByTestId('confirm-dialog')).toContainText(pkgId);
+    await page.getByTestId('confirm-dialog-confirm').click();
 
     // 一覧に戻り、行が削除されていること
     await expect(editView).not.toBeVisible();
@@ -156,7 +152,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await expect(page).toHaveURL(/\/new\?type=category/);
 
     const catModal = page.locator('#category-modal');
-    await expect(catModal).toHaveClass(/active/);
+    await expect(catModal).toBeVisible();
 
     const catName = 'E2ECat';
     await page.fill('#cat-modal-name', catName);
@@ -170,31 +166,27 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await catSaveBtn.click();
 
     // モーダルが閉じ、ハッシュが戻り、カテゴリバーにチップが追加されること
-    await expect(catModal).not.toHaveClass(/active/);
+    await expect(catModal).toBeHidden();
     await expect(page).toHaveURL(/\/(list|dashboard)?$/);
 
     const newCatChip = page.locator(`#dashboard-categories-bar .category-tag:has-text("${catName}")`);
     await expect(newCatChip).toBeVisible();
 
     // ---- 3-2. カテゴリチップクリックで編集モーダル起動 & 削除 ----
-    // 削除確認ダイアログの自動受託
-    page.once('dialog', async dialog => {
-      expect(dialog.message()).toContain(catName);
-      await dialog.accept();
-    });
-
     await newCatChip.click();
     await expect(page).toHaveURL(new RegExp(`/edit\\?type=category&id=${catName}`));
-    await expect(catModal).toHaveClass(/active/);
+    await expect(catModal).toBeVisible();
     await expect(page.locator('#cat-modal-name')).toBeEnabled();
 
     // 削除ボタンの表示確認とクリック
     const deleteCatBtn = page.locator('#cat-modal-delete');
     await expect(deleteCatBtn).toBeVisible();
     await deleteCatBtn.click();
+    await expect(page.getByTestId('confirm-dialog')).toContainText(catName);
+    await page.getByTestId('confirm-dialog-confirm').click();
 
     // モーダルが閉じ、チップが消えること
-    await expect(catModal).not.toHaveClass(/active/);
+    await expect(catModal).toBeHidden();
     await expect(page.locator(`#dashboard-categories-bar .category-tag:has-text("${catName}")`)).not.toBeVisible();
   });
 
@@ -206,7 +198,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     // Wait for route and modal to be ready
     await expect(page).toHaveURL(/\/new\?type=app/);
     const appModal = page.locator('#app-modal');
-    await expect(appModal).toHaveClass(/active/);
+    await expect(appModal).toBeVisible();
 
     const pkgId = 'com.selfhosted.test';
     await page.fill('#quick-app-id', pkgId);
@@ -274,24 +266,19 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await expect(selfHostedCard).toBeVisible();
 
     // Setup delete confirm handling
-    page.once('dialog', async dialog => {
-      expect(dialog.message()).toContain('削除');
-      await dialog.accept();
-    });
-
     const deleteApkBtn = page.locator('#apk-list-tbody .delete-apk-btn');
     await deleteApkBtn.click();
+    await expect(page.getByTestId('confirm-dialog')).toContainText('削除');
+    await page.getByTestId('confirm-dialog-confirm').click();
 
     // Verify APK row is gone (table shows "no APKs" text)
     await expect(page.locator('#apk-list-tbody')).toContainText('登録されているセルフホスト APK がありません');
 
     // Cleanup the app
-    page.once('dialog', async dialog => {
-      expect(dialog.message()).toContain(pkgId);
-      await dialog.accept();
-    });
     const deleteAppBtn = page.locator('#edit-delete-btn');
     await deleteAppBtn.click();
+    await expect(page.getByTestId('confirm-dialog')).toContainText(pkgId);
+    await page.getByTestId('confirm-dialog-confirm').click();
 
     // Verify app row is gone
     await expect(page.locator(`#dashboard-apps-list tr:has-text("${pkgId}")`)).not.toBeVisible();
@@ -334,12 +321,10 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
       buffer: Buffer.from(JSON.stringify(mockExportData))
     };
 
-    // Setup window alert dialog mock to accept
-    const dialogPromise = page.waitForEvent('dialog');
+    // Trigger the import via the hidden file input
     await page.setInputFiles('#import-json-file', filePayload);
-    const dialog = await dialogPromise;
-    expect(dialog.message()).toContain('Successfully imported');
-    await dialog.accept();
+    // The import result is surfaced through a Skeleton toast (was a native alert).
+    await expect(page.getByTestId('toast')).toContainText('Successfully imported');
 
     // Confirm that the imported app is listed in the dashboard apps list
     const importedRow = page.locator('#dashboard-apps-list tr:has-text("com.mockimport.test")');
@@ -354,11 +339,9 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await importedRow.click();
     await page.locator('#quick-detail-btn').click();
     
-    page.once('dialog', async dialog => {
-      expect(dialog.message()).toContain('com.mockimport.test');
-      await dialog.accept();
-    });
     await page.locator('#edit-delete-btn').click();
+    await expect(page.getByTestId('confirm-dialog')).toContainText('com.mockimport.test');
+    await page.getByTestId('confirm-dialog-confirm').click();
     await expect(page.locator('#dashboard-apps-list tr:has-text("com.mockimport.test")')).not.toBeVisible();
   });
 
@@ -390,7 +373,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     // モーダルがアクティブになるのを待つ（クリア処理との競合を避ける）
     await expect(page).toHaveURL(/\/new\?type=app/);
     const appModal = page.locator('#app-modal');
-    await expect(appModal).toHaveClass(/active/);
+    await expect(appModal).toBeVisible();
 
     const pkgId = 'com.association.test';
     await page.fill('#quick-app-id', pkgId);
@@ -406,7 +389,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     // カテゴリモーダルが開くのを待つ
     await expect(page).toHaveURL(/\/new\?type=category/);
     const catModal = page.locator('#category-modal');
-    await expect(catModal).toHaveClass(/active/);
+    await expect(catModal).toBeVisible();
 
     const catName = 'AssocCat';
     await page.fill('#cat-modal-name', catName);
@@ -427,7 +410,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
 
     // Save category changes
     await page.locator('#category-modal-form button[type="submit"]').click();
-    await expect(page.locator('#category-modal')).not.toHaveClass(/active/);
+    await expect(page.locator('#category-modal')).toBeHidden();
 
     // Verify category tag is shown in the app row on the dashboard list
     const appRow = page.locator(`#dashboard-apps-list tr:has-text("${pkgId}")`);
@@ -439,7 +422,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await expect(appCheckbox).toBeChecked();
     await appCheckbox.uncheck();
     await page.locator('#category-modal-form button[type="submit"]').click();
-    await expect(page.locator('#category-modal')).not.toHaveClass(/active/);
+    await expect(page.locator('#category-modal')).toBeHidden();
 
     // Verify category tag is removed from the app row
     await expect(appRow.locator(`.category-tag:has-text("${catName}")`)).not.toBeVisible();
@@ -448,20 +431,16 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     // Delete App
     await appRow.click();
     await page.locator('#quick-detail-btn').click();
-    page.once('dialog', async dialog => {
-      expect(dialog.message()).toContain(pkgId);
-      await dialog.accept();
-    });
     await page.locator('#edit-delete-btn').click();
+    await expect(page.getByTestId('confirm-dialog')).toContainText(pkgId);
+    await page.getByTestId('confirm-dialog-confirm').click();
     await expect(page.locator(`#dashboard-apps-list tr:has-text("${pkgId}")`)).not.toBeVisible();
 
     // Delete Category
     await catChip.click();
-    page.once('dialog', async dialog => {
-      expect(dialog.message()).toContain(catName);
-      await dialog.accept();
-    });
     await page.locator('#cat-modal-delete').click();
+    await expect(page.getByTestId('confirm-dialog')).toContainText(catName);
+    await page.getByTestId('confirm-dialog-confirm').click();
     await expect(page.locator(`#dashboard-categories-bar .category-tag:has-text("${catName}")`)).not.toBeVisible();
   });
 
@@ -472,33 +451,33 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await addAppBtn.click();
     await expect(page).toHaveURL(/\/new\?type=app/);
     const appModal = page.locator('#app-modal');
-    await expect(appModal).toHaveClass(/active/);
+    await expect(appModal).toBeVisible();
     const pkgIdA = 'com.dynamic.appa';
     await page.fill('#quick-app-id', pkgIdA);
     await page.fill('#quick-app-name', 'Dynamic App A');
     await page.fill('#quick-app-url', 'https://github.com/test/appa');
     await page.locator('#quick-save-btn').click();
-    await expect(appModal).not.toHaveClass(/active/);
+    await expect(appModal).toBeHidden();
     await expect(page).toHaveURL(/\/(list|dashboard)?$/);
     await page.waitForSelector(`#dashboard-apps-list tr:has-text("${pkgIdA}")`);
 
     // App B
     await addAppBtn.click();
     await expect(page).toHaveURL(/\/new\?type=app/);
-    await expect(appModal).toHaveClass(/active/);
+    await expect(appModal).toBeVisible();
     const pkgIdB = 'com.dynamic.appb';
     await page.fill('#quick-app-id', pkgIdB);
     await page.fill('#quick-app-name', 'Dynamic App B');
     await page.fill('#quick-app-url', 'https://github.com/test/appb');
     await page.locator('#quick-save-btn').click();
-    await expect(appModal).not.toHaveClass(/active/);
+    await expect(appModal).toBeHidden();
     await expect(page).toHaveURL(/\/(list|dashboard)?$/);
     await page.waitForSelector(`#dashboard-apps-list tr:has-text("${pkgIdB}")`);
 
     // ---- 8-2. Edit App A to add non-existent Category 'CateA' ----
     const appRowA = page.locator(`#dashboard-apps-list tr:has-text("${pkgIdA}")`);
     await appRowA.click();
-    await expect(appModal).toHaveClass(/active/);
+    await expect(appModal).toBeVisible();
     await page.locator('#quick-detail-btn').click();
     await expect(page).toHaveURL(new RegExp(`/edit\\?type=app&id=${pkgIdA}`));
 
@@ -516,12 +495,12 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await addCatBtn.click();
     await expect(page).toHaveURL(/\/new\?type=category/);
     const catModal = page.locator('#category-modal');
-    await expect(catModal).toHaveClass(/active/);
+    await expect(catModal).toBeVisible();
 
     await page.fill('#cat-modal-name', catName);
     await page.fill('#cat-modal-color', '4294901760'); // Red: #ffff0000 -> 4294901760
     await page.locator('#category-modal-form button[type="submit"]').click();
-    await expect(catModal).not.toHaveClass(/active/);
+    await expect(catModal).toBeHidden();
 
     // Verify category chip is shown in category bar
     const catChip = page.locator(`#dashboard-categories-bar .category-tag:has-text("${catName}")`);
@@ -530,7 +509,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     // ---- 8-4. Edit Category 'CateA' to bind App B ----
     await catChip.click();
     await expect(page).toHaveURL(new RegExp(`/edit\\?type=category&id=${catName}`));
-    await expect(catModal).toHaveClass(/active/);
+    await expect(catModal).toBeVisible();
 
     // App A should already be checked since it was associated dynamically
     const appCheckboxA = page.locator(`#category-apps-list input[data-app-id="${pkgIdA}"]`);
@@ -545,7 +524,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
 
     // Save category changes
     await page.locator('#category-modal-form button[type="submit"]').click();
-    await expect(catModal).not.toHaveClass(/active/);
+    await expect(catModal).toBeHidden();
 
     // ---- 8-5. Verify both App A and App B have CateA category tag ----
     await expect(appRowA.locator(`.category-tag:has-text("${catName}")`)).toBeVisible();
@@ -556,30 +535,24 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     // Delete App A
     await appRowA.click();
     await page.locator('#quick-detail-btn').click();
-    page.once('dialog', async dialog => {
-      expect(dialog.message()).toContain(pkgIdA);
-      await dialog.accept();
-    });
     await page.locator('#edit-delete-btn').click();
+    await expect(page.getByTestId('confirm-dialog')).toContainText(pkgIdA);
+    await page.getByTestId('confirm-dialog-confirm').click();
     await expect(page.locator(`#dashboard-apps-list tr:has-text("${pkgIdA}")`)).not.toBeVisible();
 
     // Delete App B
     await appRowB.click();
     await page.locator('#quick-detail-btn').click();
-    page.once('dialog', async dialog => {
-      expect(dialog.message()).toContain(pkgIdB);
-      await dialog.accept();
-    });
     await page.locator('#edit-delete-btn').click();
+    await expect(page.getByTestId('confirm-dialog')).toContainText(pkgIdB);
+    await page.getByTestId('confirm-dialog-confirm').click();
     await expect(page.locator(`#dashboard-apps-list tr:has-text("${pkgIdB}")`)).not.toBeVisible();
 
     // Delete Category
     await catChip.click();
-    page.once('dialog', async dialog => {
-      expect(dialog.message()).toContain(catName);
-      await dialog.accept();
-    });
     await page.locator('#cat-modal-delete').click();
+    await expect(page.getByTestId('confirm-dialog')).toContainText(catName);
+    await page.getByTestId('confirm-dialog-confirm').click();
     await expect(page.locator(`#dashboard-categories-bar .category-tag:has-text("${catName}")`)).not.toBeVisible();
   });
 
@@ -654,7 +627,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await addAppBtn.click();
     await expect(page).toHaveURL(/\/new\?type=app/);
     const appModal = page.locator('#app-modal');
-    await expect(appModal).toHaveClass(/active/);
+    await expect(appModal).toBeVisible();
     const pkgIdA = 'com.renamecat.appa';
     await page.fill('#quick-app-id', pkgIdA);
     await page.fill('#quick-app-name', 'Rename App A');
@@ -665,7 +638,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     // App B
     await addAppBtn.click();
     await expect(page).toHaveURL(/\/new\?type=app/);
-    await expect(appModal).toHaveClass(/active/);
+    await expect(appModal).toBeVisible();
     const pkgIdB = 'com.renamecat.appb';
     await page.fill('#quick-app-id', pkgIdB);
     await page.fill('#quick-app-name', 'Rename App B');
@@ -678,13 +651,13 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await addCatBtn.click();
     await expect(page).toHaveURL(/\/new\?type=category/);
     const catModal = page.locator('#category-modal');
-    await expect(catModal).toHaveClass(/active/);
+    await expect(catModal).toBeVisible();
 
     const originalCatName = 'OriginalCat';
     await page.fill('#cat-modal-name', originalCatName);
     await page.fill('#cat-modal-color', '4294901760'); // Red
     await page.locator('#category-modal-form button[type="submit"]').click();
-    await expect(catModal).not.toHaveClass(/active/);
+    await expect(catModal).toBeHidden();
 
     const catChip = page.locator(`#dashboard-categories-bar .category-tag:has-text("${originalCatName}")`);
     await expect(catChip).toBeVisible();
@@ -692,13 +665,13 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     // ---- 10-3. Edit Category 'OriginalCat' to bind App A ----
     await catChip.click();
     await expect(page).toHaveURL(new RegExp(`/edit\\?type=category&id=${originalCatName}`));
-    await expect(catModal).toHaveClass(/active/);
+    await expect(catModal).toBeVisible();
 
     const appCheckboxA = page.locator(`#category-apps-list input[data-app-id="${pkgIdA}"]`);
     await expect(appCheckboxA).toBeVisible();
     await appCheckboxA.check();
     await page.locator('#category-modal-form button[type="submit"]').click();
-    await expect(catModal).not.toHaveClass(/active/);
+    await expect(catModal).toBeHidden();
 
     // Verify App A is bound to OriginalCat
     const appRowA = page.locator(`#dashboard-apps-list tr:has-text("${pkgIdA}")`);
@@ -707,7 +680,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     // ---- 10-4. Rename Category 'OriginalCat' to 'RenamedCat' and also bind App B ----
     await catChip.click();
     await expect(page).toHaveURL(new RegExp(`/edit\\?type=category&id=${originalCatName}`));
-    await expect(catModal).toHaveClass(/active/);
+    await expect(catModal).toBeVisible();
 
     // Rename
     const renamedCatName = 'RenamedCat';
@@ -720,7 +693,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
 
     // Save
     await page.locator('#category-modal-form button[type="submit"]').click();
-    await expect(catModal).not.toHaveClass(/active/);
+    await expect(catModal).toBeHidden();
 
     // ---- 10-5. Verify old category is gone and new category is bound to both A and B ----
     // Category bar checks
@@ -741,30 +714,24 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     // Delete App A
     await appRowA.click();
     await page.locator('#quick-detail-btn').click();
-    page.once('dialog', async dialog => {
-      expect(dialog.message()).toContain(pkgIdA);
-      await dialog.accept();
-    });
     await page.locator('#edit-delete-btn').click();
+    await expect(page.getByTestId('confirm-dialog')).toContainText(pkgIdA);
+    await page.getByTestId('confirm-dialog-confirm').click();
     await expect(page.locator(`#dashboard-apps-list tr:has-text("${pkgIdA}")`)).not.toBeVisible();
 
     // Delete App B
     await appRowB.click();
     await page.locator('#quick-detail-btn').click();
-    page.once('dialog', async dialog => {
-      expect(dialog.message()).toContain(pkgIdB);
-      await dialog.accept();
-    });
     await page.locator('#edit-delete-btn').click();
+    await expect(page.getByTestId('confirm-dialog')).toContainText(pkgIdB);
+    await page.getByTestId('confirm-dialog-confirm').click();
     await expect(page.locator(`#dashboard-apps-list tr:has-text("${pkgIdB}")`)).not.toBeVisible();
 
     // Delete Category
     await newCatChip.click();
-    page.once('dialog', async dialog => {
-      expect(dialog.message()).toContain(renamedCatName);
-      await dialog.accept();
-    });
     await page.locator('#cat-modal-delete').click();
+    await expect(page.getByTestId('confirm-dialog')).toContainText(renamedCatName);
+    await page.getByTestId('confirm-dialog-confirm').click();
     await expect(page.locator(`#dashboard-categories-bar .category-tag:has-text("${renamedCatName}")`)).not.toBeVisible();
   });
 
@@ -794,9 +761,9 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     const submitBtn = page.locator('#global-settings-form button[type="submit"]');
     await submitBtn.click();
 
-    // Verify success toast (we use custom toast, check for text)
-    const toast = page.locator('#custom-toast');
-    await expect(toast).toContainText('グローバル設定を保存しました');
+    // Verify success toast (Skeleton Toast replaced the custom #custom-toast node)
+    const toast = page.getByTestId('toast').filter({ hasText: 'グローバル設定を保存しました' });
+    await expect(toast).toBeVisible();
 
     // Reload page to verify persistence
     await page.reload();

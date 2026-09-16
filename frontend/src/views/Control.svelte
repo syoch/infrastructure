@@ -19,6 +19,8 @@
     type BootstrapToken,
     type ACL,
   } from '../api/control_api.js';
+  import { showCustomToast } from '../lib/toast.ts';
+  import { confirmDialog, promptDialog } from '../lib/dialogs.svelte.ts';
 
   let { sub = '' }: { sub?: string } = $props();
 
@@ -149,7 +151,8 @@
     const prompt = value
       ? `${device.id} を admin に昇格しますか?`
       : `${device.id} から admin を剥奪しますか?`;
-    if (!confirm(prompt)) {
+    const confirmed = await confirmDialog({ title: 'Admin 権限の変更', message: prompt });
+    if (!confirmed) {
       input.checked = !value;
       return;
     }
@@ -157,44 +160,68 @@
       await setAdmin(device.id, value);
       await refreshDevices();
     } catch (err) {
-      alert(msg(err));
+      showCustomToast(msg(err), 'error');
       input.checked = !value;
     }
   }
 
   async function onDeleteDevice(device: Device): Promise<void> {
-    if (!confirm(`Device ${device.id} を削除しますか?`)) return;
+    const confirmed = await confirmDialog({
+      title: 'デバイスを削除',
+      message: `Device ${device.id} を削除しますか?`,
+      confirmText: '削除',
+    });
+    if (!confirmed) return;
     try {
       await deleteDevice(device.id);
       await refreshDevices();
     } catch (err) {
-      alert(msg(err));
+      showCustomToast(msg(err), 'error');
     }
   }
 
   async function onIssueToken(): Promise<void> {
-    const deviceId = prompt('Target Device ID (e.g. tablet-01):');
+    const deviceId = await promptDialog({
+      title: 'Bootstrap トークン発行',
+      label: 'Target Device ID (e.g. tablet-01):',
+    });
     if (!deviceId) return;
-    const displayName = prompt('Display Name (e.g. My Android Tablet):');
+    const displayName = await promptDialog({
+      title: 'Bootstrap トークン発行',
+      label: 'Display Name (e.g. My Android Tablet):',
+    });
     if (!displayName) return;
-    const ttlRaw = prompt('TTL in minutes (default 15):', '15');
+    const ttlRaw = await promptDialog({
+      title: 'Bootstrap トークン発行',
+      label: 'TTL in minutes (default 15):',
+      defaultValue: '15',
+    });
     const ttl = ttlRaw ? parseInt(ttlRaw, 10) : 15;
     try {
       const res = await issueToken({ device_id: deviceId, display_name: displayName, ttl_minutes: ttl });
-      alert(`Token issued successfully!\n\nID: ${res.id}\n\nNOTE: This token will not be shown again. Copy it now.`);
+      showCustomToast(
+        `Token issued successfully!\n\nID: ${res.id}\n\nNOTE: This token will not be shown again. Copy it now.`,
+        'success',
+        10000
+      );
       await refreshTokens();
     } catch (err) {
-      alert(msg(err));
+      showCustomToast(msg(err), 'error');
     }
   }
 
   async function onRevokeToken(tokenId: string): Promise<void> {
-    if (!confirm(`Bootstrap Token ${tokenId.substring(0, 8)}... を失効させますか?`)) return;
+    const confirmed = await confirmDialog({
+      title: 'トークンを失効',
+      message: `Bootstrap Token ${tokenId.substring(0, 8)}... を失効させますか?`,
+      confirmText: '失効',
+    });
+    if (!confirmed) return;
     try {
       await deleteToken(tokenId);
       await refreshTokens();
     } catch (err) {
-      alert(msg(err));
+      showCustomToast(msg(err), 'error');
     }
   }
 
@@ -213,17 +240,22 @@
       aclExtra = '';
       await refreshAcls();
     } catch (err) {
-      alert(msg(err));
+      showCustomToast(msg(err), 'error');
     }
   }
 
   async function onAclDelete(aclId: string): Promise<void> {
-    if (!confirm('この ACL を削除しますか?')) return;
+    const confirmed = await confirmDialog({
+      title: 'ACL を削除',
+      message: 'この ACL を削除しますか?',
+      confirmText: '削除',
+    });
+    if (!confirmed) return;
     try {
       await deleteAcl(aclId);
       await refreshAcls();
     } catch (err) {
-      alert(msg(err));
+      showCustomToast(msg(err), 'error');
     }
   }
 

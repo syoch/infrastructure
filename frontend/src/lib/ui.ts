@@ -1,11 +1,3 @@
-export function showToast(toastElement: HTMLElement | null): void {
-  if (!toastElement) return;
-  toastElement.classList.remove('hidden');
-  setTimeout(() => {
-    toastElement.classList.add('hidden');
-  }, 2000);
-}
-
 export function getCategoryColorStyle(colorCode: number | null | undefined): string {
   if (!colorCode) return '';
   const r = (colorCode >>> 16) & 0xFF;

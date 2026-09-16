@@ -239,20 +239,19 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
     // Wait for me to be fetched
     await page.waitForResponse((r) => r.url().includes('/devices/me') && r.status() === 200);
     await page.waitForLoadState('domcontentloaded');
-    const dropdown = page.locator('#control-dropdown');
     const toggle = page.locator('#nav-control');
     await expect(toggle).toBeVisible();
-    expect(await dropdown.evaluate((el) => el.classList.contains('open'))).toBe(false);
+    await expect(page.getByTestId('control-menu')).toBeHidden();
     await toggle.click();
-    expect(await dropdown.evaluate((el) => el.classList.contains('open'))).toBe(true);
-    await expect(page.locator('.nav-dropdown-item', { hasText: 'Devices' })).toBeVisible();
+    await expect(page.getByTestId('control-menu')).toBeVisible();
+    await expect(page.getByTestId('control-menu-devices')).toBeVisible();
     // ACL is only visible for admin
-    const aclItem = page.locator('.nav-dropdown-item', { hasText: 'ACL' });
+    const aclItem = page.getByTestId('control-menu-acl');
     const aclVisible = await aclItem.isVisible();
     // We accept either: ACL is visible (admin) or ACL is hidden (non-admin)
     expect(typeof aclVisible).toBe('boolean');
     await page.locator('h1, h2, body').first().click();
-    await expect(dropdown).not.toHaveClass(/\bopen\b/);
+    await expect(page.getByTestId('control-menu')).toBeHidden();
   });
 
   test('backend: GET /api/control/commands supports filter and pagination', async () => {
@@ -295,32 +294,39 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
     await page.goto('/control/devices');
     await expect(page.locator('h2', { hasText: 'Bootstrap Tokens' })).toBeVisible();
 
-    // Mock prompt for issue token
+    // Skeleton prompt dialogs for issuing a token (was native prompt/alert)
     const targetDevId = 'new-device-999';
-    page.on('dialog', async dialog => {
-      if (dialog.message().includes('Target Device ID')) {
-        await dialog.accept(targetDevId);
-      } else if (dialog.message().includes('Display Name')) {
-        await dialog.accept('New Test Device');
-      } else if (dialog.message().includes('TTL in minutes')) {
-        await dialog.accept('30');
-      } else if (dialog.message().includes('Token issued successfully')) {
-        expect(dialog.message()).toContain('ID:');
-        await dialog.accept();
-      } else if (dialog.message().includes('を失効させますか')) {
-        await dialog.accept();
-      }
-    });
+    const promptDialog = page.getByTestId('prompt-dialog');
+    const promptInput = page.getByTestId('prompt-dialog-input');
 
     await page.click('#issue-token-btn');
+
+    await expect(promptDialog).toContainText('Target Device ID');
+    await promptInput.fill(targetDevId);
+    await page.getByTestId('prompt-dialog-confirm').click();
+
+    await expect(promptDialog).toContainText('Display Name');
+    await promptInput.fill('New Test Device');
+    await page.getByTestId('prompt-dialog-confirm').click();
+
+    await expect(promptDialog).toContainText('TTL in minutes');
+    await promptInput.fill('30');
+    await page.getByTestId('prompt-dialog-confirm').click();
+
+    // Success is surfaced through a Skeleton toast (was a native alert)
+    const issuedToast = page.getByTestId('toast').filter({ hasText: 'Token issued successfully' });
+    await expect(issuedToast).toBeVisible();
+    await expect(issuedToast).toContainText('ID:');
 
     // Verify token appears in list
     const tokenRow = page.locator('#tokens-list tr').filter({ hasText: targetDevId });
     await expect(tokenRow).toBeVisible();
     await expect(tokenRow).toContainText('Pending');
 
-    // Revoke token
+    // Revoke token (Skeleton confirm dialog)
     await tokenRow.locator('button', { hasText: 'Revoke' }).click();
+    await expect(page.getByTestId('confirm-dialog')).toContainText('失効');
+    await page.getByTestId('confirm-dialog-confirm').click();
 
     // Verify token disappeared or changed
     await expect(tokenRow).not.toBeVisible();
