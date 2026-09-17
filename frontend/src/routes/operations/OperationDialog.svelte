@@ -81,7 +81,10 @@
             <SchemaForm {node} />
           </div>
           {#if error}
-            <div class="text-sm text-error-500">Error: {error}</div>
+            <div class="preset-tonal-error rounded-base p-3 text-sm">Error: {error}</div>
+          {/if}
+          {#if busy}
+            <progress class="progress" aria-label="送信中"></progress>
           {/if}
           <div class="mt-6 flex gap-2">
             <button type="submit" class="btn preset-filled-primary-500 flex-[2]" disabled={busy}>

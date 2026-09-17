@@ -54,6 +54,6 @@
       <input id="bootstrap-token" name="bootstrap_token" class="input font-mono" bind:value={bootstrapToken} required />
     </label>
     <button type="submit" class="btn preset-filled-primary-500 w-full" disabled={busy}>セットアップ</button>
-    <div id="bootstrap-error" class="text-sm text-error-500">{error}</div>
+    <div id="bootstrap-error" class="preset-tonal-error rounded-base p-3 text-sm">{error}</div>
   </form>
 </section>

@@ -131,12 +131,16 @@
 
 <div id="apps-view">
   {#if loading}
-    <section class="card bg-surface-100-900 p-6">
-      <p class="text-surface-700-300">Loading…</p>
+    <section class="card bg-surface-100-900 p-6" aria-busy="true">
+      <span class="sr-only">Loading…</span>
+      <div class="placeholder mb-4 h-6 w-40"></div>
+      <div class="placeholder mb-2 h-4 w-full"></div>
+      <div class="placeholder mb-2 h-4 w-5/6"></div>
+      <div class="placeholder h-4 w-2/3"></div>
     </section>
   {:else if error}
     <section class="card bg-surface-100-900 p-6">
-      <p class="text-error-500">Error: {error}</p>
+      <p class="preset-tonal-error rounded-base p-4 text-sm">Error: {error}</p>
     </section>
   {:else if app}
     <div class="flex flex-col gap-6">

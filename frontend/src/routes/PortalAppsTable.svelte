@@ -115,13 +115,13 @@
               <div class="flex items-center gap-2">
                 <a
                   href={obtainiumLink(app)}
-                  class="btn preset-filled-primary-500 [--btn-size:var(--text-sm)]"
+                  class="btn preset-filled-primary-500 btn-sm"
                   ><span>Obtainium に追加</span></a
                 >
                 {#if selfHosted}
                   <a
                     href={downloadUrl(app)}
-                    class="btn preset-tonal [--btn-size:var(--text-sm)]"
+                    class="btn preset-tonal btn-sm"
                     title="Direct APK Download">↓</a
                   >
                 {/if}

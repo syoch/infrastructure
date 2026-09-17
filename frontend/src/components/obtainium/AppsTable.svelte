@@ -136,11 +136,11 @@
                 <div class="flex items-center justify-end gap-2">
                   <span class="badge preset-tonal">{sourceLabel(app)}</span>
                   <button
-                    class="btn preset-tonal [--btn-size:var(--text-sm)] quick-edit-btn"
+                    class="btn preset-tonal btn-sm quick-edit-btn"
                     onclick={() => openQuickEdit(app.id)}>簡易編集</button
                   >
                   <button
-                    class="btn preset-tonal-error [--btn-size:var(--text-sm)] delete-app-btn"
+                    class="btn preset-tonal-error btn-sm delete-app-btn"
                     onclick={() => onDeleteApp(app.id)}>削除</button
                   >
                 </div>

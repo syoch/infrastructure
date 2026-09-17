@@ -89,7 +89,7 @@
     <button type="submit" class="btn preset-filled-primary-500">追加</button>
   </form>
   {#if error}
-    <p class="text-error-500">Error: {error}</p>
+    <p class="preset-tonal-error rounded-base p-4 text-sm">Error: {error}</p>
   {/if}
   <div class="table-wrap card bg-surface-100-900 overflow-x-auto">
     <table class="table">

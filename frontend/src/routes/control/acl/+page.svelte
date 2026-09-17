@@ -44,7 +44,13 @@
 </script>
 
 <div id="control-view">
-  {#if phase === 'bootstrap'}
+  {#if phase === 'loading'}
+    <section class="card bg-surface-100-900 p-6" aria-busy="true">
+      <span class="sr-only">Loading…</span>
+      <div class="placeholder mb-4 h-6 w-40"></div>
+      <div class="placeholder h-4 w-full"></div>
+    </section>
+  {:else if phase === 'bootstrap'}
     <BootstrapForm onRegistered={onRegistered} />
   {:else if phase === 'ready' && me}
     {#if isAdmin}

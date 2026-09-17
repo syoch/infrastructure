@@ -179,9 +179,12 @@
     >
       {apkUploading ? 'アップロード中...' : 'APK をアップロードして登録する'}
     </button>
+    {#if apkUploading}
+      <progress class="progress mt-3" aria-label="アップロード中"></progress>
+    {/if}
   </div>
 
-  <hr class="my-6 border-surface-200-800" />
+  <hr class="hr my-6" />
 
   <h3 class="h5 mb-3">登録済み APK 一覧</h3>
   <div class="overflow-x-auto">
@@ -211,7 +214,7 @@
               >
               <td class="text-right">
                 <button
-                  class="btn preset-tonal-error [--btn-size:var(--text-sm)]"
+                  class="btn preset-tonal-error btn-sm"
                   data-testid="apk-delete-btn"
                   onclick={() => onDeleteApk(apk.id)}>削除</button
                 >

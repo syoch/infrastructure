@@ -65,7 +65,7 @@
   </header>
   <div id="devices-list" class="card bg-surface-100-900 overflow-x-auto">
     {#if error}
-      <p class="p-4 text-error-500">Error: {error}</p>
+      <p class="preset-tonal-error rounded-base p-4 text-sm">Error: {error}</p>
     {:else if devices.length === 0}
       <p class="p-4 text-surface-600-400">No devices registered.</p>
     {:else}
