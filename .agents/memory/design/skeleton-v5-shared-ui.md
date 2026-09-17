@@ -116,3 +116,55 @@ never imports a whole view from `src/views/`.
   the DOM `<button {onclick}>`; icon id must be `id={iconId}` (a bare `{iconId}` would become the wrong attr).
 - All existing ids/`data-testid` preserved verbatim → obtainium specs unchanged. Gates: svelte-check
   0 errors/0 warnings, `npm run build` OK, `ls src/views` → no such directory.
+
+## Skeleton v5 Combobox/Switch/Listbox gotchas (Obtainium + schema migration)
+Replaced obtainium native `<select>`s with `Combobox` and boolean toggles with `Switch`; schema renderer
+uses `Listbox` (enum + oneOf variant) and `Switch` (boolean), `Combobox` (SchemaEditor type).
+- **`Combobox openOnClick` defaults to `false`** (zag-js 1.43). A text input click will NOT open the
+  popup unless you set `openOnClick` on the Combobox root (the docs rely on the Trigger button).
+- **`readOnly` prop on `Combobox` root disables interactivity** (`isInteractive = !(readOnly||disabled)`),
+  so the popup cannot be opened/closed at all. For a non-editable-but-clickable select, REMOVE `readOnly`
+  from the root and instead put the HTML `readonly` attribute on `<Combobox.Input readonly>` (mergeProps
+  applies rest last, so the DOM attr wins while Zag still sees it as interactive).
+- **Keeping a DOM id on a Combobox**: pass `id`/`data-testid` directly to `Combobox.Input` /
+  `Combobox.Trigger` / `Combobox.Item` (rest is merged last). Combobox root ignores `id`.
+- **`Switch` root is a `<label>` whose `htmlFor` points at the generated hidden-input id.** Overriding
+  the HiddenInput's `id` breaks native label activation (clicking the label no longer toggles). Instead
+  pass `ids={{ hiddenInput: '<id>' }}` to the Switch root; then `getHiddenInputId` and `htmlFor` both use
+  it, so `#<id>` exists on the hidden checkbox AND label clicks toggle it.
+- `Switch` does NOT render a hidden input automatically: include `<Switch.HiddenInput />` inside the root,
+  otherwise the label has no control to activate (silent no-op).
+- E2E driving: `page.click('[data-testid="<id>-switch"]')` toggles; `expect(page.locator('#<id>')).toBeChecked()`
+  asserts the hidden checkbox. For Combobox options add per-item `data-testid="<id>-option-<value>"` and
+  `await page.locator('#<id>').click(); await page.locator('[data-testid="<id>-option-<value>"]').click();`.
+- Combobox input displays the selected option's LABEL: value assertions become `toHaveValue(/dark/)`
+  rather than `toHaveValue('dark')`.
+- Schema harness (`src/lib/schema_harness.ts`) is synchronous: drive Listbox by clicking
+  `el.querySelector('[data-value="<v>"]')` + `flushSync()`; drive Switch by `.click()` on the hidden
+  `input[type=checkbox]`; SchemaEditor property-name input carries `.schema-editor-property-name` because
+  the type Combobox adds an earlier `<input>` in DOM order.
+- Tests run against the built `dist`, so `npm run build` is required between source edits and Playwright.
+
+## Control-plane Operations filter migration to Skeleton v5 Combobox + DatePicker (2026-09-17)
+`src/routes/operations/CommandFilterForm.svelte`: native `#cmds-filter-status` / `#cmds-filter-limit`
+`<select>` -> `Combobox` (same obtainium pattern: `Combobox.Input id="<id>" readonly class="input"`,
+`openOnClick`, per-option `data-testid="<id>-option-<value>"`); `#cmds-filter-from` / `#cmds-filter-to`
+`<input type=datetime-local>` -> `DatePicker` (new local wrapper `src/routes/operations/FilterDatePicker.svelte`).
+Native text `#cmds-filter-op` (Skeleton `input` class) left as-is. No other native `<select>`/`checkbox`
+exist under `src/routes/control/**` or `src/routes/operations/**` (DevicesPanel already used `Switch`).
+- **Empty-string option values are unsafe** in Combobox: use a sentinel (`ALL_STATUS = '__all__'`),
+  pass `value={[status || ALL_STATUS]}` and map back to `''` in `onValueChange`.
+- **DatePicker anatomy**: import `DatePicker, Portal, parseDate`; structure is
+  `DatePicker > Control(Input+Trigger)`, then `Portal > Positioner > Content > View(view="day"|"month"|"year")`.
+  Each View needs `DatePicker.Context` and a `children` snippet whose arg is a **rune accessor**:
+  `{#snippet children(dp)} ... dp().weekDays / dp().weeks / dp().getMonthsGrid(...)`. Render all three
+  views or the ViewTrigger cycles into an empty pane. `DatePicker.Input id="<id>"` keeps the DOM id
+  (rest merged last).
+- DatePicker is date-only: controlled value is `DateValue[]`; derive from the string via
+  `parseDate(s.slice(0, 10))` (guard with try/catch; old URL `datetime-local` has a `T`), and read back
+  `details.valueAsString[0]` ("YYYY-MM-DD") into the bound string. `value={undefined}` clears on reset.
+- **E2E port** (`control_split.spec.js`): `selectOption('#id', v)` ->
+  `page.locator('#id').click(); page.getByTestId('<id>-option-<v>').click()`. Visibility assertions on the
+  ids still pass because ids live on the Combobox/DatePicker inputs. `device_agent_integration.spec.js`
+  untouched.
+- Verification: svelte-check 0/0, `npm run build` OK, `npx playwright test src/features/control_plane` 12 passed.

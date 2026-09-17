@@ -26,6 +26,7 @@
   let message = $state('');
   let saving = $state(false);
   let feedbackSending = $state(false);
+  let feedbackKind = $state('feedback');
 
   $effect(() => {
     const s = slug;
@@ -110,6 +111,7 @@
         kind: String(fd.get('kind') || 'feedback'),
       });
       form.reset();
+      feedbackKind = 'feedback';
       app = await fetchWebApp(current.slug);
     } catch (err) {
       showCustomToast(err instanceof Error ? err.message : String(err), 'error');
@@ -146,7 +148,12 @@
     <div class="flex flex-col gap-6">
       <AppDetailHeader {app} onDelete={onDelete} />
       <AppEditForm {app} {saving} {message} onsubmit={onSave} />
-      <FeedbackForm webui_url={app.webui_url} sending={feedbackSending} onsubmit={onFeedback} />
+      <FeedbackForm
+        webui_url={app.webui_url}
+        sending={feedbackSending}
+        bind:kind={feedbackKind}
+        onsubmit={onFeedback}
+      />
       <FeedbackHistory feedback={app.feedback ?? []} onRefresh={onRefreshFeedback} />
     </div>
   {/if}

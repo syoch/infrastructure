@@ -1,11 +1,27 @@
 <script lang="ts">
-  import { FileUpload } from '@skeletonlabs/skeleton-svelte';
+  import { Combobox, FileUpload, useListCollection } from '@skeletonlabs/skeleton-svelte';
   import { loadAllData } from '../../lib/store.svelte.ts';
   import { uploadLocalAPK, deleteLocalAPK, type App } from '../../api/api.js';
   import { showCustomToast } from '../../lib/toast.ts';
   import { confirmDialog } from '../../lib/dialogs.svelte.ts';
 
   let { app, isSelfHosted }: { app: App; isSelfHosted: boolean } = $props();
+
+  const archOptions = [
+    { label: '指定なし / 自動 (none/auto)', value: 'none' },
+    { label: 'universal', value: 'universal' },
+    { label: 'arm64-v8a', value: 'arm64-v8a' },
+    { label: 'armeabi-v7a', value: 'armeabi-v7a' },
+    { label: 'x86_64', value: 'x86_64' },
+    { label: 'x86', value: 'x86' },
+  ];
+  const archCollection = $derived(
+    useListCollection({
+      items: archOptions,
+      itemToString: (item) => item.label,
+      itemToValue: (item) => item.value,
+    })
+  );
 
   const apks = $derived(app.apks || []);
 
@@ -158,14 +174,30 @@
     </div>
     <div class="min-w-[200px] flex-1">
       <label for="apk-arch-select" class="label-text mb-1.5">アーキテクチャ</label>
-      <select id="apk-arch-select" class="select" bind:value={apkArchitecture}>
-        <option value="none">指定なし / 自動 (none/auto)</option>
-        <option value="universal">universal</option>
-        <option value="arm64-v8a">arm64-v8a</option>
-        <option value="armeabi-v7a">armeabi-v7a</option>
-        <option value="x86_64">x86_64</option>
-        <option value="x86">x86</option>
-      </select>
+      <Combobox
+        placeholder="アーキテクチャ"
+        openOnClick
+        collection={archCollection}
+        value={[apkArchitecture]}
+        onValueChange={(details) => {
+          apkArchitecture = details.value[0] ?? 'none';
+        }}
+      >
+        <Combobox.Control>
+          <Combobox.Input id="apk-arch-select" readonly />
+          <Combobox.Trigger data-testid="apk-arch-select-trigger" />
+        </Combobox.Control>
+        <Combobox.Positioner>
+          <Combobox.Content class="z-50">
+            {#each archOptions as item (item.value)}
+              <Combobox.Item {item} data-testid={`apk-arch-select-option-${item.value}`}>
+                <Combobox.ItemText>{item.label}</Combobox.ItemText>
+                <Combobox.ItemIndicator />
+              </Combobox.Item>
+            {/each}
+          </Combobox.Content>
+        </Combobox.Positioner>
+      </Combobox>
     </div>
   </div>
 

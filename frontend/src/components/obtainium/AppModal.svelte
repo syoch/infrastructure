@@ -1,7 +1,7 @@
 <script lang="ts">
   import { store, loadAllData } from '../../lib/store.svelte.ts';
   import { goto as navigate } from '$app/navigation';
-  import { Dialog, Portal } from '@skeletonlabs/skeleton-svelte';
+  import { Combobox, Dialog, Portal, useListCollection } from '@skeletonlabs/skeleton-svelte';
   import { saveApp, type SaveAppPayload, type App } from '../../api/api.js';
   import { showCustomToast } from '../../lib/toast.ts';
 
@@ -9,6 +9,20 @@
     active = false,
     appId = null,
   }: { active?: boolean; appId?: string | null } = $props();
+
+  const sourceOptions = [
+    { label: 'GitHub', value: 'GitHub' },
+    { label: 'HTML (Self-Hosted / WebScrape)', value: 'HTML' },
+    { label: 'F-Droid', value: 'F-Droid' },
+    { label: 'GitLab', value: 'GitLab' },
+  ];
+  const sourceCollection = $derived(
+    useListCollection({
+      items: sourceOptions,
+      itemToString: (item) => item.label,
+      itemToValue: (item) => item.value,
+    })
+  );
 
   let editMode = $state(false);
   let pkgId = $state('');
@@ -60,8 +74,7 @@
     navigate('/list');
   }
 
-  function onSourceChange(e: Event): void {
-    const value = (e.currentTarget as HTMLSelectElement).value;
+  function onSourceChange(value: string): void {
     appSource = value;
     if (value === 'HTML') {
       appUrl = '/scrape-index.html';
@@ -200,12 +213,28 @@
           <div class="flex flex-wrap gap-4">
             <div class="min-w-[180px] flex-1">
               <label for="quick-app-source" class="label-text mb-1.5">ソース元タイプ</label>
-              <select id="quick-app-source" class="select" value={appSource} onchange={onSourceChange}>
-                <option value="GitHub">GitHub</option>
-                <option value="HTML">HTML (Self-Hosted / WebScrape)</option>
-                <option value="F-Droid">F-Droid</option>
-                <option value="GitLab">GitLab</option>
-              </select>
+              <Combobox
+                placeholder="ソース元タイプ"
+                openOnClick
+                collection={sourceCollection}
+                value={[appSource]}
+                onValueChange={(details) => onSourceChange(details.value[0] ?? 'GitHub')}
+              >
+                <Combobox.Control>
+                  <Combobox.Input id="quick-app-source" readonly />
+                  <Combobox.Trigger data-testid="quick-app-source-trigger" />
+                </Combobox.Control>
+                <Combobox.Positioner>
+                  <Combobox.Content class="z-[100]">
+                    {#each sourceOptions as item (item.value)}
+                      <Combobox.Item {item} data-testid={`quick-app-source-option-${item.value}`}>
+                        <Combobox.ItemText>{item.label}</Combobox.ItemText>
+                        <Combobox.ItemIndicator />
+                      </Combobox.Item>
+                    {/each}
+                  </Combobox.Content>
+                </Combobox.Positioner>
+              </Combobox>
             </div>
             <div class="min-w-[180px] flex-1">
               <span class="label-text mb-1.5">カテゴリの選択</span>

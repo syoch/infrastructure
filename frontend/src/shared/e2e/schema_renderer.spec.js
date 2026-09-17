@@ -172,8 +172,8 @@ test.describe('Schema Renderer E2E Tests', () => {
     const schemaEditor = modal.locator('.schema-editor-root');
     await expect(schemaEditor).toBeVisible();
 
-    // Verify ui_hint form is rendered
-    const uiHintKind = modal.locator('select').filter({ hasText: 'button' });
+    // Verify ui_hint form is rendered (enum is a Skeleton Listbox option)
+    const uiHintKind = modal.getByRole('option', { name: 'button' });
     await expect(uiHintKind).toBeVisible();
   });
 });

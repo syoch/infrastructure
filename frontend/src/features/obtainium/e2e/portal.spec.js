@@ -101,15 +101,18 @@ test.describe('Portal Public UI E2E Tests', () => {
 
   test('4. Category filtering in portal list', async () => {
     const filterSelect = page.locator('#portal-category-filter');
-    
-    // Choose Game category (if it exists)
-    const options = await filterSelect.locator('option').allTextContents();
-    if (options.includes('Game')) {
-      await filterSelect.selectOption('Game');
+
+    // Open the Skeleton Combobox and pick Game if the category exists.
+    await filterSelect.click();
+    const gameOption = page.locator('[data-testid="portal-category-filter-option-Game"]');
+    if ((await gameOption.count()) > 0) {
+      await gameOption.click();
       const tableRows = await page.locator('#apps-table-body tr[data-testid="app-row"]').all();
       for (const row of tableRows) {
         await expect(row.locator('[data-testid="category-tags"]')).toContainText('Game');
       }
+    } else {
+      await page.keyboard.press('Escape');
     }
   });
 

@@ -1,5 +1,11 @@
 import { test, expect, chromium } from '@playwright/test';
 
+/** Open a Skeleton Combobox and pick the option whose data-testid ends with the value. */
+async function chooseComboboxOption(page, id, value) {
+  await page.locator(`#${id}`).click();
+  await page.locator(`[data-testid="${id}-option-${value}"]`).click();
+}
+
 test.describe('Dashboard Refactored UI E2E Tests', () => {
   let browser;
   let context;
@@ -78,7 +84,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await page.fill('#quick-app-id', pkgId);
     await page.fill('#quick-app-name', 'Playwright Test App');
     await page.fill('#quick-app-url', 'https://github.com/microsoft/playwright');
-    await page.selectOption('#quick-app-source', 'GitHub');
+    await chooseComboboxOption(page, 'quick-app-source', 'GitHub');
     await page.fill('#quick-app-categories', 'test, automatic');
 
     // 保存ボタンのクリック
@@ -117,8 +123,9 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await expect(editView).toBeVisible();
     await expect(page.locator('#edit-app-name')).toHaveValue('Playwright Test App');
 
-    // 追加設定のチェックボックス変更と保存
-    await page.check('#edit-setting-prerelease');
+    // 追加設定のトグル変更と保存
+    await page.locator('[data-testid="edit-setting-prerelease-switch"]').click();
+    await expect(page.locator('#edit-setting-prerelease')).toBeChecked();
     const detailedSaveBtn = page.locator('#detailed-app-form button[type="submit"]');
     await detailedSaveBtn.click();
 
@@ -204,7 +211,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     await page.fill('#quick-app-id', pkgId);
     await page.fill('#quick-app-name', 'SelfHosted Test App');
     await page.fill('#quick-app-url', 'http://localhost:8000/scrape-index.html');
-    await page.selectOption('#quick-app-source', 'HTML');
+    await chooseComboboxOption(page, 'quick-app-source', 'HTML');
 
     const saveBtn = page.locator('#quick-save-btn');
     await saveBtn.click();
@@ -742,7 +749,7 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     // Fill form fields
     const themeSelect = page.locator('#global-setting-theme');
     await expect(themeSelect).toBeVisible();
-    await themeSelect.selectOption('dark');
+    await chooseComboboxOption(page, 'global-setting-theme', 'dark');
 
     const checkIntervalInput = page.locator('#global-setting-check-interval');
     await checkIntervalInput.fill('12');
@@ -752,10 +759,10 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     const allowSourceChange = page.locator('#global-setting-allow-source-change');
     const restrictNotification = page.locator('#global-setting-restrict-notification');
 
-    await checkOnStartup.check();
-    await prerelease.check();
-    await allowSourceChange.check();
-    await restrictNotification.check();
+    await page.locator('[data-testid="global-setting-check-on-startup-switch"]').click();
+    await page.locator('[data-testid="global-setting-prerelease-switch"]').click();
+    await page.locator('[data-testid="global-setting-allow-source-change-switch"]').click();
+    await page.locator('[data-testid="global-setting-restrict-notification-switch"]').click();
 
     // Submit
     const submitBtn = page.locator('#global-settings-form button[type="submit"]');
@@ -768,8 +775,8 @@ test.describe('Dashboard Refactored UI E2E Tests', () => {
     // Reload page to verify persistence
     await page.reload();
 
-    // Verify fields persisted correctly
-    await expect(themeSelect).toHaveValue('dark');
+    // Verify fields persisted correctly (Combobox input shows the option label).
+    await expect(themeSelect).toHaveValue(/dark/);
     await expect(checkIntervalInput).toHaveValue('12');
     await expect(checkOnStartup).toBeChecked();
     await expect(prerelease).toBeChecked();

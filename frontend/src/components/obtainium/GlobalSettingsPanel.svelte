@@ -1,7 +1,21 @@
 <script lang="ts">
+  import { Combobox, Switch, useListCollection } from '@skeletonlabs/skeleton-svelte';
   import { store, loadAllData } from '../../lib/store.svelte.ts';
   import { saveSettings } from '../../api/api.js';
   import { showCustomToast } from '../../lib/toast.ts';
+
+  const themeOptions = [
+    { label: 'システム同期 (system)', value: 'system' },
+    { label: 'ダークモード (dark)', value: 'dark' },
+    { label: 'ライトモード (light)', value: 'light' },
+  ];
+  const themeCollection = $derived(
+    useListCollection({
+      items: themeOptions,
+      itemToString: (item) => item.label,
+      itemToValue: (item) => item.value,
+    })
+  );
 
   let theme = $state('system');
   let checkInterval = $state<string | number>('');
@@ -66,11 +80,30 @@
       <div class="mb-4 flex flex-wrap gap-4">
         <div class="min-w-[200px] flex-1">
           <label for="global-setting-theme" class="label-text mb-1.5">テーマ (theme)</label>
-          <select id="global-setting-theme" class="select" bind:value={theme}>
-            <option value="system">システム同期 (system)</option>
-            <option value="dark">ダークモード (dark)</option>
-            <option value="light">ライトモード (light)</option>
-          </select>
+          <Combobox
+            placeholder="テーマ (theme)"
+            openOnClick
+            collection={themeCollection}
+            value={[theme]}
+            onValueChange={(details) => {
+              theme = details.value[0] ?? 'system';
+            }}
+          >
+            <Combobox.Control>
+              <Combobox.Input id="global-setting-theme" readonly />
+              <Combobox.Trigger data-testid="global-setting-theme-trigger" />
+            </Combobox.Control>
+            <Combobox.Positioner>
+              <Combobox.Content class="z-50">
+                {#each themeOptions as item (item.value)}
+                  <Combobox.Item {item} data-testid={`global-setting-theme-option-${item.value}`}>
+                    <Combobox.ItemText>{item.label}</Combobox.ItemText>
+                    <Combobox.ItemIndicator />
+                  </Combobox.Item>
+                {/each}
+              </Combobox.Content>
+            </Combobox.Positioner>
+          </Combobox>
         </div>
 
         <div class="min-w-[200px] flex-1">
@@ -92,45 +125,69 @@
         class="mb-6 grid gap-4"
         style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr));"
       >
-        <label class="flex cursor-pointer items-center gap-2 text-sm text-surface-700-300">
-          <input
-            type="checkbox"
-            id="global-setting-check-on-startup"
-            class="checkbox"
-            bind:checked={checkOnStartup}
-          />
+        <div class="flex items-center gap-2 text-sm text-surface-700-300">
+          <Switch
+            data-testid="global-setting-check-on-startup-switch"
+            ids={{ hiddenInput: 'global-setting-check-on-startup' }}
+            checked={checkOnStartup}
+            onCheckedChange={(details) => {
+              checkOnStartup = details.checked;
+            }}
+            label="起動時にアップデート確認 (checkOnStartup)"
+          >
+            <Switch.Control><Switch.Thumb /></Switch.Control>
+            <Switch.HiddenInput />
+          </Switch>
           <span>起動時にアップデート確認 (checkOnStartup)</span>
-        </label>
+        </div>
 
-        <label class="flex cursor-pointer items-center gap-2 text-sm text-surface-700-300">
-          <input
-            type="checkbox"
-            id="global-setting-prerelease"
-            class="checkbox"
-            bind:checked={prerelease}
-          />
+        <div class="flex items-center gap-2 text-sm text-surface-700-300">
+          <Switch
+            data-testid="global-setting-prerelease-switch"
+            ids={{ hiddenInput: 'global-setting-prerelease' }}
+            checked={prerelease}
+            onCheckedChange={(details) => {
+              prerelease = details.checked;
+            }}
+            label="プレリリース版を含める (includePreReleases)"
+          >
+            <Switch.Control><Switch.Thumb /></Switch.Control>
+            <Switch.HiddenInput />
+          </Switch>
           <span>プレリリース版を含める (includePreReleases)</span>
-        </label>
+        </div>
 
-        <label class="flex cursor-pointer items-center gap-2 text-sm text-surface-700-300">
-          <input
-            type="checkbox"
-            id="global-setting-allow-source-change"
-            class="checkbox"
-            bind:checked={allowSourceChange}
-          />
+        <div class="flex items-center gap-2 text-sm text-surface-700-300">
+          <Switch
+            data-testid="global-setting-allow-source-change-switch"
+            ids={{ hiddenInput: 'global-setting-allow-source-change' }}
+            checked={allowSourceChange}
+            onCheckedChange={(details) => {
+              allowSourceChange = details.checked;
+            }}
+            label="ソース元の変更を許可 (allowSourceChange)"
+          >
+            <Switch.Control><Switch.Thumb /></Switch.Control>
+            <Switch.HiddenInput />
+          </Switch>
           <span>ソース元の変更を許可 (allowSourceChange)</span>
-        </label>
+        </div>
 
-        <label class="flex cursor-pointer items-center gap-2 text-sm text-surface-700-300">
-          <input
-            type="checkbox"
-            id="global-setting-restrict-notification"
-            class="checkbox"
-            bind:checked={restrictNotification}
-          />
+        <div class="flex items-center gap-2 text-sm text-surface-700-300">
+          <Switch
+            data-testid="global-setting-restrict-notification-switch"
+            ids={{ hiddenInput: 'global-setting-restrict-notification' }}
+            checked={restrictNotification}
+            onCheckedChange={(details) => {
+              restrictNotification = details.checked;
+            }}
+            label="バックグラウンド制限警告を表示 (backgroundRestrictedNotification)"
+          >
+            <Switch.Control><Switch.Thumb /></Switch.Control>
+            <Switch.HiddenInput />
+          </Switch>
           <span>バックグラウンド制限警告を表示 (backgroundRestrictedNotification)</span>
-        </label>
+        </div>
       </div>
 
       <div class="flex justify-end">

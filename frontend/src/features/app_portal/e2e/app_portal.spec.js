@@ -117,7 +117,8 @@ test.describe('App Portal UI', () => {
     await expect(page.locator('code', { hasText: 'ses_e2e_test' })).toBeVisible();
 
     // Submit feedback (no bridge -> stays pending)
-    await page.selectOption('#feedback-form select[name="kind"]', 'bug');
+    await page.click('#feedback-form #fb-kind');
+    await page.click('[data-testid="fb-kind-option-bug"]');
     await page.fill('#feedback-form textarea[name="body"]', 'これはE2Eテストのフィードバックです');
     await page.click('#feedback-form button[type="submit"]');
 
@@ -158,13 +159,15 @@ test.describe('App Portal UI', () => {
       await page.fill('#app-edit-form input[name="name"]', newName);
       await page.fill('#app-edit-form input[name="description"]', 'edited description');
       await page.fill('#app-edit-form input[name="tags"]', 'new, tags');
-      await page.selectOption('#app-edit-form select[name="status"]', 'archived');
+      await page.click('#app-edit-form #ef-status');
+      await page.click('[data-testid="ef-status-option-archived"]');
       await page.click('#app-edit-form button[type="submit"]');
 
       // Re-rendered header + form reflect the new values
       await expect(page.locator('h2', { hasText: newName })).toBeVisible();
       await expect(page.locator('#app-edit-form input[name="description"]')).toHaveValue('edited description');
-      await expect(page.locator('#app-edit-form select[name="status"]')).toHaveValue('archived');
+      await expect(page.locator('#app-edit-form input[name="status"]')).toHaveValue('archived');
+      await expect(page.locator('#app-edit-form #ef-status')).toHaveValue('archived');
 
       // Persisted server-side
       const fetched = await apiContext.get(`/api/app-portal/apps/${app.slug}`, { headers: auth });

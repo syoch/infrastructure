@@ -211,8 +211,10 @@ test.describe('Control Plane Split UI (Phase 12)', () => {
     await page.goto('/operations');
     await page.waitForLoadState('networkidle');
     await page.getByTestId('tab-cmds').click();
-    await page.selectOption('#cmds-filter-status', 'succeeded');
-    await page.selectOption('#cmds-filter-limit', '10');
+    await page.locator('#cmds-filter-status').click();
+    await page.getByTestId('cmds-filter-status-option-succeeded').click();
+    await page.locator('#cmds-filter-limit').click();
+    await page.getByTestId('cmds-filter-limit-option-10').click();
     await page.click('#cmds-filter-apply');
     await expect(page).toHaveURL(/status=succeeded/);
     await expect(page).toHaveURL(/limit=10/);

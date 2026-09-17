@@ -1,3 +1,4 @@
+import { flushSync } from 'svelte';
 import { renderSchema, renderSchemaEditor } from './schema_api';
 import type { JSONSchema } from './schema.svelte';
 
@@ -19,9 +20,19 @@ function setChange(el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElemen
   el.value = value;
   fire(el, 'change');
 }
-function setChecked(el: HTMLInputElement, checked: boolean): void {
-  el.checked = checked;
-  fire(el, 'change');
+/** Select a Skeleton/Zag Listbox option by its underlying value, then flush. */
+function selectOption(el: Element, value: string): void {
+  const item = el.querySelector(`[data-value="${value}"]`) as HTMLElement | null;
+  if (!item) throw new Error(`listbox option not found: ${value}`);
+  item.click();
+  flushSync();
+}
+/** Toggle a Skeleton/Zag Switch through its hidden checkbox input. */
+function toggleSwitch(el: Element): void {
+  const input = el.querySelector('input[type="checkbox"]') as HTMLInputElement | null;
+  if (!input) throw new Error('switch input not found');
+  input.click();
+  flushSync();
 }
 
 /** Runs the standalone schema renderer/editor test cases against the DOM. */
@@ -61,9 +72,9 @@ export function runSchemaHarness(): HarnessResult[] {
     const root = document.createElement('div');
     document.body.appendChild(root);
     const { el, getValue } = renderSchema({ type: 'boolean' }, root);
-    setChecked(el.querySelector('input') as HTMLInputElement, true);
+    toggleSwitch(el);
     assert(getValue() === true, 'boolean true');
-    setChecked(el.querySelector('input') as HTMLInputElement, false);
+    toggleSwitch(el);
     assert(getValue() === false, 'boolean false');
   });
 
@@ -71,8 +82,8 @@ export function runSchemaHarness(): HarnessResult[] {
     const root = document.createElement('div');
     document.body.appendChild(root);
     const { el, getValue } = renderSchema({ type: 'string', enum: ['a', 'b', 'c'] }, root);
-    setChange(el.querySelector('select') as HTMLSelectElement, 'b');
-    assert(getValue() === 'b', 'enum select');
+    selectOption(el, 'b');
+    assert(getValue() === 'b', 'enum listbox');
   });
 
   runCase('object with required', () => {
@@ -163,7 +174,7 @@ export function runSchemaHarness(): HarnessResult[] {
       ],
     };
     const { el, getValue } = renderSchema(schema, root);
-    setChange(el.querySelector('select') as HTMLSelectElement, '1');
+    selectOption(el, '1');
     setValue(el.querySelector('input') as HTMLInputElement, '7');
     const v = getValue() as { id?: number };
     assert(v && v.id === 7, 'oneOf variant', v);
@@ -194,7 +205,10 @@ export function runSchemaHarness(): HarnessResult[] {
       { type: 'object', properties: { foo: { type: 'string' } } },
       root
     );
-    setChange(el.querySelector('input') as HTMLInputElement, 'bar');
+    setChange(
+      el.querySelector('.schema-editor-property-name') as HTMLInputElement,
+      'bar'
+    );
     const s = getSchema() as { properties?: Record<string, unknown> };
     assert('bar' in (s.properties ?? {}), 'schema editor renamed property', Object.keys(s.properties ?? {}));
   });

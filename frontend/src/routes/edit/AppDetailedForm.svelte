@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto as navigate } from '$app/navigation';
+  import { Combobox, Switch, useListCollection } from '@skeletonlabs/skeleton-svelte';
   import { store, loadAllData } from '../../lib/store.svelte.ts';
   import { saveApp, deleteApp, type App, type SaveAppPayload } from '../../api/api.js';
   import { validateUrlSourceMatch, detectSourceFromUrl } from '../../lib/ui.js';
@@ -10,6 +11,22 @@
     app,
     appSource = $bindable(''),
   }: { app: App; appSource?: string } = $props();
+
+  const sourceOptions = [
+    { label: 'Auto-detect (推奨)', value: '' },
+    { label: 'GitHub', value: 'GitHub' },
+    { label: 'HTML (Self-Hosted / WebScrape)', value: 'HTML' },
+    { label: 'F-Droid', value: 'F-Droid' },
+    { label: 'GitLab', value: 'GitLab' },
+    { label: 'APKPure', value: 'APKPure' },
+  ];
+  const sourceCollection = $derived(
+    useListCollection({
+      items: sourceOptions,
+      itemToString: (item) => item.label,
+      itemToValue: (item) => item.value,
+    })
+  );
 
   const categories = $derived(Object.keys(store.settings.categories || {}));
 
@@ -67,8 +84,8 @@
     return !valid && warning ? `⚠️ ${warning}` : '';
   });
 
-  function onSourceChange(e: Event): void {
-    appSource = (e.currentTarget as HTMLSelectElement).value;
+  function onSourceChange(value: string): void {
+    appSource = value;
     if (appSource === 'HTML') {
       appUrl = '/scrape-index.html';
       urlDisabled = true;
@@ -173,14 +190,28 @@
     <div class="mt-4 flex flex-wrap gap-4">
       <div class="min-w-[200px] flex-1">
         <label for="edit-app-source" class="label-text mb-1.5">ソース元タイプ</label>
-        <select id="edit-app-source" class="select" value={appSource} onchange={onSourceChange}>
-          <option value="">Auto-detect (推奨)</option>
-          <option value="GitHub">GitHub</option>
-          <option value="HTML">HTML (Self-Hosted / WebScrape)</option>
-          <option value="F-Droid">F-Droid</option>
-          <option value="GitLab">GitLab</option>
-          <option value="APKPure">APKPure</option>
-        </select>
+        <Combobox
+          placeholder="Auto-detect (推奨)"
+          openOnClick
+          collection={sourceCollection}
+          value={[appSource]}
+          onValueChange={(details) => onSourceChange(details.value[0] ?? '')}
+        >
+          <Combobox.Control>
+            <Combobox.Input id="edit-app-source" readonly />
+            <Combobox.Trigger data-testid="edit-app-source-trigger" />
+          </Combobox.Control>
+          <Combobox.Positioner>
+            <Combobox.Content class="z-50">
+              {#each sourceOptions as item (item.value)}
+                <Combobox.Item {item} data-testid={`edit-app-source-option-${item.value || 'auto'}`}>
+                  <Combobox.ItemText>{item.label}</Combobox.ItemText>
+                  <Combobox.ItemIndicator />
+                </Combobox.Item>
+              {/each}
+            </Combobox.Content>
+          </Combobox.Positioner>
+        </Combobox>
         <div
           id="source-recommendation"
           class="mt-1.5 text-xs {recommendation ? 'block' : 'hidden'}">{recommendation}</div
@@ -222,48 +253,66 @@
     <div class="mt-6">
       <span class="label-text mb-3 font-semibold">追加設定 (Additional Settings)</span>
       <div class="flex flex-col gap-3.5">
-        <label class="flex cursor-pointer flex-col items-start gap-1">
+        <div class="flex flex-col items-start gap-1">
           <div class="flex items-center gap-2.5">
-            <input
-              type="checkbox"
-              id="edit-setting-prerelease"
-              class="checkbox"
-              bind:checked={settingPrerelease}
-            />
+            <Switch
+              data-testid="edit-setting-prerelease-switch"
+              ids={{ hiddenInput: 'edit-setting-prerelease' }}
+              checked={settingPrerelease}
+              onCheckedChange={(details) => {
+                settingPrerelease = details.checked;
+              }}
+              label="プレリリース版を含める (includePrereleases)"
+            >
+              <Switch.Control><Switch.Thumb /></Switch.Control>
+              <Switch.HiddenInput />
+            </Switch>
             プレリリース版を含める (includePrereleases)
           </div>
           <span class="ml-7 text-xs leading-snug text-surface-600-400"
             >GitHub等でプレリリースとしてマークされているバージョンもインストール対象にします。</span
           >
-        </label>
-        <label class="flex cursor-pointer flex-col items-start gap-1">
+        </div>
+        <div class="flex flex-col items-start gap-1">
           <div class="flex items-center gap-2.5">
-            <input
-              type="checkbox"
-              id="edit-setting-fallback"
-              class="checkbox"
-              bind:checked={settingFallback}
-            />
+            <Switch
+              data-testid="edit-setting-fallback-switch"
+              ids={{ hiddenInput: 'edit-setting-fallback' }}
+              checked={settingFallback}
+              onCheckedChange={(details) => {
+                settingFallback = details.checked;
+              }}
+              label="過去リリースへフォールバック (fallbackToOlderReleases)"
+            >
+              <Switch.Control><Switch.Thumb /></Switch.Control>
+              <Switch.HiddenInput />
+            </Switch>
             過去リリースへフォールバック (fallbackToOlderReleases)
           </div>
           <span class="ml-7 text-xs leading-snug text-surface-600-400"
             >最新リリースの解析に失敗した場合、以前のバージョンへのフォールバックを許容します。</span
           >
-        </label>
-        <label class="flex cursor-pointer flex-col items-start gap-1">
+        </div>
+        <div class="flex flex-col items-start gap-1">
           <div class="flex items-center gap-2.5">
-            <input
-              type="checkbox"
-              id="edit-setting-version-detect"
-              class="checkbox"
-              bind:checked={settingVersionDetect}
-            />
+            <Switch
+              data-testid="edit-setting-version-detect-switch"
+              ids={{ hiddenInput: 'edit-setting-version-detect' }}
+              checked={settingVersionDetect}
+              onCheckedChange={(details) => {
+                settingVersionDetect = details.checked;
+              }}
+              label="バージョン検出を有効化 (versionDetection)"
+            >
+              <Switch.Control><Switch.Thumb /></Switch.Control>
+              <Switch.HiddenInput />
+            </Switch>
             バージョン検出を有効化 (versionDetection)
           </div>
           <span class="ml-7 text-xs leading-snug text-surface-600-400"
             >アップデート通知のためのバージョン比較ロジックを有効にします。</span
           >
-        </label>
+        </div>
       </div>
     </div>
 
@@ -277,15 +326,21 @@
           placeholder="正規表現パターン (例: .*arm64.*\.apk)"
           bind:value={settingApkFilter}
         />
-        <label class="flex cursor-pointer items-center gap-1.5 whitespace-nowrap">
-          <input
-            type="checkbox"
-            id="edit-setting-invert-filter"
-            class="checkbox"
-            bind:checked={settingInvertFilter}
-          />
+        <div class="flex items-center gap-1.5 whitespace-nowrap">
+          <Switch
+            data-testid="edit-setting-invert-filter-switch"
+            ids={{ hiddenInput: 'edit-setting-invert-filter' }}
+            checked={settingInvertFilter}
+            onCheckedChange={(details) => {
+              settingInvertFilter = details.checked;
+            }}
+            label="反転 (invert)"
+          >
+            <Switch.Control><Switch.Thumb /></Switch.Control>
+            <Switch.HiddenInput />
+          </Switch>
           反転 (invert)
-        </label>
+        </div>
       </div>
       <span class="mt-1 block text-xs text-surface-600-400"
         >正規表現に一致する APK のみダウンロードします。「反転」を有効にすると、一致する APK

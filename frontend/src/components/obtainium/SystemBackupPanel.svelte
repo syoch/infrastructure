@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Combobox, useListCollection } from '@skeletonlabs/skeleton-svelte';
   import { restoreBackup } from '../../api/api.js';
   import { showCustomToast } from '../../lib/toast.ts';
   import { confirmDialog } from '../../lib/dialogs.svelte.ts';
@@ -6,6 +7,16 @@
   let restoreFileInput = $state<HTMLInputElement | null>(null);
   let restoreStrategy = $state('overwrite');
   let restoreBusy = $state(false);
+
+  const strategyOptions = [
+    { label: '上書き復元 (Overwrite)', value: 'overwrite' },
+    { label: 'マージ復元 (Merge)', value: 'merge' },
+  ];
+  const strategyCollection = useListCollection({
+    items: strategyOptions,
+    itemToString: (item) => item.label,
+    itemToValue: (item) => item.value,
+  });
 
   function onRestoreClick(): void {
     restoreFileInput?.click();
@@ -101,10 +112,31 @@
       </a>
 
       <div class="flex flex-wrap items-center gap-2 border-l border-surface-200-800 pl-4">
-        <select id="restore-strategy" class="select w-auto" bind:value={restoreStrategy}>
-          <option value="overwrite">上書き復元 (Overwrite)</option>
-          <option value="merge">マージ復元 (Merge)</option>
-        </select>
+        <div class="w-auto min-w-[200px]">
+          <Combobox
+            openOnClick
+            collection={strategyCollection}
+            value={[restoreStrategy]}
+            onValueChange={(details) => {
+              restoreStrategy = details.value[0] ?? 'overwrite';
+            }}
+          >
+            <Combobox.Control>
+              <Combobox.Input id="restore-strategy" class="input" readonly />
+              <Combobox.Trigger data-testid="restore-strategy-trigger" />
+            </Combobox.Control>
+            <Combobox.Positioner>
+              <Combobox.Content class="z-50">
+                {#each strategyOptions as item (item.value)}
+                  <Combobox.Item {item} data-testid={`restore-strategy-option-${item.value}`}>
+                    <Combobox.ItemText>{item.label}</Combobox.ItemText>
+                    <Combobox.ItemIndicator />
+                  </Combobox.Item>
+                {/each}
+              </Combobox.Content>
+            </Combobox.Positioner>
+          </Combobox>
+        </div>
         <button
           id="restore-btn"
           class="btn preset-tonal-secondary-500"

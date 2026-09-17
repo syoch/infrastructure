@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Combobox, useListCollection } from '@skeletonlabs/skeleton-svelte';
   import { store } from '../lib/store.svelte.ts';
   import { compareAppsByCategory } from '../lib/sort.js';
   import type { App } from '../api/api.js';
@@ -18,6 +19,18 @@
 
   const portalApps = $derived(store.allApps as PortalApp[]);
   const categories = $derived(Object.keys(store.settings.categories || {}).sort());
+
+  const categoryOptions = $derived([
+    { label: 'すべてのカテゴリ', value: '' },
+    ...categories.map((cat) => ({ label: cat, value: cat })),
+  ]);
+  const categoryCollection = $derived(
+    useListCollection({
+      items: categoryOptions,
+      itemToString: (item) => item.label,
+      itemToValue: (item) => item.value,
+    })
+  );
 
   const filtered = $derived.by(() => {
     let list = [...portalApps];
@@ -110,10 +123,35 @@
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
       <h2 class="h3 mb-0">登録アプリ一覧</h2>
       <div class="flex flex-wrap items-center gap-3">
-        <select id="portal-category-filter" class="select w-auto" bind:value={category}>
-          <option value="">すべてのカテゴリ</option>
-          {#each categories as cat}<option value={cat}>{cat}</option>{/each}
-        </select>
+        <div class="w-auto min-w-[180px]">
+          <Combobox
+            placeholder="すべてのカテゴリ"
+            openOnClick
+            collection={categoryCollection}
+            value={[category]}
+            onValueChange={(details) => {
+              category = details.value[0] ?? '';
+            }}
+          >
+            <Combobox.Control>
+              <Combobox.Input id="portal-category-filter" readonly />
+              <Combobox.Trigger data-testid="portal-category-filter-trigger" />
+            </Combobox.Control>
+            <Combobox.Positioner>
+              <Combobox.Content class="z-50">
+                {#each categoryOptions as item (item.value)}
+                  <Combobox.Item
+                    {item}
+                    data-testid={`portal-category-filter-option-${item.value || 'all'}`}
+                  >
+                    <Combobox.ItemText>{item.label}</Combobox.ItemText>
+                    <Combobox.ItemIndicator />
+                  </Combobox.Item>
+                {/each}
+              </Combobox.Content>
+            </Combobox.Positioner>
+          </Combobox>
+        </div>
         <div
           class="flex w-[320px] items-center rounded-full border border-surface-200-800 bg-surface-100-900 px-5 py-2 transition-all focus-within:border-primary-500 focus-within:shadow-[0_0_10px_rgba(124,77,255,0.15)] max-md:w-full"
         >

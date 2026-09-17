@@ -1,10 +1,18 @@
 <script lang="ts">
+  import { Combobox, Switch, useListCollection } from '@skeletonlabs/skeleton-svelte';
   import { type JSONSchema } from '../lib/schema.svelte.ts';
   import SchemaEditor from './SchemaEditor.svelte';
 
   let { schema, depth = 0 }: { schema: JSONSchema; depth?: number } = $props();
 
   const TYPE_OPTIONS = ['string', 'number', 'integer', 'boolean', 'object', 'array', 'null'];
+
+  const typeOptions = TYPE_OPTIONS.map((opt) => ({ label: opt, value: opt }));
+  const typeCollection = useListCollection({
+    items: typeOptions,
+    itemToString: (item) => item.label,
+    itemToValue: (item) => item.value,
+  });
 
   const isRoot = $derived(depth === 0);
 
@@ -18,8 +26,8 @@
     if (value === 'array' && !schema.items) schema.items = { type: 'string' };
   }
 
-  function onTypeChange(e: Event): void {
-    setType((e.currentTarget as HTMLSelectElement).value);
+  function onTypeChange(value: string): void {
+    setType(value);
   }
 
   function addProperty(): void {
@@ -74,17 +82,9 @@
     schema.required = [...req];
   }
 
-  function onRequiredChange(e: Event, name: string): void {
-    toggleRequired(name, (e.currentTarget as HTMLInputElement).checked);
-  }
-
   function toggleEnum(checked: boolean): void {
     if (checked) schema.enum = [''];
     else delete schema.enum;
-  }
-
-  function onEnumToggle(e: Event): void {
-    toggleEnum((e.currentTarget as HTMLInputElement).checked);
   }
 
   function setEnumValue(index: number, value: string): void {
@@ -148,11 +148,7 @@
   >
     <div style="display: flex; gap: 4px; align-items: center;">
       <strong>Root type:</strong>
-      <select value={(schema.type as string) || 'string'} onchange={onTypeChange}>
-        {#each TYPE_OPTIONS as opt}
-          <option value={opt}>{opt}</option>
-        {/each}
-      </select>
+      {@render typeSelect('schema-editor-root-type')}
     </div>
 
     {#if schema.type === 'object'}
@@ -172,11 +168,7 @@
   >
     <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap;">
       <span style="font-size: 0.8em; color: #666;">type:</span>
-      <select value={(schema.type as string) || 'string'} onchange={onTypeChange}>
-        {#each TYPE_OPTIONS as opt}
-          <option value={opt}>{opt}</option>
-        {/each}
-      </select>
+      {@render typeSelect('schema-editor-type')}
       <span style="font-size: 0.8em; color: #666;">title:</span>
       <input type="text" value={schema.title ?? ''} placeholder="title" oninput={onTitleInput} />
       <span style="font-size: 0.8em; color: #666;">desc:</span>
@@ -200,6 +192,33 @@
   </div>
 {/if}
 
+{#snippet typeSelect(testId: string)}
+  <div class="min-w-[140px]">
+    <Combobox
+      placeholder="type"
+      openOnClick
+      collection={typeCollection}
+      value={[(schema.type as string) || 'string']}
+      onValueChange={(details) => onTypeChange(details.value[0] ?? 'string')}
+    >
+      <Combobox.Control>
+        <Combobox.Input data-testid={testId} readonly />
+        <Combobox.Trigger data-testid={`${testId}-trigger`} />
+      </Combobox.Control>
+      <Combobox.Positioner>
+        <Combobox.Content class="z-50">
+          {#each typeOptions as item (item.value)}
+            <Combobox.Item {item} data-testid={`${testId}-option-${item.value}`}>
+              <Combobox.ItemText>{item.label}</Combobox.ItemText>
+              <Combobox.ItemIndicator />
+            </Combobox.Item>
+          {/each}
+        </Combobox.Content>
+      </Combobox.Positioner>
+    </Combobox>
+  </div>
+{/snippet}
+
 {#snippet propertiesEditor()}
   <div class="schema-editor-properties" style="display: flex; flex-direction: column; gap: 6px;">
     <div style="display: flex; flex-direction: column; gap: 4px;">
@@ -210,20 +229,25 @@
         >
           <div style="display: flex; flex-direction: column; gap: 2px; min-width: 120px;">
             <input
+              class="schema-editor-property-name"
               type="text"
               value={name}
               placeholder="name"
               style="width: 120px;"
               onchange={(e) => onNameChange(e, name)}
             />
-            <label style="display: flex; align-items: center; gap: 4px; font-size: 0.75em;">
-              <input
-                type="checkbox"
+            <div style="display: flex; align-items: center; gap: 4px; font-size: 0.75em;">
+              <Switch
+                data-testid={`schema-editor-required-${name}`}
                 checked={isRequired(name)}
-                onchange={(e) => onRequiredChange(e, name)}
-              />
-              required
-            </label>
+                onCheckedChange={(details) => toggleRequired(name, details.checked)}
+                label="required"
+              >
+                <Switch.Control><Switch.Thumb /></Switch.Control>
+                <Switch.HiddenInput />
+              </Switch>
+              <span>required</span>
+            </div>
           </div>
           <div style="flex: 1; min-width: 0;">
             <SchemaEditor schema={prop} depth={depth + 1} />
@@ -261,10 +285,18 @@
 
 {#snippet scalarEditor()}
   {#if schema.type === 'string'}
-    <label style="display: flex; align-items: center; gap: 4px; font-size: 0.8em;">
-      <input type="checkbox" checked={Array.isArray(schema.enum)} onchange={onEnumToggle} />
-      enum:
-    </label>
+    <div style="display: flex; align-items: center; gap: 4px; font-size: 0.8em;">
+      <Switch
+        data-testid="schema-editor-enum-switch"
+        checked={Array.isArray(schema.enum)}
+        onCheckedChange={(details) => toggleEnum(details.checked)}
+        label="enum"
+      >
+        <Switch.Control><Switch.Thumb /></Switch.Control>
+        <Switch.HiddenInput />
+      </Switch>
+      <span>enum:</span>
+    </div>
     {#if Array.isArray(schema.enum)}
       <div class="schema-editor-enum" style="display: flex; flex-direction: column; gap: 4px;">
         <div style="display: flex; flex-direction: column; gap: 2px;">
