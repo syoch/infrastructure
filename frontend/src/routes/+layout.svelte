@@ -17,15 +17,13 @@
 
   import { Navigation } from '@skeletonlabs/skeleton-svelte';
 
-  const linksSidebar = {
-    apps: [{ label: 'Dashboard', href: '/dashboard', icon: DashboardIcon, testid: 'nav-dashboard' }],
-    control: [
-      { label: 'Devices', href: '/control/devices', icon: DeviceIcon, testid: 'nav-control-devices' },
-      { label: 'ACL', href: '/control/acl', icon: ACLIcon, testid: 'nav-control-acl' },
-      { label: 'Operations', href: '/operations', icon: OperationsIcon, testid: 'nav-operations' },
-    ],
-    'app portal': [{ label: 'Apps', href: '/apps', icon: AppsIcon, testid: 'nav-apps' }],
-  };
+  const linksSidebar = [
+    { label: 'Dashboard', href: '/dashboard', icon: DashboardIcon, testid: 'nav-dashboard' },
+    { label: 'Devices', href: '/control/devices', icon: DeviceIcon, testid: 'nav-control-devices' },
+    { label: 'ACL', href: '/control/acl', icon: ACLIcon, testid: 'nav-control-acl' },
+    { label: 'Operations', href: '/operations', icon: OperationsIcon, testid: 'nav-operations' },
+    { label: 'Apps', href: '/apps', icon: AppsIcon, testid: 'nav-apps' },
+  ];
 
   let { children } = $props();
 
@@ -61,20 +59,22 @@
           </Navigation.TriggerAnchor>
         </Navigation.Menu>
       </Navigation.Group>
-      {#each Object.entries(linksSidebar) as [category, links]}
-        <Navigation.Group>
-          <Navigation.Label class="capitalize pl-2">{category}</Navigation.Label>
+      <Navigation.Group>
+        {#each linksSidebar as link (link)}
           <Navigation.Menu>
-            {#each links as link (link)}
-              {@const Icon = link.icon}
-              <Navigation.TriggerAnchor href={link.href} title={link.label} aria-label={link.label} data-testid={link.testid}>
-                <Icon class="w-5 h-5" />
-                <Navigation.TriggerText>{link.label}</Navigation.TriggerText>
-              </Navigation.TriggerAnchor>
-            {/each}
+            {@const Icon = link.icon}
+            <Navigation.TriggerAnchor
+              href={link.href}
+              title={link.label}
+              aria-label={link.label}
+              data-testid={link.testid}
+            >
+              <Icon class="w-5 h-5" />
+              <Navigation.TriggerText>{link.label}</Navigation.TriggerText>
+            </Navigation.TriggerAnchor>
           </Navigation.Menu>
-        </Navigation.Group>
-      {/each}
+        {/each}
+      </Navigation.Group>
     </Navigation.Content>
   </Navigation>
   <div class="overflow-y-auto overflow-x-auto">

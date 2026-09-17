@@ -7,6 +7,8 @@
   import { confirmDialog } from '../../lib/dialogs.svelte.ts';
   import { compareAppsByCategory } from '../../lib/sort.ts';
   import SortHeader from './SortHeader.svelte';
+  import Edit from '@lucide/svelte/icons/pencil';
+  import Trash from '@lucide/svelte/icons/trash';
 
   type SortDirection = 'asc' | 'desc' | null;
 
@@ -26,8 +28,8 @@
     else sortDirection = null;
   }
 
-  function openQuickEdit(id: string): void {
-    navigate(`/edit?type=quick-app&id=${encodeURIComponent(id)}`);
+  function openEdit(id: string): void {
+    navigate(`/edit?type=app&id=${encodeURIComponent(id)}`);
   }
 
   function openCategory(name: string): void {
@@ -77,7 +79,7 @@
               onclick={onSortClick}
             />
           </th>
-          <th>ソースURL</th>
+          <th>ソース</th>
           <th class="pr-8 text-right">操作</th>
         </tr>
       </thead>
@@ -90,16 +92,7 @@
           </tr>
         {:else}
           {#each sortedApps as app (app.id)}
-            <!-- svelte-ignore a11y_no_noninteractive_element_interactions a11y_click_events_have_key_events -->
-            <tr
-              class="cursor-pointer"
-              data-testid="app-row"
-              onclick={(e) => {
-                const target = e.target as HTMLElement;
-                if (target.closest('button') || target.closest('[data-testid="category-tag"]')) return;
-                openQuickEdit(app.id);
-              }}
-            >
+            <tr data-testid="app-row">
               <td>
                 <div class="flex flex-col gap-1">
                   <span class="font-bold" data-testid="app-name-text">{app.name}</span>
@@ -108,24 +101,20 @@
               </td>
               <td>
                 <div class="flex flex-wrap gap-1.5" data-testid="category-tags">
-                  {#if app.categories && app.categories.length > 0}
-                    {#each app.categories as cat (cat)}
-                      <button
-                        type="button"
-                        class="chip cursor-pointer"
-                        data-testid="category-tag"
-                        data-cat={cat}
-                        style={getCategoryColorStyle(categories[cat])}
-                        onclick={() => openCategory(cat)}
-                      >{cat}</button>
-                    {/each}
-                  {:else}
-                    <span class="text-surface-600-400">-</span>
-                  {/if}
+                  {#each app.categories as cat (cat)}
+                    <button
+                      type="button"
+                      class="chip cursor-pointer"
+                      data-testid="category-tag"
+                      data-cat={cat}
+                      style={getCategoryColorStyle(categories[cat])}
+                      onclick={() => openCategory(cat)}>{cat}</button
+                    >
+                  {/each}
                 </div>
               </td>
-              <td class="max-w-[300px] overflow-hidden text-ellipsis whitespace-nowrap">
-                <span class="text-sm text-secondary-500">{app.url}</span>
+              <td>
+                <span>{sourceLabel(app)}</span>
                 {#if sourceWarning(app)}
                   <div class="text-xs text-warning-500" title={sourceWarning(app)}>
                     {sourceWarning(app)}
@@ -134,15 +123,18 @@
               </td>
               <td class="text-right">
                 <div class="flex items-center justify-end gap-2">
-                  <span class="badge preset-tonal">{sourceLabel(app)}</span>
                   <button
                     class="btn preset-tonal btn-sm quick-edit-btn"
-                    onclick={() => openQuickEdit(app.id)}>簡易編集</button
+                    onclick={() => openEdit(app.id)}
                   >
+                    <Edit class="w-4 h-4" />
+                  </button>
                   <button
                     class="btn preset-tonal-error btn-sm delete-app-btn"
-                    onclick={() => onDeleteApp(app.id)}>削除</button
+                    onclick={() => onDeleteApp(app.id)}
                   >
+                    <Trash class="w-4 h-4" />
+                  </button>
                 </div>
               </td>
             </tr>
