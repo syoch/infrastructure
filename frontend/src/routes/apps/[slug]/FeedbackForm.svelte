@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { safeURL } from '../../lib/ui.js';
+  import { safeURL } from '../../../lib/ui.js';
 
   let {
     webui_url,

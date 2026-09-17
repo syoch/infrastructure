@@ -1,9 +1,9 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { fetchTokens, issueToken, deleteToken, type BootstrapToken } from '../../api/control_api.js';
-  import { showCustomToast } from '../../lib/toast.ts';
-  import { confirmDialog, promptDialog } from '../../lib/dialogs.svelte.ts';
-  import { msg, formatDate, tokenStatus } from './format.js';
+  import { fetchTokens, issueToken, deleteToken, type BootstrapToken } from '../../../api/control_api.js';
+  import { showCustomToast } from '../../../lib/toast.ts';
+  import { confirmDialog, promptDialog } from '../../../lib/dialogs.svelte.ts';
+  import { msg, formatDate, tokenStatus } from '../../../components/control_plane/format.js';
 
   let tokens = $state<BootstrapToken[]>([]);
   let error = $state('');

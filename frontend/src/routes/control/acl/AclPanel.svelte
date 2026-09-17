@@ -1,9 +1,9 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { fetchAcl, createAcl, deleteAcl, type ACL } from '../../api/control_api.js';
-  import { showCustomToast } from '../../lib/toast.ts';
-  import { confirmDialog } from '../../lib/dialogs.svelte.ts';
-  import { msg } from './format.js';
+  import { fetchAcl, createAcl, deleteAcl, type ACL } from '../../../api/control_api.js';
+  import { showCustomToast } from '../../../lib/toast.ts';
+  import { confirmDialog } from '../../../lib/dialogs.svelte.ts';
+  import { msg } from '../../../components/control_plane/format.js';
 
   let acls = $state<ACL[]>([]);
   let error = $state('');

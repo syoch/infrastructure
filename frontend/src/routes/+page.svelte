@@ -2,7 +2,7 @@
   import { store } from '../lib/store.svelte.ts';
   import { compareAppsByCategory } from '../lib/sort.js';
   import type { App } from '../api/api.js';
-  import PortalAppsTable from '../components/obtainium/PortalAppsTable.svelte';
+  import PortalAppsTable from './PortalAppsTable.svelte';
 
   type PortalApp = App & {
     _version?: string;

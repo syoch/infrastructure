@@ -15,11 +15,11 @@
   } from '../../api/control_api.js';
   import { ensureMe } from '../../lib/auth.svelte.ts';
   import { SchemaNode, type JSONSchema } from '../../lib/schema.svelte.ts';
-  import CommandFilterForm from '../../components/control_plane/CommandFilterForm.svelte';
-  import OperationProviderCards from '../../components/control_plane/OperationProviderCards.svelte';
-  import CommandsTable from '../../components/control_plane/CommandsTable.svelte';
-  import CommandsPagination from '../../components/control_plane/CommandsPagination.svelte';
-  import OperationDialog from '../../components/control_plane/OperationDialog.svelte';
+  import CommandFilterForm from './CommandFilterForm.svelte';
+  import OperationProviderCards from './OperationProviderCards.svelte';
+  import CommandsTable from './CommandsTable.svelte';
+  import CommandsPagination from './CommandsPagination.svelte';
+  import OperationDialog from './OperationDialog.svelte';
 
   interface Filter {
     status: string;

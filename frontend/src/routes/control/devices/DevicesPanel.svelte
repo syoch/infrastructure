@@ -1,10 +1,10 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { Switch } from '@skeletonlabs/skeleton-svelte';
-  import { fetchDevices, setAdmin, deleteDevice, type Device } from '../../api/control_api.js';
-  import { showCustomToast } from '../../lib/toast.ts';
-  import { confirmDialog } from '../../lib/dialogs.svelte.ts';
-  import { msg, wsBadgeClass, formatDate } from './format.js';
+  import { fetchDevices, setAdmin, deleteDevice, type Device } from '../../../api/control_api.js';
+  import { showCustomToast } from '../../../lib/toast.ts';
+  import { confirmDialog } from '../../../lib/dialogs.svelte.ts';
+  import { msg, wsBadgeClass, formatDate } from '../../../components/control_plane/format.js';
 
   let { me }: { me: Device } = $props();
 

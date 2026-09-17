@@ -2,8 +2,8 @@
   import { Dialog, Portal } from '@skeletonlabs/skeleton-svelte';
   import { issueCommand, type OperationSpec } from '../../api/control_api.js';
   import type { SchemaNode } from '../../lib/schema.svelte.ts';
-  import SchemaForm from '../SchemaForm.svelte';
-  import { msg } from './format.js';
+  import SchemaForm from '../../components/SchemaForm.svelte';
+  import { msg } from '../../components/control_plane/format.js';
 
   let {
     op,

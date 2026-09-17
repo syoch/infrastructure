@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { WebAppDetail } from '../../api/app_portal_api.js';
-  import { safeURL } from '../../lib/ui.js';
+  import type { WebAppDetail } from '../../../api/app_portal_api.js';
+  import { safeURL } from '../../../lib/ui.js';
 
   let { app, onDelete }: { app: WebAppDetail; onDelete: () => void } = $props();
 </script>

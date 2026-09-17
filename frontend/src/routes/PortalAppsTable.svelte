@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { App } from '../../api/api.js';
-  import SortHeader from './SortHeader.svelte';
+  import type { App } from '../api/api.js';
+  import SortHeader from '../components/obtainium/SortHeader.svelte';
 
   type PortalApp = App & {
     _version?: string;

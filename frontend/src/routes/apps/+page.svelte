@@ -4,8 +4,8 @@
   import { createWebApp, fetchWebApps, type WebApp } from '../../api/app_portal_api.js';
   import { getToken } from '../../api/control_api.js';
   import { showCustomToast } from '../../lib/toast.ts';
-  import AppRegisterForm from '../../components/app_portal/AppRegisterForm.svelte';
-  import AppList from '../../components/app_portal/AppList.svelte';
+  import AppRegisterForm from './AppRegisterForm.svelte';
+  import AppList from './AppList.svelte';
 
   let apps = $state<WebApp[]>([]);
   let loading = $state(true);

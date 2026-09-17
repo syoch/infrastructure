@@ -13,10 +13,10 @@
   import { getToken } from '../../../api/control_api.js';
   import { showCustomToast } from '../../../lib/toast.ts';
   import { confirmDialog } from '../../../lib/dialogs.svelte.ts';
-  import AppDetailHeader from '../../../components/app_portal/AppDetailHeader.svelte';
-  import AppEditForm from '../../../components/app_portal/AppEditForm.svelte';
-  import FeedbackForm from '../../../components/app_portal/FeedbackForm.svelte';
-  import FeedbackHistory from '../../../components/app_portal/FeedbackHistory.svelte';
+  import AppDetailHeader from './AppDetailHeader.svelte';
+  import AppEditForm from './AppEditForm.svelte';
+  import FeedbackForm from './FeedbackForm.svelte';
+  import FeedbackHistory from './FeedbackHistory.svelte';
 
   const slug = $derived(page.params.slug ?? '');
 

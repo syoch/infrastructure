@@ -9,9 +9,9 @@
   import SystemBackupPanel from '../../components/obtainium/SystemBackupPanel.svelte';
   import AppModal from '../../components/obtainium/AppModal.svelte';
   import CategoryModal from '../../components/obtainium/CategoryModal.svelte';
-  import AppEditHeader from '../../components/obtainium/AppEditHeader.svelte';
-  import AppDetailedForm from '../../components/obtainium/AppDetailedForm.svelte';
-  import SelfHostedApkManager from '../../components/obtainium/SelfHostedApkManager.svelte';
+  import AppEditHeader from './AppEditHeader.svelte';
+  import AppDetailedForm from './AppDetailedForm.svelte';
+  import SelfHostedApkManager from './SelfHostedApkManager.svelte';
 
   const type = $derived(page.url.searchParams.get('type') ?? '');
   const id = $derived(page.url.searchParams.get('id') ?? '');

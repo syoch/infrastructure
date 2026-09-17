@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { AppFeedback } from '../../api/app_portal_api.js';
-  import { safeURL } from '../../lib/ui.js';
+  import type { AppFeedback } from '../../../api/app_portal_api.js';
+  import { safeURL } from '../../../lib/ui.js';
 
   let {
     feedback,

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { WebAppDetail } from '../../api/app_portal_api.js';
+  import type { WebAppDetail } from '../../../api/app_portal_api.js';
 
   let {
     app,

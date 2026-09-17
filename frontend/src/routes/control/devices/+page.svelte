@@ -3,8 +3,8 @@
   import { ensureMe } from '../../../lib/auth.svelte.ts';
   import { getToken, type Device } from '../../../api/control_api.js';
   import BootstrapForm from '../../../components/control_plane/BootstrapForm.svelte';
-  import DevicesPanel from '../../../components/control_plane/DevicesPanel.svelte';
-  import TokensPanel from '../../../components/control_plane/TokensPanel.svelte';
+  import DevicesPanel from './DevicesPanel.svelte';
+  import TokensPanel from './TokensPanel.svelte';
 
   type Phase = 'loading' | 'bootstrap' | 'ready';
 

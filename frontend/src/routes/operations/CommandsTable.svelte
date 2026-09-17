@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { CommandRequest } from '../../api/control_api.js';
-  import { statusBadgeClass } from './format.js';
+  import { statusBadgeClass } from '../../components/control_plane/format.js';
 
   let { cmds }: { cmds: CommandRequest[] } = $props();
 </script>
